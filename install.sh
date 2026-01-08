@@ -349,12 +349,10 @@ chcon -h system_u:object_r:bin_t:s0 /usr/sbin/csf
 mkdir webmin/csf/images
 mkdir ui/images
 mkdir da/images
-mkdir interworx/images
 
 cp -avf csf/* webmin/csf/images/
 cp -avf csf/* ui/images/
 cp -avf csf/* da/images/
-cp -avf csf/* interworx/images/
 
 cp -avf messenger/*.php /etc/csf/messenger/
 cp -avf csf/csf_small.png /usr/local/cpanel/whostmgr/docroot/addon_plugins/

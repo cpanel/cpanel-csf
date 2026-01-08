@@ -90,8 +90,6 @@ This document contains:
 
 27. CloudFlare
 
-28. InterWorx
-
 29. CentOS Web Panel (CWP)
 
 
@@ -1694,39 +1692,6 @@ using "tempadd" use the normal csf temp CLI commands. This will remove the
 rules from both iptables and the users CloudFlare firewall, e.g.:
 
 csf --tr 44.33.22.11
-
-
-28. InterWorx
-#############
-
-InterWorx integration is available for csf. The installation makes changes to
-the underlying InterWorx installation due to its current dependence on APF. To
-cater for this, installing csf will replace /etc/apf/apf with a stub script
-that redirects commands to csf. The script is then chattr +ia to prevent it
-being overwritten.
-
-Note: None of the apf conf files are used and are ignored by csf.
-
-The Firewall UI option in NodeWorx should now not be used and any changes made
-there will not be reflected in iptables.
-
-There is a UI option under "ConfigServer Services" for "ConfigServer Firewall &
-Security" that should now be used.
-
-The installation will also replace the Firewall page in NodeWorx with a dummy
-page stating that csf should be used instead. lfd will replace the page upon
-restart incase of upgrades to InterWorx. If you want to disable this behaviour,
-create an empty file as follows:
-
-touch /etc/cxs/interworx.firewall
-
-The InterWorx plugin for csf is auto-enabled. Enabling or Disabling the
-InterWorx plugin has no effect on csf itself, only the UI plugin presence.
-
-NOTE: Unless you have configured a root forwarder, you should edit the csf
-configuration settings in /etc/csf/csf.conf or via the UI and set LF_ALERT_TO
-to a suitable email address. After making any changes, restart csf and then
-lfd.
 
 
 28. CentOS Web Panel (CWP)

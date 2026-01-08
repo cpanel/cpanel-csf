@@ -553,50 +553,6 @@ sub processline {
 		if (checkip(\$ip)) {return ("Failed SMTP AUTH login from","$ip","smtpauth")} else {return}
 	}
 
-#InterWorx (dovecot, proftpd, qmail)
-	if (($config{LF_POP3D}) and ($globlogs{POP3D_LOG}{$lgfile}) and ($line =~ /^(\S+|\S+\s+\d+\s+\S+) pop3-login(\[\d+\])?: Info: (Aborted login|Disconnected|Disconnected: Inactivity)( \(auth failed, \d+ attempts( in \d+ secs)?\))?: (user=(<\S*>)?, )?(method=\S+, )?rip=(\S+), lip=/)) {
-        my $ip = $9;
-		my $acc = $7;
-		$ip =~ s/^::ffff://;
-		$acc =~ s/^<|>$//g;
-		if (checkip(\$ip)) {return ("Failed POP3 login from","$ip|$acc","pop3d")} else {return}
-	}
-	if (($config{LF_IMAPD}) and ($globlogs{IMAPD_LOG}{$lgfile}) and ($line =~ /^(\S+|\S+\s+\d+\s+\S+) imap-login(\[\d+\])?: Info: (Aborted login|Disconnected|Disconnected: Inactivity)( \(auth failed, \d+ attempts( in \d+ secs)?\))?: (user=(<\S*>)?, )?(method=\S+, )?rip=(\S+), lip=/)) {
-        my $ip = $9;
-		my $acc = $7;
-		$ip =~ s/^::ffff://;
-		$acc =~ s/^<|>$//g;
-		if (checkip(\$ip)) {return ("Failed IMAP login from","$ip|$acc","imapd")} else {return}
-	}
-	if (($config{LF_FTPD}) and ($globlogs{FTPD_LOG}{$lgfile}) and ($line =~ /^\S+ \S+ \S+ proftpd\[\d+\]:? \S+ \(\S+?[^\[]+\[(\S+)\]\)( -)?:? USER (\S*): no such user found from/)) {
-        my $ip = $1;
-		my $acc = $3;
-		$ip =~ s/^::ffff://;
-		$acc =~ s/:$//g;
-		if (checkip(\$ip)) {return ("Failed FTP login from","$ip|$acc","ftpd")} else {return}
-	}
-	if (($config{LF_FTPD}) and ($globlogs{FTPD_LOG}{$lgfile}) and ($line =~ /^\S+ \S+ \S+ proftpd\[\d+\]:? \S+ \(\S+?[^\[]+\[(\S+)\]\)( -)?:? USER (\S*) \(Login failed\): Incorrect password/)) {
-        my $ip = $1;
-		my $acc = $3;
-		$ip =~ s/^::ffff://;
-		$acc =~ s/:$//g;
-		if (checkip(\$ip)) {return ("Failed FTP login from","$ip|$acc","ftpd")} else {return}
-	}
-	if (($config{LF_SMTPAUTH}) and ($globlogs{SMTPAUTH_LOG}{$lgfile}) and ($line =~ /^\S+ qmail-smtpd\[\d+\]: AUTH failed \[(\S+)\] (\S+)/)) {
-		my $ip = $1;
-		my $acc = $2;
-		$ip =~ s/^::ffff://;
-		if (checkip(\$ip)) {return ("Failed SMTP AUTH login from","$ip|$acc","smtpauth")} else {return}
-	}
-	if (($config{LF_INTERWORX}) and ($globlogs{INTERWORX_LOG}{$lgfile}) and ($line =~ /^\S+ \S+ (\S+) (\S+) (\S+)/)) {
-		my $iw = "SiteWorx";
-		if ($1 eq "NW") {$iw = "NodeWorx"}
-        my $ip = $2;
-		my $acc = $3;
-		$ip =~ s/^::ffff://;
-		if (checkip(\$ip)) {return ("Failed $iw login from","$ip|$acc","interworx")} else {return}
-	}
-
 # CWP
 	if (($config{LF_CWP}) and ($globlogs{CWP_LOG}{$lgfile}) and ($line =~ /^\S+\s+\S+\s+(\S+)\s+Failed Login from:\s+(\S+) on:/)) {
         my $ip = $2;
@@ -646,21 +602,8 @@ sub processloginline {
 		$ip =~ s/^::ffff://;
 		if (checkip(\$ip)) {return ("imapd",$acc,$ip)} else {return}
 	}
-
-#InterWorx (dovecot)
-	if (($config{LT_POP3D}) and ($line =~ /^(\S+|\S+\s+\d+\s+\S+) pop3-login: Info: Login: user=<(\S*)>, method=\S+, rip=(\S+), lip=/)) {
-        my $ip = $3;
-		my $acc = $2;
-		$ip =~ s/^::ffff://;
-		if (checkip(\$ip)) {return ("pop3d",$acc,$ip)} else {return}
-	}
-	if (($config{LT_IMAPD}) and ($line =~ /^(\S+|\S+\s+\d+\s+\S+) imap-login: Info: Login: user=<(\S*)>, method=\S+, rip=(\S+), lip=/)) {
-        my $ip = $3;
-		my $acc = $2;
-		$ip =~ s/^::ffff://;
-		if (checkip(\$ip)) {return ("imapd",$acc,$ip)} else {return}
-	}
 }
+
 # end processloginline
 ###############################################################################
 # start processsshline
@@ -922,14 +865,8 @@ sub processdistftpline {
 		$ip =~ s/^::ffff://;
 		if (checkip(\$ip)) {return ($ip,$acc)} else {return}
 	}
-#InterWorx proftpd
-	if ($line =~ /^\S+ \S+ \S+ proftpd\[\d+\]:? \S+ \(\S+?[^\[]+\[(\S+)\]\)( -)?:? USER (\S*): Login successful/) {
-        my $ip = $1;
-		my $acc = $3;
-		$ip =~ s/^::ffff://;
-		if (checkip(\$ip)) {return ($ip,$acc)} else {return}
-	}
 }
+
 # end processdistftpline
 ###############################################################################
 # start processdistsmtpline
@@ -943,12 +880,6 @@ sub processdistsmtpline {
 #postfix
 	if ($line =~ /^(\S+|\S+\s+\d+\s+\S+) \S+ postfix\/(submission\/)?smtpd(?:\[\d+\])?: \w+: client=\S+\[(\S+)\], sasl_method=(?:(?i)LOGIN|PLAIN|(?:CRAM|DIGEST)-MD5), sasl_username=(\S+)$/) {
 		$ip = $3; my $account = $4; $ip =~ s/^::ffff://;
-		if (checkip(\$ip) and $ip ne "127.0.0.1" and $ip ne "::1") {return ($ip,$account)} else {return}
-	}
-
-#InterWorx qmail
-	if ($line =~ /^\S+ qmail-smtpd\[\d+\]: AUTH successful \[(\S+)\] (\S+)/) {
-		$ip = $1; my $account = $2; $ip =~ s/^::ffff://;
 		if (checkip(\$ip) and $ip ne "127.0.0.1" and $ip ne "::1") {return ($ip,$account)} else {return}
 	}
 	

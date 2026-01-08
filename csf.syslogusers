@@ -60,12 +60,6 @@ mailnull
 dovecot
 mail
 
-# InterWorx users:
-qmailq
-qmails
-qmailr
-qmailp
-qmaill
 qmaild
 alias
 iworx-horde

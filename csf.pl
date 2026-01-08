@@ -408,7 +408,6 @@ sub doversion {
 my $generic = " (cPanel)";
 if ($config{GENERIC}) {$generic = " (generic)"}
 if ($config{DIRECTADMIN}) {$generic = " (DirectAdmin)"}
-if ($config{INTERWORX}) {$generic = " (InterWorx)"}
 if ($config{CWP}) {$generic = " (CentOS Web Panel)"}
 if ($config{VESTA}) {$generic = " (VestaCP)"}
 	print "csf: v$version$generic\n";

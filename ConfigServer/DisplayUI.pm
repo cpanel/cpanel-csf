@@ -2147,11 +2147,11 @@ EOF
 				print "You are running the latest version of csf. An Upgrade button will appear here if a new version becomes available. New version checking is performed automatically by a daily cron job (csget)</td></tr>\n";
 			}
 		}
-		if (!$config{INTERWORX} and (-e "/etc/apf" or -e "/usr/local/bfd")) {
+		if (-e "/etc/apf" or -e "/usr/local/bfd") {
 			print "<tr><td><button name='action' value='remapf' type='submit' class='btn btn-default'>Remove APF/BFD</button></td><td style='width:100%'>Remove APF/BFD from the server. You must not run both APF or BFD with csf on the same server</td></tr>\n";
 		}
 		unless (-e "/etc/cxs/cxs.pl") {
-			if (-e "/usr/local/cpanel/version" or $config{DIRECTADMIN} or $config{INTERWORX} or $config{VESTA} or $config{CWP} ) {
+			if (-e "/usr/local/cpanel/version" or $config{DIRECTADMIN} or $config{VESTA} or $config{CWP} ) {
 				print "<tr><td colspan='2'>\n";
 				print "<div class='bs-callout bs-callout-info h4'>Add server and user data protection against exploits using <a href='https://configserver.com/cp/cxs.html' target='_blank'>ConfigServer eXploit Scanner (cxs)</a></div>\n";
 				print "</td></tr>\n";
@@ -2290,10 +2290,9 @@ EOF
 			print "</table>\n";
 		}
 
-		if (-e "/usr/local/cpanel/version" or $config{DIRECTADMIN} or $config{INTERWORX}) {
+		if (-e "/usr/local/cpanel/version" or $config{DIRECTADMIN}) {
 			my $resellers = "cPanel Resellers";
 			if ($config{DIRECTADMIN}) {$resellers = "DirectAdmin Resellers"}
-			elsif ($config{INTERWORX}) {$resellers = "InterWorx Resellers"}
 			print "<table class='table table-bordered table-striped'>\n";
 			print "<thead><tr><th colspan='2'>$resellers</th></tr></thead>";
 			print "<tr><td><form action='$script' method='post'><button name='action' value='reseller' type='submit' class='btn btn-default'>Edit Reseller Privs</button></form></td><td style='width:100%'>Privileges can be assigned to $resellers accounts by editing this file (csf.resellers)</td></tr>\n";
@@ -2424,11 +2423,6 @@ sub chart {
 		$imghddir = "plugins/csf/images/";
 		umask(0133);
 	}
-	elsif (-e "/usr/local/interworx") {
-		$imgdir = "/configserver/csf/";
-		$imghddir = "/usr/local/interworx/html/configserver/csf/";
-		umask(0133);
-	}
 	elsif (-e "/usr/local/CyberCP/") {
 		$imgdir = "/static/configservercsf/";
 		$imghddir = "/usr/local/CyberCP/public/static/configservercsf/";
@@ -2508,11 +2502,6 @@ sub systemstats {
 	elsif (-e "/usr/local/directadmin/conf/directadmin.conf") {
 		$imgdir = "/CMD_PLUGINS_ADMIN/csf/images/";
 		$imghddir = "plugins/csf/images/";
-		umask(0133);
-	}
-	elsif (-e "/usr/local/interworx") {
-		$imgdir = "/configserver/csf/";
-		$imghddir = "/usr/local/interworx/html/configserver/csf/";
 		umask(0133);
 	}
 	elsif (-e "/usr/local/CyberCP/") {

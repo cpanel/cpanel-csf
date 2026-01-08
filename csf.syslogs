@@ -85,12 +85,6 @@
 /var/log/directadmin/security.log
 /var/log/directadmin/system.log
 
-# InterWorx
-/usr/local/interworx/var/log/iworx.log
-/usr/local/interworx/var/log/iworx-init.log
-/usr/local/interworx/var/log/error.log
-/usr/local/interworx/var/log/stack.log
-
 # Litespeed/Openlitespeed
 /usr/local/lsws/logs/error.log
 /usr/local/lsws/logs/access.log

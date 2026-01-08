@@ -79,14 +79,6 @@ cpan> install LWP LWP::Protocol::https GD::Graph
 
 
 
-InterWorx
-=========
-
-1. Enable csf in InterWorx > NodeWorx > Plugins > csf
-
-2. See the InterWorx section in /etc/csf/readme.txt
-
-
 Webmin Module Installation/Upgrade
 ==================================
 

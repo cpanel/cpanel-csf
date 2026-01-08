@@ -267,7 +267,6 @@ chomp $version;
 my $generic = " (cPanel)";
 if ($config{GENERIC}) {$generic = " (generic)"}
 if ($config{DIRECTADMIN}) {$generic = " (DirectAdmin)"}
-if ($config{INTERWORX}) {$generic = " (InterWorx)"}
 if ($config{CWP}) {$generic = " (CentOS Web Panel)"}
 if ($config{VESTA}) {$generic = " (VestaCP)"}
 logfile("daemon started on $hostname - csf v$version$generic");
@@ -445,7 +444,6 @@ if ($config{LF_DIRECTADMIN}) {
 	&globlog("DIRECTADMIN_LOG_S");
 	&globlog("DIRECTADMIN_LOG_P");
 }
-if ($config{LF_INTERWORX}) {&globlog("INTERWORX_LOG")}
 if ($config{LF_CWP}) {&globlog("CWP_LOG")}
 if ($config{LF_VESTA}) {&globlog("VESTA_LOG")}
 if ($config{LF_WEBMIN} or $config{LF_WEBMIN_EMAIL_ALERT}) {&globlog("WEBMIN_LOG")}
@@ -1661,13 +1659,6 @@ while (1)  {
 		}
 	}
 
-	if ($config{INTERWORX}) {
-		if (slurp("/etc/csf/apf_stub.pl") ne slurp("/etc/apf/apf")) {
-			&syscommand(__LINE__,"cp -af /etc/csf/apf_stub.pl /etc/apf/apf");
-			&syscommand(__LINE__,"chmod 750 /etc/apf/apf");
-			logfile ("InterWorx: Reapplied apf stub");
-		}
-	}
 
 	&ipunblock;
 
@@ -1755,7 +1746,6 @@ sub dochecks {
 					elsif ($app eq "suhosin") {$trigger = "LF_SUHOSIN"}
 					elsif ($app eq "cpanel") {$trigger = "LF_CPANEL"}
 					elsif ($app eq "directadmin") {$trigger = "LF_DIRECTADMIN"}
-					elsif ($app eq "interworx") {$trigger = "LF_INTERWORX"}
 					elsif ($app eq "cwp") {$trigger = "LF_CWP"}
 					elsif ($app eq "vesta") {$trigger = "LF_VESTA"}
 					elsif ($app eq "webmin") {$trigger = "LF_WEBMIN"}
@@ -3197,11 +3187,6 @@ sub csfcheck {
 			&syscommand(__LINE__,"/usr/sbin/csf","-sf");
 			logfile("csf startup completed");
 			$0 = "lfd - processing";
-		}
-
-		if ($config{INTERWORX}) {
-			&syscommand(__LINE__,"cp -af /etc/csf/apf_stub.pl /etc/apf/apf");
-			&syscommand(__LINE__,"chmod 750 /etc/apf/apf");
 		}
 
 		if (-e "/usr/local/cpanel/version") {
