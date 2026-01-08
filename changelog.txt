@@ -3,6 +3,7 @@ ChangeLog:
 15.01 - Hard code all perl scripts to use cpanel-perl
         Remove support for cyberpanel.
         Remove support for interworx.
+        Remove support for VestaCP.
 
 15.00 - Changed license to GPLv3
 

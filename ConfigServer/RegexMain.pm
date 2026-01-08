@@ -560,13 +560,6 @@ sub processline {
 		$ip =~ s/^::ffff://;
 		if (checkip(\$ip)) {return ("Failed CWP login from","$ip|$acc","cwp")} else {return}
 	}
-# VestaCP
-	if (($config{LF_VESTA}) and ($globlogs{VESTA_LOG}{$lgfile}) and ($line =~ /^\S+\s+\S+\s+(\S+)\s+(\S+) failed to login/)) {
-        my $ip = $2;
-		my $acc = $1;
-		$ip =~ s/^::ffff://;
-		if (checkip(\$ip)) {return ("Failed VestaCP login from","$ip|$acc","vesta")} else {return}
-	}
 
 }
 # end processline
