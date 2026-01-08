@@ -268,7 +268,6 @@ my $generic = " (cPanel)";
 if ($config{GENERIC}) {$generic = " (generic)"}
 if ($config{DIRECTADMIN}) {$generic = " (DirectAdmin)"}
 if ($config{INTERWORX}) {$generic = " (InterWorx)"}
-if ($config{CYBERPANEL}) {$generic = " (CyberPanel)"}
 if ($config{CWP}) {$generic = " (CentOS Web Panel)"}
 if ($config{VESTA}) {$generic = " (VestaCP)"}
 logfile("daemon started on $hostname - csf v$version$generic");
@@ -447,7 +446,6 @@ if ($config{LF_DIRECTADMIN}) {
 	&globlog("DIRECTADMIN_LOG_P");
 }
 if ($config{LF_INTERWORX}) {&globlog("INTERWORX_LOG")}
-if ($config{LF_CYBERPANEL}) {&globlog("CYBERPANEL_LOG")}
 if ($config{LF_CWP}) {&globlog("CWP_LOG")}
 if ($config{LF_VESTA}) {&globlog("VESTA_LOG")}
 if ($config{LF_WEBMIN} or $config{LF_WEBMIN_EMAIL_ALERT}) {&globlog("WEBMIN_LOG")}
@@ -1758,7 +1756,6 @@ sub dochecks {
 					elsif ($app eq "cpanel") {$trigger = "LF_CPANEL"}
 					elsif ($app eq "directadmin") {$trigger = "LF_DIRECTADMIN"}
 					elsif ($app eq "interworx") {$trigger = "LF_INTERWORX"}
-					elsif ($app eq "cyberpanel") {$trigger = "LF_CYBERPANEL"}
 					elsif ($app eq "cwp") {$trigger = "LF_CWP"}
 					elsif ($app eq "vesta") {$trigger = "LF_VESTA"}
 					elsif ($app eq "webmin") {$trigger = "LF_WEBMIN"}

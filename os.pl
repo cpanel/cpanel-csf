@@ -130,32 +130,6 @@ elsif ((-e "/etc/debian_version") or (-e "/etc/lsb-release") or (-e "/etc/gentoo
 	}
 	close ($OUT);
 	print STDERR "Configuration modified for Debian/Ubuntu/Gentoo settings /etc/csf/csf.conf\n";
-
-	open (my $IN, "<", "csf.cyberpanel.conf") or die $!;
-	flock ($IN, LOCK_SH) or die $!;
-	my @config = <$IN>;
-	close ($IN);
-	chomp @config;
-	open (my $GENERIC, ">", "csf.cyberpanel.conf") or die $!;
-	flock ($GENERIC, LOCK_EX) or die $!;
-	foreach my $line (@config) {
-		if ($line =~ /^FUSER/) {$line = 'FUSER = "/bin/fuser"'}
-		if ($line =~ /^IPTABLES_LOG/) {$line = 'IPTABLES_LOG = "/var/log/kern.log"'}
-		if ($line =~ /^HTACCESS_LOG/) {$line = 'HTACCESS_LOG = "/var/log/apache2/error.log"'}
-		if ($line =~ /^MODSEC_LOG/) {$line = 'MODSEC_LOG = "/var/log/apache2/error.log"'}
-		if ($line =~ /^SSHD_LOG/) {$line = 'SSHD_LOG = "/var/log/auth.log"'}
-		if ($line =~ /^WEBMIN_LOG/) {$line = 'WEBMIN_LOG = "/var/log/auth.log"'}
-		if ($line =~ /^SU_LOG/) {$line = 'SU_LOG = "/var/log/messages"'}
-		if ($line =~ /^FTPD_LOG/) {$line = 'FTPD_LOG = "/var/log/messages"'}
-		if ($line =~ /^POP3D_LOG/) {$line = 'POP3D_LOG = "/var/log/mail.log"'}
-		if ($line =~ /^IMAPD_LOG/) {$line = 'IMAPD_LOG = "/var/log/mail.log"'}
-		if ($line =~ /^SYSTEMCTL /) {$line = 'SYSTEMCTL = "/bin/systemctl"'}
-		if ($line =~ /^IPSET /) {$line = 'IPSET = "/sbin/ipset"'}
-		if ($line =~ /^IP /) {$line = 'IP = "/bin/ip"'}
-		if ($line =~ /^ZGREP /) {$line = 'ZGREP = "/bin/zgrep"'}
-		print $GENERIC $line."\n";
-	}
-	close ($GENERIC);
 }
 elsif (-e "/etc/slackware-version") {
 	open (my $IN, "<", "csf.generic.conf") or die $!;

@@ -91,12 +91,6 @@
 /usr/local/interworx/var/log/error.log
 /usr/local/interworx/var/log/stack.log
 
-# CyberPanel
-/home/cyberpanel/error-logs.txt
-/usr/local/lscp/cyberpanel/logs/error.log
-/usr/local/lscp/cyberpanel/logs/access.log
-/usr/local/lscp/cyberpanel/logs/stderr.log
-
 # Litespeed/Openlitespeed
 /usr/local/lsws/logs/error.log
 /usr/local/lsws/logs/access.log
