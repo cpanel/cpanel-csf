@@ -408,7 +408,6 @@ sub doversion {
 my $generic = " (cPanel)";
 if ($config{GENERIC}) {$generic = " (generic)"}
 if ($config{DIRECTADMIN}) {$generic = " (DirectAdmin)"}
-if ($config{CWP}) {$generic = " (CentOS Web Panel)"}
 	print "csf: v$version$generic\n";
 	return;
 }

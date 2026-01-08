@@ -553,14 +553,6 @@ sub processline {
 		if (checkip(\$ip)) {return ("Failed SMTP AUTH login from","$ip","smtpauth")} else {return}
 	}
 
-# CWP
-	if (($config{LF_CWP}) and ($globlogs{CWP_LOG}{$lgfile}) and ($line =~ /^\S+\s+\S+\s+(\S+)\s+Failed Login from:\s+(\S+) on:/)) {
-        my $ip = $2;
-		my $acc = $1;
-		$ip =~ s/^::ffff://;
-		if (checkip(\$ip)) {return ("Failed CWP login from","$ip|$acc","cwp")} else {return}
-	}
-
 }
 # end processline
 ###############################################################################

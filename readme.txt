@@ -90,8 +90,6 @@ This document contains:
 
 27. CloudFlare
 
-29. CentOS Web Panel (CWP)
-
 
 1. Introduction
 ###############
@@ -1692,21 +1690,3 @@ using "tempadd" use the normal csf temp CLI commands. This will remove the
 rules from both iptables and the users CloudFlare firewall, e.g.:
 
 csf --tr 44.33.22.11
-
-
-28. CentOS Web Panel (CWP)
-##########################
-
-CWP integration is available for csf. Since CWP already has some custom
-modifications, these have been taken into account. To access the now inbuilt UI
-in CWP, there is a new menu option in CWP > ConfigServer Scripts > ConfigServer
-Firewall.
-
-There is now an option in /etc/csf/csf.conf for LF_CWP for login failure
-detection. However, this WILL NOT work with the default CWP installation as
-there is a custom entry in /etc/csf/regex.custom.pm. The now official detection
-will be ignored while this is in place.
-
-If you want to use the now inbuilt detection you must edit
-/etc/csf/regex.custom.pm and remove the 3 lines that comprise the custom entry
-and then restart lfd.
