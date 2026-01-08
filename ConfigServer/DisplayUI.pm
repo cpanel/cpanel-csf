@@ -354,11 +354,6 @@ sub main {
 		my $script_safe = $script;
 		my $CSFfrombot = 120;
 		my $CSFfromright = 10;
-		if ($config{DIRECTADMIN}) {
-			$script = $script_da;
-			$CSFfrombot = 400;
-			$CSFfromright = 150;
-		}
 		my @data = slurp("/etc/csf/csf.syslogs");
 		foreach my $line (@data) {
 			if ($line =~ /^Include\s*(.*)$/) {
@@ -423,7 +418,6 @@ sub main {
 	});
 </script>
 EOF
-		if ($config{DIRECTADMIN}) {$script = $script_safe}
 		&printreturn;
 	}
 	elsif ($FORM{action} eq "logtailcmd") {
@@ -496,11 +490,6 @@ EOF
 		my $script_safe = $script;
 		my $CSFfrombot = 120;
 		my $CSFfromright = 10;
-		if ($config{DIRECTADMIN}) {
-			$script = $script_da;
-			$CSFfrombot = 400;
-			$CSFfromright = 150;
-		}
 		my @data = slurp("/etc/csf/csf.syslogs");
 		foreach my $line (@data) {
 			if ($line =~ /^Include\s*(.*)$/) {
@@ -579,7 +568,6 @@ Please Note:
 	});
 </script>
 EOF
-		if ($config{DIRECTADMIN}) {$script = $script_safe}
 		&printreturn;
 	}
 	elsif ($FORM{action} eq "loggrepcmd") {
@@ -2151,21 +2139,21 @@ EOF
 			print "<tr><td><button name='action' value='remapf' type='submit' class='btn btn-default'>Remove APF/BFD</button></td><td style='width:100%'>Remove APF/BFD from the server. You must not run both APF or BFD with csf on the same server</td></tr>\n";
 		}
 		unless (-e "/etc/cxs/cxs.pl") {
-			if (-e "/usr/local/cpanel/version" or $config{DIRECTADMIN}) {
+			if (-e "/usr/local/cpanel/version") {
 				print "<tr><td colspan='2'>\n";
 				print "<div class='bs-callout bs-callout-info h4'>Add server and user data protection against exploits using <a href='https://configserver.com/cp/cxs.html' target='_blank'>ConfigServer eXploit Scanner (cxs)</a></div>\n";
 				print "</td></tr>\n";
 			}
 		}
 		unless (-e "/etc/osm/osmd.pl") {
-			if (-e "/usr/local/cpanel/version" or $config{DIRECTADMIN}) {
+			if (-e "/usr/local/cpanel/version") {
 				print "<tr><td colspan='2'>\n";
 				print "<div class='bs-callout bs-callout-info h4'>Add outgoing spam monitoring and prevention using <a href='https://configserver.com/cp/osm.html' target='_blank'>ConfigServer Outgoing Spam Monitor(osm)</a></div>\n";
 				print "</td></tr>\n";
 			}
 		}
 		unless (-e "/usr/msfe/mschange.pl") {
-			if (-e "/usr/local/cpanel/version" or $config{DIRECTADMIN}) {
+			if (-e "/usr/local/cpanel/version") {
 				print "<tr><td colspan='2'>\n";
 				print "<div class='bs-callout bs-callout-info h4'>Add effective incoming virus and spam detection and user level processing using <a href='https://configserver.com/cp/msfe.html' target='_blank'>ConfigServer MailScanner Front-End (msfe)</a></div>\n";
 				print "</td></tr>\n";
@@ -2290,9 +2278,8 @@ EOF
 			print "</table>\n";
 		}
 
-		if (-e "/usr/local/cpanel/version" or $config{DIRECTADMIN}) {
+		if (-e "/usr/local/cpanel/version") {
 			my $resellers = "cPanel Resellers";
-			if ($config{DIRECTADMIN}) {$resellers = "DirectAdmin Resellers"}
 			print "<table class='table table-bordered table-striped'>\n";
 			print "<thead><tr><th colspan='2'>$resellers</th></tr></thead>";
 			print "<tr><td><form action='$script' method='post'><button name='action' value='reseller' type='submit' class='btn btn-default'>Edit Reseller Privs</button></form></td><td style='width:100%'>Privileges can be assigned to $resellers accounts by editing this file (csf.resellers)</td></tr>\n";
@@ -2303,9 +2290,6 @@ EOF
 		print "<thead><tr><th colspan='2'>Extra</th></tr></thead>";
 		print "<tr><td><form action='$script' method='post'><button name='action' value='csftest' type='submit' class='btn btn-default'>Test iptables</button></form></td><td style='width:100%'>Check that iptables has the required modules to run csf</td></tr>\n";
 		print "</table>\n";
-#		if ($config{DIRECTADMIN} and !$config{THIS_UI}) {
-#			print "<a href='/' class='btn btn-success' data-spy='affix' data-offset-bottom='0' style='bottom: 0; left:45%'><span class='glyphicon glyphicon-home'></span> DirectAdmin Main Page</a>\n";
-#		}
 		print "</div>\n</div>\n";
 
 		if ($config{STYLE_MOBILE}) {
@@ -2346,9 +2330,6 @@ EOF
 					print "<br><p><a href='$ENV{cp_security_token}' class='btn btn-info btn-lg btn-block'><span class='glyphicon glyphicon-home'></span> cPanel Main Page</a></p>\n";
 				}
 			}
-#			if  ($config{DIRECTADMIN} and !$config{THIS_UI}) {
-#				print "<br><p id='cpframe'><a href='/' class='btn btn-info btn-lg btn-block'><span class='glyphicon glyphicon-home'></span> DirectAdmin Main Page</a></p>\n";
-#			}
 			if (defined $ENV{WEBMIN_VAR} and defined $ENV{WEBMIN_CONFIG} and !$config{THIS_UI}) {
 				print "<br><p><a href='/' class='btn btn-info btn-lg btn-block'><span class='glyphicon glyphicon-home'></span> Webmin Main Page</a></p>\n";
 			}
@@ -2417,11 +2398,6 @@ sub chart {
 	if (-e "/usr/local/cpanel/version") {
 		$imgdir = "/";
 		$imghddir = "";
-	}
-	elsif (-e "/usr/local/directadmin/conf/directadmin.conf") {
-		$imgdir = "/CMD_PLUGINS_ADMIN/csf/images/";
-		$imghddir = "plugins/csf/images/";
-		umask(0133);
 	}
 	elsif (-e "/usr/local/CyberCP/") {
 		$imgdir = "/static/configservercsf/";
@@ -2498,11 +2474,6 @@ sub systemstats {
 			$imgdir = "/";
 			$imghddir = "";
 		}
-	}
-	elsif (-e "/usr/local/directadmin/conf/directadmin.conf") {
-		$imgdir = "/CMD_PLUGINS_ADMIN/csf/images/";
-		$imghddir = "plugins/csf/images/";
-		umask(0133);
 	}
 	elsif (-e "/usr/local/CyberCP/") {
 		$imgdir = "/static/configservercsf/";
@@ -2675,11 +2646,7 @@ sub editfile {
 </script>
 EOF
 	} else {
-		if ($config{DIRECTADMIN}) {
-			print "<form action='$script?pipe_post=yes' method='post'>\n<div class='panel panel-default'>\n";
-		} else {
-			print "<form action='$script' method='post'>\n<div class='panel panel-default'>\n";
-		}
+		print "<form action='$script' method='post'>\n<div class='panel panel-default'>\n";
 		print "<div class='panel-heading panel-heading-cxs'>Edit <code>$file</code></div>\n";
 		print "<div class='panel-body'>\n";
 		print "<input type='hidden' name='action' value='$save'>\n";

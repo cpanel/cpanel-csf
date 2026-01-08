@@ -79,7 +79,6 @@ sub main {
 
 	$panel = "cPanel";
 	if ($config{GENERIC}) {$panel = "Generic"}
-	if ($config{DIRECTADMIN}) {$panel = "DirectAdmin"}
 
 	if ($FORM{ip} ne "") {$FORM{ip} =~ s/(^\s+)|(\s+$)//g}
 

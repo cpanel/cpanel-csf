@@ -4,6 +4,7 @@ ChangeLog:
         Remove support for cyberpanel.
         Remove support for interworx.
         Remove support for VestaCP.
+        Remove support for DirectAdmin.
 
 15.00 - Changed license to GPLv3
 

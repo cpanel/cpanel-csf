@@ -35,8 +35,3 @@
 /usr/local/cpanel/logs/error_log
 /var/log/exim_paniclog
 
-# DirectAdmin:
-/var/log/directadmin/error.log
-/var/log/directadmin/security.log
-/var/log/exim/paniclog
-

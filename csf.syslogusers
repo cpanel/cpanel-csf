@@ -56,10 +56,6 @@ dovenull
 mailman
 mailnull
 
-# DirectAdmin application users:
-dovecot
-mail
-
 qmaild
 alias
 iworx-horde

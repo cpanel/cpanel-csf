@@ -104,7 +104,7 @@ flexible to configure and secure with extra checks to ensure smooth operation.
 csf can be used on any (supported - see the website) generic Linux OS.
 
 The csf installation includes preconfigured configurations and control panel
-UI's for cPanel, DirectAdmin and Webmin
+UI's for cPanel and Webmin
 
 Directory structure:
 
@@ -139,7 +139,7 @@ Control Panel Interface
 =======================
 
 To help with the ease and flexibility of the suite we have developed a
-front-end to both csf and lfd for cPanel, DirectAdmin and Webmin. From there
+front-end to both csf and lfd for cPanel and Webmin. From there
 you can modify the configuration files and stop, start and restart the
 applications and check their status. This makes configuring and managing the
 firewall very simple indeed.
@@ -1514,7 +1514,7 @@ auth_advertise_hosts = ${if match_ip{$sender_host_address}{iplsearch;/etc/exim.s
 26. UI Skinning and Mobile View
 ###############################
 
-The csf UI provided through cPanel, DirectAdmin, Webmin and the integrated UI
+The csf UI provided through cPanel, Webmin and the integrated UI
 via lfd, all user the Bootstrap and jQuery frameworks. Additional styling is
 added to complement the frameworks and the UI flow.
 

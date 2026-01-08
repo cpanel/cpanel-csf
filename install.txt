@@ -46,7 +46,7 @@ That's it. You can then configure csf and lfd by reading the documentation and
 configuration files in /etc/csf/csf.conf and /etc/csf/readme.txt directly or
 through the csf User Interface.
 
-csf installation for cPanel and DirectAdmin is preconfigured to work on those
+csf installation for cPanel is preconfigured to work on those
 servers with all the standard ports open.
 
 csf auto-configures your SSH port on installation where it's running on a non-

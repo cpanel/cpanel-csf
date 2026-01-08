@@ -107,22 +107,11 @@ sub statuslfd {
 sub printcmd {
 	my @command = @_;
 
-	if ($config{DIRECTADMIN}) {
-		my $doublepid = fork;
-		if ($doublepid == 0) {
-			my ($childin, $childout);
-			my $pid = open3($childin, $childout, $childout, @command);
-			while (<$childout>) {print $_}
-			waitpid ($pid, 0);
-			exit;
-		}
-		waitpid ($doublepid, 0);
-	} else {
-		my ($childin, $childout);
-		my $pid = open3($childin, $childout, $childout, @command);
-		while (<$childout>) {print $_}
-		waitpid ($pid, 0);
-	}
+	my ($childin, $childout);
+	my $pid = open3($childin, $childout, $childout, @command);
+	while (<$childout>) {print $_}
+	waitpid ($pid, 0);
+
 	return;
 }
 # end printcmd

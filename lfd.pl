@@ -266,7 +266,6 @@ close ($IN);
 chomp $version;
 my $generic = " (cPanel)";
 if ($config{GENERIC}) {$generic = " (generic)"}
-if ($config{DIRECTADMIN}) {$generic = " (DirectAdmin)"}
 logfile("daemon started on $hostname - csf v$version$generic");
 if ($config{DEBUG} >= 1) {logfile("Clock Ticks: $clock_ticks")}
 if ($config{DEBUG} >= 1) {logfile("debug: **** DEBUG LEVEL $config{DEBUG} ENABLED ****")}
@@ -436,12 +435,6 @@ if ($config{LF_SMTPAUTH} or $config{LF_EXIMSYNTAX}) {&globlog("SMTPAUTH_LOG")}
 if ($config{LF_POP3D} or $config{LT_POP3D}) {&globlog("POP3D_LOG")}
 if ($config{LF_IMAPD} or $config{LT_IMAPD}) {&globlog("IMAPD_LOG")}
 if ($config{LF_CPANEL}) {&globlog("CPANEL_LOG")}
-if ($config{LF_DIRECTADMIN}) {
-	&globlog("DIRECTADMIN_LOG");
-	&globlog("DIRECTADMIN_LOG_R");
-	&globlog("DIRECTADMIN_LOG_S");
-	&globlog("DIRECTADMIN_LOG_P");
-}
 if ($config{LF_WEBMIN} or $config{LF_WEBMIN_EMAIL_ALERT}) {&globlog("WEBMIN_LOG")}
 if ($config{LF_SSHD} or $config{LF_SSH_EMAIL_ALERT} or $config{LF_CONSOLE_EMAIL_ALERT}) {&globlog("SSHD_LOG")}
 if ($config{LF_FTPD}) {&globlog("FTPD_LOG")}
@@ -577,7 +570,6 @@ if ($config{CF_ENABLE} and -e "/etc/csf/csf.cloudflare") {
 	$cfblocks{LF_MODSEC} = 1;
 	$cfblocks{LF_CXS} = 1;
 #	$cfblocks{LF_CPANEL} = 1;
-#	$cfblocks{LF_DIRECTADMIN} = 1;
 #	$cfblocks{LF_WEBMIN} = 1;
 }
 
@@ -1114,7 +1106,6 @@ $ports{ftpd} = $config{PORTS_ftpd};
 $ports{smtpauth} = $config{PORTS_smtpauth};
 $ports{eximsyntax} = $config{PORTS_eximsyntax};
 $ports{webmin} = $config{PORTS_webmin};
-$ports{directadmin} = $config{PORTS_directadmin};
 
 opendir (DIR, "/etc/chkserv.d");
 while (my $file = readdir (DIR)) {
@@ -1741,7 +1732,6 @@ sub dochecks {
 					elsif ($app eq "bind") {$trigger = "LF_BIND"}
 					elsif ($app eq "suhosin") {$trigger = "LF_SUHOSIN"}
 					elsif ($app eq "cpanel") {$trigger = "LF_CPANEL"}
-					elsif ($app eq "directadmin") {$trigger = "LF_DIRECTADMIN"}
 					elsif ($app eq "webmin") {$trigger = "LF_WEBMIN"}
 					elsif ($app eq "whm") {$trigger = "LF_CPANEL"}
 					elsif ($app eq "webmail") {$trigger = "LF_CPANEL"}

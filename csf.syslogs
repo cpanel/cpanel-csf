@@ -79,11 +79,7 @@
 /usr/local/cpanel/logs/stats_log
 /var/log/chkservd.log
 
-# DirectAdmin:
-/var/log/directadmin/error.log
-/var/log/directadmin/errortaskq.log
-/var/log/directadmin/security.log
-/var/log/directadmin/system.log
+
 
 # Litespeed/Openlitespeed
 /usr/local/lsws/logs/error.log

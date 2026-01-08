@@ -407,7 +407,6 @@ sub dostatus6 {
 sub doversion {
 my $generic = " (cPanel)";
 if ($config{GENERIC}) {$generic = " (generic)"}
-if ($config{DIRECTADMIN}) {$generic = " (DirectAdmin)"}
 	print "csf: v$version$generic\n";
 	return;
 }
@@ -1839,7 +1838,6 @@ sub doakill {
 sub dohelp {
 	my $generic = " (cPanel)";
 	if ($config{GENERIC}) {$generic = " (generic)"}
-	if ($config{DIRECTADMIN}) {$generic = " (DirectAdmin)"}
 	print "csf: v$version$generic\n";
 	open (my $IN, "<", "/usr/local/csf/lib/csf.help");
 	flock ($IN, LOCK_SH);
@@ -3286,20 +3284,6 @@ sub dodisable {
 		}
 		close ($CONF) or &error(__LINE__,"Could not close /etc/conf: $!");
 	}
-	if ($config{DIRECTADMIN}) {
-		sysopen (my $CONF, "/usr/local/directadmin/data/admin/services.status", O_RDWR | O_CREAT) or &error(__LINE__,"Could not open /usr/local/directadmin/data/admin/services.status: $!");
-		flock ($CONF, LOCK_EX) or &error(__LINE__,"Could not lock /usr/local/directadmin/data/admin/services.status: $!");
-		my $text = join("", <$CONF>);
-		my @conf = split(/$slurpreg/,$text);
-		chomp @conf;
-		seek ($CONF, 0, 0);
-		truncate ($CONF, 0);
-		foreach my $line (@conf) {
-			if ($line =~ /^lfd=/) {$line = "lfd=OFF"}
-			print $CONF $line."\n";
-		}
-		close ($CONF) or &error(__LINE__,"Could not close /usr/local/directadmin/data/admin/services.status: $!");
-	}
 	ConfigServer::Service::stoplfd();
 	&dostop(0);
 
@@ -3334,20 +3318,6 @@ sub doenable {
 		flock ($OUT, LOCK_EX);
 		print $OUT "service[lfd]=x,x,x,service lfd restart,lfd,root\n";
 		close ($OUT);
-	}
-	if ($config{DIRECTADMIN}) {
-		sysopen (my $CONF, "/usr/local/directadmin/data/admin/services.status", O_RDWR | O_CREAT) or &error(__LINE__,"Could not open /usr/local/directadmin/data/admin/services.status: $!");
-		flock ($CONF, LOCK_EX) or &error(__LINE__,"Could not lock /usr/local/directadmin/data/admin/services.status: $!");
-		my $text = join("", <$CONF>);
-		my @conf = split(/$slurpreg/,$text);
-		chomp @conf;
-		seek ($CONF, 0, 0);
-		truncate ($CONF, 0);
-		foreach my $line (@conf) {
-			if ($line =~ /^lfd=/) {$line = "lfd=ON"}
-			print $CONF $line."\n";
-		}
-		close ($CONF) or &error(__LINE__,"Could not close /usr/local/directadmin/data/admin/services.status: $!");
 	}
 
 	print "csf and lfd have been enabled\n";

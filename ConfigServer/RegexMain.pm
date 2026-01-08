@@ -449,39 +449,6 @@ sub processline {
 		if (checkip(\$ip)) {return ("Failed Webmin login from","$ip|$acc","webmin")} else {return}
 	}
 
-#DirectAdmin
-	if (($config{LF_DIRECTADMIN}) and ($globlogs{DIRECTADMIN_LOG}{$lgfile}) and ($line =~ /^\S+ \'(\S+)\' \d+ (failed login attempts\. Account|failed login attempt on account) \'(\S+)\'/)) {
-        my $ip = $1;
-		my $acc = $3;
-		$ip =~ s/^::ffff://;
-		if (checkip(\$ip)) {return ("Failed DirectAdmin login from","$ip|$acc","directadmin")} else {return}
-	}
-	if (($config{LF_DIRECTADMIN}) and ($globlogs{DIRECTADMIN_LOG_R}{$lgfile}) and ($line =~ /^\[\S+\s+\S+\s+\S+\]: (<\S+> )?IMAP Error: Login failed for (\S+) (against \S+ )?from (\S+)\. AUTHENTICATE PLAIN: Authentication failed\. in \/var\/www\/html\/roundcubemail/)) {
-        my $ip = $4;
-		my $acc = $2;
-		$ip =~ s/^::ffff://;
-		if (checkip(\$ip)) {return ("Failed DirectAdmin Roundcube login from","$ip|$acc","directadmin")} else {return}
-	}
-	if (($config{LF_DIRECTADMIN}) and ($globlogs{DIRECTADMIN_LOG_S}{$lgfile}) and ($line =~ /^\S+\s+\S+ \[LOGIN_ERROR\] (\S+)( \(\S+\))? from (\S+): Unknown user or password incorrect\.\s*$/)) {
-        my $ip = $3;
-		my $acc = $1;
-		$ip =~ s/^::ffff://;
-		if (checkip(\$ip)) {return ("Failed DirectAdmin SquirrelMail login from","$ip|$acc","directadmin")} else {return}
-	}
-#Jun 12 10:58:00 phpmyadmin: user denied: bill (mysql-denied) from 192.168.254.10
-	if (($config{LF_DIRECTADMIN}) and ($globlogs{DIRECTADMIN_LOG_P}{$lgfile}) and ($line =~ /^\S+\s+\S+\s+\S+: pma auth user='(\S+)' status='mysql-denied' ip='(\S+)'\s*$/)) {
-        my $ip = $2;
-		my $acc = $1;
-		$ip =~ s/^::ffff://;
-		if (checkip(\$ip)) {return ("Failed DirectAdmin phpMyAdmin login from","$ip|$acc","directadmin")} else {return}
-	}
-	if (($config{LF_DIRECTADMIN}) and ($globlogs{DIRECTADMIN_LOG_P}{$lgfile}) and ($line =~ /^\S+\s+\S+\s+\S+ phpmyadmin: user denied: (\S+) \(mysql-denied\) from (\S+)\s*$/)) {
-        my $ip = $2;
-		my $acc = $1;
-		$ip =~ s/^::ffff://;
-		if (checkip(\$ip)) {return ("Failed DirectAdmin phpMyAdmin login from","$ip|$acc","directadmin")} else {return}
-	}
-
 #Exim SMTP AUTH
 	if (($config{LF_SMTPAUTH}) and ($globlogs{SMTPAUTH_LOG}{$lgfile}) and ($line =~ /^\S+\s+\S+\s+(\[\d+\] )?(\S+) authenticator failed for \S+ (\S+ )?\[(\S+)\](:\S*:?)?( I=\S+| \d+\:)? 535 Incorrect authentication data( \(set_id=(\S+)\))?/)) {
         my $ip = $4;

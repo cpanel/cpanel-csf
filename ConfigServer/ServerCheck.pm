@@ -58,7 +58,6 @@ sub report {
 
 	if (defined $ENV{WEBMIN_VAR} and defined $ENV{WEBMIN_CONFIG}) {
 		$config{GENERIC} = 1;
-		$config{DIRECTADMIN} = 0;
 	}
 	elsif (-e "/usr/local/cpanel/version") {
 		use lib "/usr/local/cpanel";
@@ -67,18 +66,6 @@ sub report {
 		require Cpanel::Config;
 		import Cpanel::Config;
 		$cpconf = Cpanel::Config::loadcpconf();
-	}
-	elsif (-e "/usr/local/directadmin/conf/directadmin.conf") {
-		my ($childin, $childout);
-		my $mypid = open3($childin, $childout, $childout, "/usr/local/directadmin/directadmin", "c");
-		my @data = <$childout>;
-		waitpid ($mypid, 0);
-		chomp @data;
-		foreach my $line (@data) {
-			my ($name,$value) = split(/\=/,$line);
-			$daconfig{lc($name)} = $value;
-		}
-		$config{DIRECTADMIN} = 1;
 	}
 	elsif (-e "/etc/psa/psa.conf") {
 		$config{PLESK} = 1;
@@ -113,12 +100,6 @@ sub report {
 	unless ($config{DNSONLY} or $config{GENERIC}) {&apachecheck}
 	unless ($config{DNSONLY} or $config{GENERIC}) {&phpcheck}
 	unless ($config{DNSONLY} or $config{GENERIC}) {&whmcheck}
-	if ($config{DIRECTADMIN}) {
-		&mailcheck;
-		&apachecheck;
-		&phpcheck;
-		&dacheck;
-	}
 	&servicescheck;
 
 	&endoutput;
@@ -484,19 +465,6 @@ sub servercheck {
 		if (($uid == 0) and ($name ne "root")) {$status = 1}
 	}
 	&addline($status,"Check SUPERUSER accounts","You have accounts other than root set up with UID 0. This is a considerable security risk. You should use <b>su</b>, or best of all <b>sudo</b> for such access");
-
-	if (-e "/usr/local/cpanel/version" or $config{DIRECTADMIN}) {
-		$status = 0;
-		unless (-e "/etc/cxs/cxs.pl") {
-			$status = 1;
-		}
-		&addline($status,"Check for cxs","You should consider using <b><u><a href='http://www.configserver.com/cp/cxs.html' target='_blank'>cxs</a></u></b> to scan web script uploads and user accounts for exploits uploaded to the server");
-		$status = 0;
-		unless (-e "/etc/osm/osmd.pl") {
-			$status = 1;
-		}
-		&addline($status,"Check for osm","You should consider using <b><u><a href='http://www.configserver.com/cp/osm.html' target='_blank'>osm</a></u></b> to provide protection from spammers exploiting the server");
-	}
 
 	unless ($config{IPV6}) {
 		$status = 0;
@@ -942,105 +910,16 @@ sub whmcheck {
 }
 # end whmcheck
 ###############################################################################
-# start dacheck
-sub dacheck {
-	my $status = 0;
-	&addtitle("DirectAdmin Settings Check");
-
-	$status = 0;
-	unless ($daconfig{ssl}) {$status = 1}
-	&addline($status,"Check DirectAdmin login is SSL only","You should enable SSL only login to <a href='http://help.directadmin.com/item.php?id=15' target='_blank'>DirectAdmin</a>");
-
-	if (($daconfig{ftpconfig} =~ /proftpd.conf/) and ($daconfig{pureftp} != 1)) {
-		$status = 0;
-		open (my $IN, "<", $daconfig{ftpconfig});
-		flock ($IN, LOCK_SH);
-		my @conf = <$IN>;
-		close ($IN);
-		chomp @conf;
-
-		my $ciphers;
-		my $error;
-		if (my @ls = grep {$_ =~ /^\s*TLSCipherSuite/} @conf) {
-			if ($ls[0] =~ /TLSCipherSuite\s+(.*)$/) {$ciphers = $1}
-			$ciphers =~ s/\s*|\"|\'//g;
-			if ($ciphers eq "") {
-				$status = 1;
-			} else {
-				if (-e "/usr/bin/openssl") {
-					my ($childin, $childout);
-					my $cmdpid = open3($childin, $childout, $childout, "/usr/bin/openssl","ciphers","-v",$ciphers);
-					my @openssl = <$childout>;
-					waitpid ($cmdpid, 0);
-					chomp @openssl;
-					if (my @ls = grep {$_ =~ /error/i} @openssl) {$error = $openssl[0]; $status=2}
-					if (my @ls = grep {$_ =~ /SSLv2/} @openssl) {$status = 1}
-				}
-			}
-		} else {$status = 1}
-		if ($status == 2) {
-			&addline($status,"Check proftpd weak SSL/TLS Ciphers (TLSCipherSuite)","Unable to determine cipher list for [$ciphers] from openssl:<br>[$error]");
-		}
-		&addline($status,"Check proftpd weak SSL/TLS Ciphers (TLSCipherSuite)","Cipher list [$ciphers]. Due to weaknesses in the SSLv2 cipher you should add a TLSCipherSuite with SSLv2 disabled in $daconfig{ftpconfig}. For example,<br><b>&lt;IfModule mod_tls.c><br>TLSCipherSuite HIGH<br>&lt;/IfModule> container</b>");
-
-		if ($config{VPS}) {
-			$status = 0;
-			if (my @ls = grep {$_ =~ /^\s*PassivePorts\s+(\d+)\s+(\d+)/} @conf) {
-				if ($config{TCP_IN} !~ /\b$1:$2\b/) {$status = 1}
-			} else {$status = 1}
-			&addline($status,"Check VPS FTP PASV hole","Since the Virtuozzo VPS iptables ip_conntrack_ftp kernel module is currently broken you have to open a PASV port hole in iptables for incoming FTP connections to work correctly. See the csf readme.txt under 'A note about FTP Connection Issues' on how to do this");
-		}
-	}
-
-	$status = 1;
-
-	my %ips;
-	foreach my $key (keys %g_ipv4) {
-		$ips{$key} = 1;
-	}
-
-	my $nameservers;
-	for (my $x = 1; $x < 3; $x++) {
-		my $ns = $daconfig{"ns$x"};
-		$ns =~ s/\s//g;
-		if ($ns) {
-			$nameservers .= "<b>$ns</b><br>\n";
-			my $ip;
-			if ($ns =~ /\d+\.\d+\.\d+\.d+/) {
-				$ip = $ns;
-			} else {
-				eval {
-					local $SIG{__DIE__} = undef;
-					local $SIG{'ALRM'} = sub {die};
-					alarm(5);
-					$ip = gethostbyname($ns);
-					$ip = inet_ntoa($ip);
-					alarm(0);
-				};
-				alarm(0);
-				unless ($ip) {&addline(1,"Check nameservers","Unable to resolve nameserver [$ns] within 5 seconds")}
-			}
-			if ($ip) {
-				unless ($ips{$ip}) {$status = 0}
-			}
-		}
-	}
-	&addline($status,"Check nameservers","At least one of the configured nameservers:<br>\n$nameservers should be located in a topologically and geographically dispersed location on the Internet - See RFC 2182 (Section 3.1)");
-	return;
-}
-# end dacheck
-###############################################################################
 # start mailcheck
 sub mailcheck {
 	&addtitle("Mail Check");
 
 	my $status = 0;
-	unless ($config{DIRECTADMIN}) {
-		if (-e "/root/.forward") {
-			if (-z "/root/.forward") {$status = 1}
-		} else {$status = 1}
-		&addline($status,"Check root forwarder","The root account should have a forwarder set so that you receive essential email from your server");
-	}
+
+	if (-e "/root/.forward") {
+		if (-z "/root/.forward") {$status = 1}
+	} else {$status = 1}
+	&addline($status,"Check root forwarder","The root account should have a forwarder set so that you receive essential email from your server");
 
 	if (-e "/etc/exim.conf" and -x "/usr/sbin/exim") {
 		$status = 0;
@@ -1052,11 +931,8 @@ sub mailcheck {
 		if (my @ls = grep {$_ =~ /^\s*log_selector/} @eximconf) {
 			if (($ls[0] !~ /\+all/) and ($ls[0] !~ /\+arguments/) and ($ls[0] !~ /\+arguments/)) {$status = 1}
 		} else {$status = 1}
-		if ($config{DIRECTADMIN}) {
-			&addline($status,"Check exim for extended logging (log_selector)","You should enable extended exim logging to enable easier tracking potential outgoing spam issues. Add:<br><b>log_selector = +arguments +subject +received_recipients</b><br>to /etc/exim.conf");
-		} else {
-			&addline($status,"Check exim for extended logging (log_selector)","You should enable extended exim logging to enable easier tracking potential outgoing spam issues. Add:<br><b>log_selector = +arguments +subject +received_recipients</b><br>in WHM > <a href='$cpurl/scripts2/displayeximconfforedit' target='_blank'>Exim Configuration Manager</a> > Advanced Editor > log_selector");
-		}
+		
+		&addline($status,"Check exim for extended logging (log_selector)","You should enable extended exim logging to enable easier tracking potential outgoing spam issues. Add:<br><b>log_selector = +arguments +subject +received_recipients</b><br>in WHM > <a href='$cpurl/scripts2/displayeximconfforedit' target='_blank'>Exim Configuration Manager</a> > Advanced Editor > log_selector");
 
 		$status = 0;
 		my $ciphers;
@@ -1081,11 +957,8 @@ sub mailcheck {
 		if ($status == 2) {
 			&addline($status,"Check exim weak SSL/TLS Ciphers (tls_require_ciphers)","Unable to determine cipher list for [$ciphers] from openssl:<br>[$error]");
 		}
-		if ($config{DIRECTADMIN}) {
-			&addline($status,"Check exim weak SSL/TLS Ciphers (tls_require_ciphers)","Cipher list [$ciphers]. Due to weaknesses in the SSLv2 cipher you should edit /etc/exim.conf and set tls_require_ciphers to explicitly exclude it. For example:<br><b>tls_require_ciphers=ALL:!ADH:RC4+RSA:+HIGH:+MEDIUM:-LOW:-SSLv2:-EXP</b>");
-		} else {
-			&addline($status,"Check exim weak SSL/TLS Ciphers (tls_require_ciphers)","Cipher list [$ciphers]. Due to weaknesses in the SSLv2 cipher you should disable WHM > <a href='$cpurl/scripts2/displayeximconfforedit' target='_blank'>Exim Configuration Manager</a> > Allow weak ssl/tls ciphers to be used, and also ensure tls_require_ciphers in /etc/exim.conf does not allow SSLv2 as openssl currently shows that it does");
-		}
+		&addline($status,"Check exim weak SSL/TLS Ciphers (tls_require_ciphers)","Cipher list [$ciphers]. Due to weaknesses in the SSLv2 cipher you should disable WHM > <a href='$cpurl/scripts2/displayeximconfforedit' target='_blank'>Exim Configuration Manager</a> > Allow weak ssl/tls ciphers to be used, and also ensure tls_require_ciphers in /etc/exim.conf does not allow SSLv2 as openssl currently shows that it does");
+
 	} else {&addline(1,"Check exim configuration","Unable to find /etc/exim.conf and/or /usr/sbin/exim");}
 
 	if (-e "/etc/exim.conf.localopts") {
@@ -1100,178 +973,123 @@ sub mailcheck {
 		&addline($status,"Check exim for secure authentication","You should require clients to connect with SSL or issue the STARTTLS command before they are allowed to authenticate with the server, otherwise passwords may be sent in plain text<br>in WHM > <a href='$cpurl/scripts2/displayeximconfforedit' target='_blank'>Exim Configuration Manager</a>");
 	}
 
-	if ($config{DIRECTADMIN}) {
-		if (-e "/etc/dovecot.conf" and ($daconfig{dovecot})) {
-			$status = 0;
-			open (my $IN, "<", "/etc/dovecot.conf");
-			flock ($IN, LOCK_SH);
-			my @conf = <$IN>;
-			close ($IN);
-			chomp @conf;
+	if (-e "/etc/dovecot/dovecot.conf" and ($cpconf->{mailserver} eq "dovecot")) {
+		$status = 0;
+		open (my $IN, "<", "/etc/dovecot/dovecot.conf");
+		flock ($IN, LOCK_SH);
+		my @conf = <$IN>;
+		close ($IN);
+		chomp @conf;
 
-			my @morefiles;
-			if (my @ls = grep {$_ =~ /^\s*\!\s*include(_try)?\s+(.*)\s*$/i} @conf) {
-				foreach my $more (@ls) {
-					if ($more =~ /^\s*\!\s*include(_try)?\s+(.*)\s*$/i) {
-						my $conf = $2;
-						if ($conf !~ /^\//) {$conf = "/etc/dovecot/".$conf}
-						push @morefiles, $conf;
-					}
-				}
+		my @morefiles;
+		if (my @ls = grep {$_ =~ /^\s*\!?include(_try)?\s+(.*)\s*$/i} @conf) {
+			foreach my $more (@ls) {
+				if ($more =~ /^\s*\!?include(_try)?\s+(.*)\s*$/i) {push @morefiles, $2}
 			}
-			foreach my $file (@morefiles) {
-				if (-e $file) {
-					open (my $IN, "<", "$file");
-					flock ($IN, LOCK_SH);
-					my @moreconf = <$IN>;
-					close ($IN);
-					chomp @conf;
-					@conf = (@conf, @moreconf);
-				}
-			}
-
-			my $ciphers;
-			my $error;
-			if (my @ls = grep {$_ =~ /^ssl_cipher_list/} @conf) {
-				(undef,$ciphers) = split(/\=/,$ls[0]);
-				$ciphers =~ s/\s*|\"|\'//g;
-				if ($ciphers eq "") {
-					$status = 1;
-				} else {
-					if (-x "/usr/bin/openssl") {
-						my ($childin, $childout);
-						my $cmdpid = open3($childin, $childout, $childout, "/usr/bin/openssl","ciphers","-v",$ciphers);
-						my @openssl = <$childout>;
-						waitpid ($cmdpid, 0);
-						chomp @openssl;
-						if (my @ls = grep {$_ =~ /error/i} @openssl) {$error = $openssl[0]; $status=2}
-						if (my @ls = grep {$_ =~ /SSLv2/} @openssl) {$status = 1}
-					}
-				}
-			} else {$status = 1}
-			if ($status == 2) {
-				&addline($status,"Check dovecot weak SSL/TLS Ciphers (ssl_cipher_list)","Unable to determine cipher list for [$ciphers] from openssl:<br>[$error]");
-			}
-			&addline($status,"Check dovecot weak SSL/TLS Ciphers (ssl_cipher_list)","Cipher list [$ciphers]. Due to weaknesses in the SSLv2 cipher you should /etc/dovecot.conf and set ssl_cipher_list to explicitly exclude it. For example:<br><b>ssl_cipher_list = ALL:!ADH:RC4+RSA:+HIGH:+MEDIUM:-LOW:-SSLv2:-EXP</b>");
 		}
-	} else {
-		if (-e "/etc/dovecot/dovecot.conf" and ($cpconf->{mailserver} eq "dovecot")) {
-			$status = 0;
-			open (my $IN, "<", "/etc/dovecot/dovecot.conf");
-			flock ($IN, LOCK_SH);
-			my @conf = <$IN>;
-			close ($IN);
-			chomp @conf;
-
-			my @morefiles;
-			if (my @ls = grep {$_ =~ /^\s*\!?include(_try)?\s+(.*)\s*$/i} @conf) {
-				foreach my $more (@ls) {
-					if ($more =~ /^\s*\!?include(_try)?\s+(.*)\s*$/i) {push @morefiles, $2}
-				}
+		foreach my $file (@morefiles) {
+			if (-e $file) {
+				open (my $IN, "<", "$file");
+				flock ($IN, LOCK_SH);
+				my @moreconf = <$IN>;
+				close ($IN);
+				chomp @conf;
+				@conf = (@conf, @moreconf);
 			}
-			foreach my $file (@morefiles) {
-				if (-e $file) {
-					open (my $IN, "<", "$file");
-					flock ($IN, LOCK_SH);
-					my @moreconf = <$IN>;
-					close ($IN);
-					chomp @conf;
-					@conf = (@conf, @moreconf);
-				}
-			}
-			
-			$status = 0;
-			my $ciphers;
-			my $error;
-			if (my @ls = grep {$_ =~ /^ssl_cipher_list/} @conf) {
-				(undef,$ciphers) = split(/\=/,$ls[0]);
-				$ciphers =~ s/\s*|\"|\'//g;
-				if ($ciphers eq "") {
-					$status = 1;
-				} else {
-					if (-x "/usr/bin/openssl") {
-						my ($childin, $childout);
-						my $cmdpid = open3($childin, $childout, $childout, "/usr/bin/openssl","ciphers","-v",$ciphers);
-						my @openssl = <$childout>;
-						waitpid ($cmdpid, 0);
-						chomp @openssl;
-						if (my @ls = grep {$_ =~ /error/i} @openssl) {$error = $openssl[0]; $status=2}
-						if (my @ls = grep {$_ =~ /SSLv2/} @openssl) {$status = 1}
-					}
-				}
-			} else {$status = 1}
-			if ($status == 2) {
-				&addline($status,"Check dovecot weak SSL/TLS Ciphers (ssl_cipher_list)","Unable to determine cipher list for [$ciphers] from openssl:<br>[$error]");
-			}
-			&addline($status,"Check dovecot weak SSL/TLS Ciphers (ssl_cipher_list)","Cipher list [$ciphers]. Due to weaknesses in the SSLv2 cipher you should disable SSLv2 in <i>WHM > <a href='$cpurl/scripts2/mailserversetup' target='_blank'>Mailserver Configuration</a> > SSL Cipher List</b> > Remove +SSLv2 or Add -SSLv2</i>");
 		}
-
-		if (-e "/usr/lib/courier-imap/etc/imapd-ssl" and ($cpconf->{mailserver} eq "courier")) {
-			$status = 0;
-			open (my $IN, "<", "/usr/lib/courier-imap/etc/imapd-ssl");
-			flock ($IN, LOCK_SH);
-			my @conf = <$IN>;
-			close ($IN);
-			chomp @conf;
-			$status = 0;
-			my $ciphers;
-			my $error;
-			if (my @ls = grep {$_ =~ /^TLS_CIPHER_LIST/} @conf) {
-				(undef,$ciphers) = split(/\=/,$ls[0]);
-				$ciphers =~ s/\s*|\"|\'//g;
-				if ($ciphers eq "") {
-					$status = 1;
-				} else {
-					if (-x "/usr/bin/openssl") {
-						my ($childin, $childout);
-						my $cmdpid = open3($childin, $childout, $childout, "/usr/bin/openssl","ciphers","-v",$ciphers);
-						my @openssl = <$childout>;
-						waitpid ($cmdpid, 0);
-						chomp @openssl;
-						if (my @ls = grep {$_ =~ /error/i} @openssl) {$error = $openssl[0]; $status=2}
-						if (my @ls = grep {$_ =~ /SSLv2/} @openssl) {$status = 1}
-					}
+		
+		$status = 0;
+		my $ciphers;
+		my $error;
+		if (my @ls = grep {$_ =~ /^ssl_cipher_list/} @conf) {
+			(undef,$ciphers) = split(/\=/,$ls[0]);
+			$ciphers =~ s/\s*|\"|\'//g;
+			if ($ciphers eq "") {
+				$status = 1;
+			} else {
+				if (-x "/usr/bin/openssl") {
+					my ($childin, $childout);
+					my $cmdpid = open3($childin, $childout, $childout, "/usr/bin/openssl","ciphers","-v",$ciphers);
+					my @openssl = <$childout>;
+					waitpid ($cmdpid, 0);
+					chomp @openssl;
+					if (my @ls = grep {$_ =~ /error/i} @openssl) {$error = $openssl[0]; $status=2}
+					if (my @ls = grep {$_ =~ /SSLv2/} @openssl) {$status = 1}
 				}
-			} else {$status = 1}
-			if ($status == 2) {
-				&addline($status,"Check Courier IMAP weak SSL/TLS Ciphers (TLS_CIPHER_LIST)","Unable to determine cipher list for [$ciphers] from openssl:<br>[$error]");
 			}
-			&addline($status,"Check Courier IMAP weak SSL/TLS Ciphers (TLS_CIPHER_LIST)","Cipher list [$ciphers]. Due to weaknesses in the SSLv2 cipher you should disable SSLv2 in <i>WHM > <a href='$cpurl/scripts2/mailserversetup' target='_blank'>Mailserver Configuration</a> > IMAP TLS/SSL Cipher List</b> > Remove +SSLv2 or Add -SSLv2</i>");
+		} else {$status = 1}
+		if ($status == 2) {
+			&addline($status,"Check dovecot weak SSL/TLS Ciphers (ssl_cipher_list)","Unable to determine cipher list for [$ciphers] from openssl:<br>[$error]");
 		}
-
-		if (-e "/usr/lib/courier-imap/etc/pop3d-ssl" and ($cpconf->{mailserver} eq "courier")) {
-			$status = 0;
-			open (my $IN, "<", "/usr/lib/courier-imap/etc/pop3d-ssl");
-			flock ($IN, LOCK_SH);
-			my @conf = <$IN>;
-			close ($IN);
-			chomp @conf;
-			$status = 0;
-			my $ciphers;
-			my $error;
-			if (my @ls = grep {$_ =~ /^TLS_CIPHER_LIST/} @conf) {
-				(undef,$ciphers) = split(/\=/,$ls[0]);
-				$ciphers =~ s/\s*|\"|\'//g;
-				if ($ciphers eq "") {
-					$status = 1;
-				} else {
-					if (-x "/usr/bin/openssl") {
-						my ($childin, $childout);
-						my $cmdpid = open3($childin, $childout, $childout, "/usr/bin/openssl","ciphers","-v",$ciphers);
-						my @openssl = <$childout>;
-						waitpid ($cmdpid, 0);
-						chomp @openssl;
-						if (my @ls = grep {$_ =~ /error/i} @openssl) {$error = $openssl[0]; $status=2}
-						if (my @ls = grep {$_ =~ /SSLv2/} @openssl) {$status = 1}
-					}
-				}
-			} else {$status = 1}
-			if ($status == 2) {
-				&addline($status,"Check Courier POP3D weak SSL/TLS Ciphers (TLS_CIPHER_LIST)","Unable to determine cipher list for [$ciphers] from openssl:<br>[$error]");
-			}
-			&addline($status,"Check Courier POP3D weak SSL/TLS Ciphers (TLS_CIPHER_LIST)","Cipher list [$ciphers]. Due to weaknesses in the SSLv2 cipher you should disable SSLv2 in <i>WHM > <a href='$cpurl/scripts2/mailserversetup' target='_blank'>Mailserver Configuration</a> > POP3 TLS/SSL Cipher List</b> > Remove +SSLv2 or Add -SSLv2</i>");
-		}
+		&addline($status,"Check dovecot weak SSL/TLS Ciphers (ssl_cipher_list)","Cipher list [$ciphers]. Due to weaknesses in the SSLv2 cipher you should disable SSLv2 in <i>WHM > <a href='$cpurl/scripts2/mailserversetup' target='_blank'>Mailserver Configuration</a> > SSL Cipher List</b> > Remove +SSLv2 or Add -SSLv2</i>");
 	}
+
+	if (-e "/usr/lib/courier-imap/etc/imapd-ssl" and ($cpconf->{mailserver} eq "courier")) {
+		$status = 0;
+		open (my $IN, "<", "/usr/lib/courier-imap/etc/imapd-ssl");
+		flock ($IN, LOCK_SH);
+		my @conf = <$IN>;
+		close ($IN);
+		chomp @conf;
+		$status = 0;
+		my $ciphers;
+		my $error;
+		if (my @ls = grep {$_ =~ /^TLS_CIPHER_LIST/} @conf) {
+			(undef,$ciphers) = split(/\=/,$ls[0]);
+			$ciphers =~ s/\s*|\"|\'//g;
+			if ($ciphers eq "") {
+				$status = 1;
+			} else {
+				if (-x "/usr/bin/openssl") {
+					my ($childin, $childout);
+					my $cmdpid = open3($childin, $childout, $childout, "/usr/bin/openssl","ciphers","-v",$ciphers);
+					my @openssl = <$childout>;
+					waitpid ($cmdpid, 0);
+					chomp @openssl;
+					if (my @ls = grep {$_ =~ /error/i} @openssl) {$error = $openssl[0]; $status=2}
+					if (my @ls = grep {$_ =~ /SSLv2/} @openssl) {$status = 1}
+				}
+			}
+		} else {$status = 1}
+		if ($status == 2) {
+			&addline($status,"Check Courier IMAP weak SSL/TLS Ciphers (TLS_CIPHER_LIST)","Unable to determine cipher list for [$ciphers] from openssl:<br>[$error]");
+		}
+		&addline($status,"Check Courier IMAP weak SSL/TLS Ciphers (TLS_CIPHER_LIST)","Cipher list [$ciphers]. Due to weaknesses in the SSLv2 cipher you should disable SSLv2 in <i>WHM > <a href='$cpurl/scripts2/mailserversetup' target='_blank'>Mailserver Configuration</a> > IMAP TLS/SSL Cipher List</b> > Remove +SSLv2 or Add -SSLv2</i>");
+	}
+
+	if (-e "/usr/lib/courier-imap/etc/pop3d-ssl" and ($cpconf->{mailserver} eq "courier")) {
+		$status = 0;
+		open (my $IN, "<", "/usr/lib/courier-imap/etc/pop3d-ssl");
+		flock ($IN, LOCK_SH);
+		my @conf = <$IN>;
+		close ($IN);
+		chomp @conf;
+		$status = 0;
+		my $ciphers;
+		my $error;
+		if (my @ls = grep {$_ =~ /^TLS_CIPHER_LIST/} @conf) {
+			(undef,$ciphers) = split(/\=/,$ls[0]);
+			$ciphers =~ s/\s*|\"|\'//g;
+			if ($ciphers eq "") {
+				$status = 1;
+			} else {
+				if (-x "/usr/bin/openssl") {
+					my ($childin, $childout);
+					my $cmdpid = open3($childin, $childout, $childout, "/usr/bin/openssl","ciphers","-v",$ciphers);
+					my @openssl = <$childout>;
+					waitpid ($cmdpid, 0);
+					chomp @openssl;
+					if (my @ls = grep {$_ =~ /error/i} @openssl) {$error = $openssl[0]; $status=2}
+					if (my @ls = grep {$_ =~ /SSLv2/} @openssl) {$status = 1}
+				}
+			}
+		} else {$status = 1}
+		if ($status == 2) {
+			&addline($status,"Check Courier POP3D weak SSL/TLS Ciphers (TLS_CIPHER_LIST)","Unable to determine cipher list for [$ciphers] from openssl:<br>[$error]");
+		}
+		&addline($status,"Check Courier POP3D weak SSL/TLS Ciphers (TLS_CIPHER_LIST)","Cipher list [$ciphers]. Due to weaknesses in the SSLv2 cipher you should disable SSLv2 in <i>WHM > <a href='$cpurl/scripts2/mailserversetup' target='_blank'>Mailserver Configuration</a> > POP3 TLS/SSL Cipher List</b> > Remove +SSLv2 or Add -SSLv2</i>");
+	}
+
 	return;
 }
 # end mailcheck
@@ -1285,11 +1103,6 @@ sub phpcheck {
 	if (-e "/usr/local/cpanel/version" and -e "/etc/cpanel/ea4/is_ea4") {
 		foreach my $phpdir (glob("/opt/cpanel/ea-*")) {
 			if (-e "${phpdir}/root/usr/bin/php") {$phpbinaries{"${phpdir}/root/usr/bin/php"} = 1}
-		}
-	}
-	elsif ($config{DIRECTADMIN}) {
-		foreach my $phpdir (glob("/usr/local/php*")) {
-			if (-e "${phpdir}/bin/php") {$phpbinaries{"${phpdir}/bin/php"} = 1}
 		}
 	}
 	elsif (-e "/usr/local/bin/php") {$phpbinaries{"/usr/local/bin/php"} = 1}
@@ -1456,18 +1269,12 @@ sub apachecheck {
 	if ($ea4{enabled}) {
 		unless (-x $ea4{bin_httpd}) {&addline(1,"HTTP Binary","$ea4{bin_httpd} not found or not executable"); return}
 	}
-	elsif ($config{DIRECTADMIN}) {
-		unless (-x "/usr/sbin/httpd") {&addline(1,"HTTP Binary","/usr/sbin/httpd not found or not executable"); return}
-	}
 	else {
 		unless (-x "/usr/local/apache/bin/httpd") {&addline(1,"HTTP Binary","/usr/local/apache/bin/httpd not found or not executable"); return}
 	}
 
 	if ($ea4{enabled}) {
 		$mypid = open3($childin, $childout, $childout, $ea4{bin_httpd},"-v");
-	}
-	elsif ($config{DIRECTADMIN}) {
-		$mypid = open3($childin, $childout, $childout, "/usr/sbin/httpd","-v");
 	}
 	else {
 		$mypid = open3($childin, $childout, $childout, "/usr/local/apache/bin/httpd","-v");
@@ -1482,130 +1289,129 @@ sub apachecheck {
 	if ("$mas.$maj" < 2.2) {$status = 1}
 	&addline($status,"Check apache version","You are running a legacy version of apache (v$mas.$maj.$min) and should consider upgrading to v2.2.* as recommended by the Apache developers");
 
-	unless ($config{DIRECTADMIN}) {
-		my $ruid2 = 0;
-		if ($ea4{enabled}) {
-			$mypid = open3($childin, $childout, $childout, $ea4{bin_httpd},"-M");
-		}
-		else {
-			$mypid = open3($childin, $childout, $childout, "/usr/local/apache/bin/httpd","-M");
-		}
-		my @modules = <$childout>;
-		waitpid ($mypid, 0);
-		chomp @modules;
-		if (my @ls = grep {$_ =~ /ruid2_module/} @modules) {$ruid2 = 1}
-		if (my @ls = grep {$_ =~ /mpm_itk_module/} @modules) {$ruid2 = 1}
+	my $ruid2 = 0;
+	if ($ea4{enabled}) {
+		$mypid = open3($childin, $childout, $childout, $ea4{bin_httpd},"-M");
+	}
+	else {
+		$mypid = open3($childin, $childout, $childout, "/usr/local/apache/bin/httpd","-M");
+	}
+	my @modules = <$childout>;
+	waitpid ($mypid, 0);
+	chomp @modules;
+	if (my @ls = grep {$_ =~ /ruid2_module/} @modules) {$ruid2 = 1}
+	if (my @ls = grep {$_ =~ /mpm_itk_module/} @modules) {$ruid2 = 1}
 
+	$status = 0;
+	if (my @ls = grep {$_ =~ /security2_module/} @modules) {$status = 0} else {$status = 1}
+	&addline($status,"Check apache for ModSecurity","You should install the ModSecurity apache module during the easyapache build process to help prevent exploitation of vulnerable web scripts, together with a set of rules");
+
+	$status = 0;
+	if (my @ls = grep {$_ =~ /cloudflare_module/} @modules) {$status = 1} else {$status = 0}
+	if ($config{CF_ENABLE}) {$status = 0}
+	&addline($status,"Check apache for mod_cloudflare","This module logs the real users IP address to Apache. If this is reported to lfd via ModSecurity, cxs or some other vector through Apache it will lead to that IP being blocked, but because the IP is coming through the CloudFlare service the IP will <b>not</b> be blocked as so far as iptables is concerned the originating IP address is CloudFlare itself and the abuse will continue. To block these IP's in the CloudFlare Firewall look at using CF_ENABLE in csf.conf");
+
+	$status = 0;
+	if (my @ls = grep {$_ =~ /frontpage_module/} @modules) {$status = 1}
+	&addline($status,"Check apache for FrontPage","Microsoft Frontpage Extensions were EOL in 2006 and there is no support for bugs or security issues. For this reason, it should be considered a security risk to continue using them. You should rebuild apache through easyapache and deselect the option to build them");
+
+	my @conf;
+	if (-e "/usr/local/apache/conf/httpd.conf") {
+		open (my $IN, "<", "/usr/local/apache/conf/httpd.conf");
+		flock ($IN, LOCK_SH);
+		@conf = <$IN>;
+		close ($IN);
+		chomp @conf;
+	}
+	if (-e "$ea4{file_conf}") {
+		open (my $IN, "<", "$ea4{file_conf}");
+		flock ($IN, LOCK_SH);
+		@conf = <$IN>;
+		close ($IN);
+		chomp @conf;
+	}
+	if (@conf) {
 		$status = 0;
-		if (my @ls = grep {$_ =~ /security2_module/} @modules) {$status = 0} else {$status = 1}
-		&addline($status,"Check apache for ModSecurity","You should install the ModSecurity apache module during the easyapache build process to help prevent exploitation of vulnerable web scripts, together with a set of rules");
-
-		$status = 0;
-		if (my @ls = grep {$_ =~ /cloudflare_module/} @modules) {$status = 1} else {$status = 0}
-		if ($config{CF_ENABLE}) {$status = 0}
-		&addline($status,"Check apache for mod_cloudflare","This module logs the real users IP address to Apache. If this is reported to lfd via ModSecurity, cxs or some other vector through Apache it will lead to that IP being blocked, but because the IP is coming through the CloudFlare service the IP will <b>not</b> be blocked as so far as iptables is concerned the originating IP address is CloudFlare itself and the abuse will continue. To block these IP's in the CloudFlare Firewall look at using CF_ENABLE in csf.conf");
-
-		$status = 0;
-		if (my @ls = grep {$_ =~ /frontpage_module/} @modules) {$status = 1}
-		&addline($status,"Check apache for FrontPage","Microsoft Frontpage Extensions were EOL in 2006 and there is no support for bugs or security issues. For this reason, it should be considered a security risk to continue using them. You should rebuild apache through easyapache and deselect the option to build them");
-
-		my @conf;
-		if (-e "/usr/local/apache/conf/httpd.conf") {
-			open (my $IN, "<", "/usr/local/apache/conf/httpd.conf");
-			flock ($IN, LOCK_SH);
-			@conf = <$IN>;
-			close ($IN);
-			chomp @conf;
-		}
-		if (-e "$ea4{file_conf}") {
-			open (my $IN, "<", "$ea4{file_conf}");
-			flock ($IN, LOCK_SH);
-			@conf = <$IN>;
-			close ($IN);
-			chomp @conf;
-		}
-		if (@conf) {
-			$status = 0;
-			my $ciphers;
-			my $error;
-			if (my @ls = grep {$_ =~ /^\s*SSLCipherSuite/} @conf) {
-				$ls[0] =~ s/^\s+//g;
-				(undef,$ciphers) = split(/\ /,$ls[0]);
-				$ciphers =~ s/\s*|\"|\'//g;
-				if ($ciphers eq "") {
-					$status = 1;
-				} else {
-					if (-x "/usr/bin/openssl") {
-						my ($childin, $childout);
-						my $cmdpid = open3($childin, $childout, $childout, "/usr/bin/openssl","ciphers","-v",$ciphers);
-						my @openssl = <$childout>;
-						waitpid ($cmdpid, 0);
-						chomp @openssl;
-						if (my @ls = grep {$_ =~ /error/i} @openssl) {$error = $openssl[0]; $status=2}
-						if (my @ls = grep {$_ =~ /SSLv2/} @openssl) {$status = 1}
-					}
-				}
-			} else {$status = 1}
-			if ($status == 2) {
-				&addline($status,"Check Apache weak SSL/TLS Ciphers (SSLCipherSuite)","Unable to determine cipher list for [$ciphers] from openssl:<br>[$error]");
-			}
-			&addline($status,"Check Apache weak SSL/TLS Ciphers (SSLCipherSuite)","Cipher list [$ciphers]. Due to weaknesses in the SSLv2 cipher you should disable SSLv2 in WHM > Apache Configuration > <a href='$cpurl/scripts2/globalapachesetup' target='_blank'>Global Configuration</a> > SSLCipherSuite > Add -SSLv2 to SSLCipherSuite and/or remove +SSLv2. Do not forget to Save AND then Rebuild Configuration and Restart Apache, otherwise the changes will not take effect in httpd.conf");
-
-			$status = 0;
-			if (my @ls = grep {$_ =~ /^\s*TraceEnable Off/} @conf) {
-				$status = 0;
-			} else {$status = 1}
-			&addline($status,"Check apache for TraceEnable","You should set TraceEnable to Off in: WHM > Apache Configuration > <a href='$cpurl/scripts2/globalapachesetup' target='_blank'>Global Configuration</a> > Trace Enable > Off. Do not forget to Save AND then Rebuild Configuration and Restart Apache, otherwise the changes will not take effect in httpd.conf");
-			$status = 0;
-			if (my @ls = grep {$_ =~ /^\s*ServerSignature Off/} @conf) {
-				$status = 0;
-			} else {$status = 1}
-			&addline($status,"Check apache for ServerSignature","You should set ServerSignature to Off in: WHM > Apache Configuration > <a href='$cpurl/scripts2/globalapachesetup' target='_blank'>Global Configuration</a> > Server Signature > Off. Do not forget to Save AND then Rebuild Configuration and Restart Apache, otherwise the changes will not take effect in httpd.conf");
-			$status = 0;
-			if (my @ls = grep {$_ =~ /^\s*ServerTokens ProductOnly/} @conf) {
-				$status = 0;
-			} else {$status = 1}
-			&addline($status,"Check apache for ServerTokens","You should set ServerTokens to ProductOnly in: WHM > Apache Configuration > <a href='$cpurl/scripts2/globalapachesetup' target='_blank'>Global Configuration</a> > Server Tokens > Product Only. Do not forget to Save AND then Rebuild Configuration and Restart Apache, otherwise the changes will not take effect in httpd.conf");
-			$status = 0;
-			if (my @ls = grep {$_ =~ /^\s*FileETag None/} @conf) {
-				$status = 0;
-			} else {$status = 1}
-			&addline($status,"Check apache for FileETag","You should set FileETag to None in: WHM > Apache Configuration > <a href='$cpurl/scripts2/globalapachesetup' target='_blank'>Global Configuration</a> > File ETag > None. Do not forget to Save AND then Rebuild Configuration and Restart Apache, otherwise the changes will not take effect in httpd.conf");
-		}
-
-		my @apacheconf;
-		if (-e "/usr/local/apache/conf/php.conf.yaml") {
-			open (my $IN, "<", "/usr/local/apache/conf/php.conf.yaml");
-			flock ($IN, LOCK_SH);
-			@apacheconf = <$IN>;
-			close ($IN);
-			chomp @apacheconf;
-		}
-		if (-e "$ea4{dir_conf}/php.conf.yaml") {
-			open (my $IN, "<", "$ea4{dir_conf}/php.conf.yaml");
-			flock ($IN, LOCK_SH);
-			@apacheconf = <$IN>;
-			close ($IN);
-			chomp @apacheconf;
-		}
-		if (@apacheconf) {
-			unless ($ruid2) {
-				$status = 0;
-				if (my @ls = grep {$_ =~ /suphp/} @apacheconf) {
-					$status = 0;
-				} else {$status = 1}
-				&addline($status,"Check suPHP","To reduce the risk of hackers accessing all sites on the server from a compromised PHP web script, you should enable suPHP when you build apache/php. Note that there are sideeffects when enabling suPHP on a server and you should be aware of these before enabling it.<br>Don\'t forget to enable it as the default PHP handler in <i>WHM > <a href='$cpurl/scripts2/phpandsuexecconf' target='_blank'>PHP 5 Handler</a></i>");
-		
-				$status = 0;
-				unless ($cpconf->{userdirprotect}) {$status = 1}
-				&addline($status,"Check mod_userdir protection","To prevents users from stealing bandwidth or hackers hiding access to your servers, you should check <i>WHM > Security Center > <a href='$cpurl/scripts2/tweakmoduserdir' target='_blank'>mod_userdir Tweak</a></i>");
-
+		my $ciphers;
+		my $error;
+		if (my @ls = grep {$_ =~ /^\s*SSLCipherSuite/} @conf) {
+			$ls[0] =~ s/^\s+//g;
+			(undef,$ciphers) = split(/\ /,$ls[0]);
+			$ciphers =~ s/\s*|\"|\'//g;
+			if ($ciphers eq "") {
 				$status = 1;
-				if (my @ls = grep {$_ =~ /suexec_module/} @modules) {$status = 0}
-				&addline($status,"Check Suexec","To reduce the risk of hackers accessing all sites on the server from a compromised CGI web script, you should set <i>WHM > <a href='$cpurl/scripts2/phpandsuexecconf' target='_blank'>Suexec on</a></i>");
+			} else {
+				if (-x "/usr/bin/openssl") {
+					my ($childin, $childout);
+					my $cmdpid = open3($childin, $childout, $childout, "/usr/bin/openssl","ciphers","-v",$ciphers);
+					my @openssl = <$childout>;
+					waitpid ($cmdpid, 0);
+					chomp @openssl;
+					if (my @ls = grep {$_ =~ /error/i} @openssl) {$error = $openssl[0]; $status=2}
+					if (my @ls = grep {$_ =~ /SSLv2/} @openssl) {$status = 1}
+				}
 			}
+		} else {$status = 1}
+		if ($status == 2) {
+			&addline($status,"Check Apache weak SSL/TLS Ciphers (SSLCipherSuite)","Unable to determine cipher list for [$ciphers] from openssl:<br>[$error]");
+		}
+		&addline($status,"Check Apache weak SSL/TLS Ciphers (SSLCipherSuite)","Cipher list [$ciphers]. Due to weaknesses in the SSLv2 cipher you should disable SSLv2 in WHM > Apache Configuration > <a href='$cpurl/scripts2/globalapachesetup' target='_blank'>Global Configuration</a> > SSLCipherSuite > Add -SSLv2 to SSLCipherSuite and/or remove +SSLv2. Do not forget to Save AND then Rebuild Configuration and Restart Apache, otherwise the changes will not take effect in httpd.conf");
+
+		$status = 0;
+		if (my @ls = grep {$_ =~ /^\s*TraceEnable Off/} @conf) {
+			$status = 0;
+		} else {$status = 1}
+		&addline($status,"Check apache for TraceEnable","You should set TraceEnable to Off in: WHM > Apache Configuration > <a href='$cpurl/scripts2/globalapachesetup' target='_blank'>Global Configuration</a> > Trace Enable > Off. Do not forget to Save AND then Rebuild Configuration and Restart Apache, otherwise the changes will not take effect in httpd.conf");
+		$status = 0;
+		if (my @ls = grep {$_ =~ /^\s*ServerSignature Off/} @conf) {
+			$status = 0;
+		} else {$status = 1}
+		&addline($status,"Check apache for ServerSignature","You should set ServerSignature to Off in: WHM > Apache Configuration > <a href='$cpurl/scripts2/globalapachesetup' target='_blank'>Global Configuration</a> > Server Signature > Off. Do not forget to Save AND then Rebuild Configuration and Restart Apache, otherwise the changes will not take effect in httpd.conf");
+		$status = 0;
+		if (my @ls = grep {$_ =~ /^\s*ServerTokens ProductOnly/} @conf) {
+			$status = 0;
+		} else {$status = 1}
+		&addline($status,"Check apache for ServerTokens","You should set ServerTokens to ProductOnly in: WHM > Apache Configuration > <a href='$cpurl/scripts2/globalapachesetup' target='_blank'>Global Configuration</a> > Server Tokens > Product Only. Do not forget to Save AND then Rebuild Configuration and Restart Apache, otherwise the changes will not take effect in httpd.conf");
+		$status = 0;
+		if (my @ls = grep {$_ =~ /^\s*FileETag None/} @conf) {
+			$status = 0;
+		} else {$status = 1}
+		&addline($status,"Check apache for FileETag","You should set FileETag to None in: WHM > Apache Configuration > <a href='$cpurl/scripts2/globalapachesetup' target='_blank'>Global Configuration</a> > File ETag > None. Do not forget to Save AND then Rebuild Configuration and Restart Apache, otherwise the changes will not take effect in httpd.conf");
+	}
+
+	my @apacheconf;
+	if (-e "/usr/local/apache/conf/php.conf.yaml") {
+		open (my $IN, "<", "/usr/local/apache/conf/php.conf.yaml");
+		flock ($IN, LOCK_SH);
+		@apacheconf = <$IN>;
+		close ($IN);
+		chomp @apacheconf;
+	}
+	if (-e "$ea4{dir_conf}/php.conf.yaml") {
+		open (my $IN, "<", "$ea4{dir_conf}/php.conf.yaml");
+		flock ($IN, LOCK_SH);
+		@apacheconf = <$IN>;
+		close ($IN);
+		chomp @apacheconf;
+	}
+	if (@apacheconf) {
+		unless ($ruid2) {
+			$status = 0;
+			if (my @ls = grep {$_ =~ /suphp/} @apacheconf) {
+				$status = 0;
+			} else {$status = 1}
+			&addline($status,"Check suPHP","To reduce the risk of hackers accessing all sites on the server from a compromised PHP web script, you should enable suPHP when you build apache/php. Note that there are sideeffects when enabling suPHP on a server and you should be aware of these before enabling it.<br>Don\'t forget to enable it as the default PHP handler in <i>WHM > <a href='$cpurl/scripts2/phpandsuexecconf' target='_blank'>PHP 5 Handler</a></i>");
+	
+			$status = 0;
+			unless ($cpconf->{userdirprotect}) {$status = 1}
+			&addline($status,"Check mod_userdir protection","To prevents users from stealing bandwidth or hackers hiding access to your servers, you should check <i>WHM > Security Center > <a href='$cpurl/scripts2/tweakmoduserdir' target='_blank'>mod_userdir Tweak</a></i>");
+
+			$status = 1;
+			if (my @ls = grep {$_ =~ /suexec_module/} @modules) {$status = 0}
+			&addline($status,"Check Suexec","To reduce the risk of hackers accessing all sites on the server from a compromised CGI web script, you should set <i>WHM > <a href='$cpurl/scripts2/phpandsuexecconf' target='_blank'>Suexec on</a></i>");
 		}
 	}
+
 	return;
 }
 # end apachecheck

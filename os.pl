@@ -112,23 +112,6 @@ elsif ((-e "/etc/debian_version") or (-e "/etc/lsb-release") or (-e "/etc/gentoo
 		print $GENERIC $line."\n";
 	}
 	close ($GENERIC);
-
-	open (my $DIRECTADMIN, "<", "csf.directadmin.conf") or die $!;
-	flock ($DIRECTADMIN, LOCK_SH) or die $!;
-	@config = <$DIRECTADMIN>;
-	close ($DIRECTADMIN);
-	chomp @config;
-	open (my $OUT, ">", "csf.directadmin.conf") or die $!;
-	flock ($OUT, LOCK_EX) or die $!;
-	foreach my $line (@config) {
-		if ($line =~ /^FUSER/) {$line = 'FUSER = "/bin/fuser"'}
-		if ($line =~ /^SYSTEMCTL /) {$line = 'SYSTEMCTL = "/bin/systemctl"'}
-		if ($line =~ /^IPSET /) {$line = 'IPSET = "/sbin/ipset"'}
-		if ($line =~ /^IP /) {$line = 'IP = "/bin/ip"'}
-		if ($line =~ /^ZGREP /) {$line = 'ZGREP = "/bin/zgrep"'}
-		print $OUT $line."\n";
-	}
-	close ($OUT);
 	print STDERR "Configuration modified for Debian/Ubuntu/Gentoo settings /etc/csf/csf.conf\n";
 }
 elsif (-e "/etc/slackware-version") {
