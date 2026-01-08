@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/local/cpanel/3rdparty/bin/perl
 #WHMADDON:csf:ConfigServer Security & Firewall
 ###############################################################################
 # Copyright (C) 2006-2025 Jonathan Michaelson

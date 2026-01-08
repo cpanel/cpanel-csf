@@ -37,19 +37,6 @@ if [ ! -e "install.sh" ]; then
 	exit
 fi
 
-#First replace:
-if [ -e "/usr/local/cpanel/3rdparty/bin/perl" ]; then
-    sed -i 's%^#\!/usr/bin/perl%#\!/usr/local/cpanel/3rdparty/bin/perl%' auto.pl
-    sed -i 's%^#\!/usr/bin/perl%#\!/usr/local/cpanel/3rdparty/bin/perl%' cpanel/csf.cgi
-    sed -i 's%^#\!/usr/bin/perl%#\!/usr/local/cpanel/3rdparty/bin/perl%' csf.pl
-    sed -i 's%^#\!/usr/bin/perl%#\!/usr/local/cpanel/3rdparty/bin/perl%' csftest.pl
-    sed -i 's%^#\!/usr/bin/perl%#\!/usr/local/cpanel/3rdparty/bin/perl%' lfd.pl
-    sed -i 's%^#\!/usr/bin/perl%#\!/usr/local/cpanel/3rdparty/bin/perl%' os.pl
-    sed -i 's%^#\!/usr/bin/perl%#\!/usr/local/cpanel/3rdparty/bin/perl%' pt_deleted_action.pl
-    sed -i 's%^#\!/usr/bin/perl%#\!/usr/local/cpanel/3rdparty/bin/perl%' regex.custom.pm
-    sed -i 's%^#\!/usr/bin/perl%#\!/usr/local/cpanel/3rdparty/bin/perl%' webmin/csf/index.cgi
-fi
-
 mkdir -v -m 0600 /etc/csf
 cp -avf install.txt /etc/csf/
 
@@ -554,19 +541,6 @@ else
         /sbin/chkconfig lfd on
         /sbin/chkconfig csf on
     fi
-fi
-
-#Second replace
-if [ -e "/usr/local/cpanel/3rdparty/bin/perl" ]; then
-    sed -i 's%^#\!/usr/local/cpanel/3rdparty/bin/perl%#\!/usr/bin/perl%' auto.pl
-    sed -i 's%^#\!/usr/local/cpanel/3rdparty/bin/perl%#\!/usr/bin/perl%' cpanel/csf.cgi
-    sed -i 's%^#\!/usr/local/cpanel/3rdparty/bin/perl%#\!/usr/bin/perl%' csf.pl
-    sed -i 's%^#\!/usr/local/cpanel/3rdparty/bin/perl%#\!/usr/bin/perl%' csftest.pl
-    sed -i 's%^#\!/usr/local/cpanel/3rdparty/bin/perl%#\!/usr/bin/perl%' lfd.pl
-    sed -i 's%^#\!/usr/local/cpanel/3rdparty/bin/perl%#\!/usr/bin/perl%' os.pl
-    sed -i 's%^#\!/usr/local/cpanel/3rdparty/bin/perl%#\!/usr/bin/perl%' pt_deleted_action.pl
-    sed -i 's%^#\!/usr/local/cpanel/3rdparty/bin/perl%#\!/usr/bin/perl%' regex.custom.pm
-    sed -i 's%^#\!/usr/local/cpanel/3rdparty/bin/perl%#\!/usr/bin/perl%' webmin/csf/index.cgi
 fi
 
 chown -Rf root:root /etc/csf /var/lib/csf /usr/local/csf
