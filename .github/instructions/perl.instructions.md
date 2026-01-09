@@ -125,6 +125,16 @@ description: "Perl development standards, module patterns, and Perl conventions"
 - Avoid returning list from function
 - Never use wantarray.
 
+### Concise Conditionals and Guards
+- Prefer postfix conditionals for simple guards: `return 0 unless condition;` instead of `if (!condition) { return 0 }`
+- Use `return 0 unless length $var;` instead of `if (!defined $var || !length $var) { return 0 }`
+- Combine conditions concisely: `return 0 if length $cidr and $cidr !~ /^\d+$/;`
+- For `length`, `defined`, and truthiness checks:
+  - `length $var` handles both undef and empty string (returns 0 for both)
+  - Only check `defined` explicitly when you need to distinguish undef from empty string or 0
+  - Prefer `!length $var` over `!defined $var || $var eq ""`
+- Keep postfix conditionals on one line when the statement is short and readable
+
 ### Regular Expressions
 - Use `\s` for any whitespace; use space character for literal spaces.
 - Prefer `[A-Za-z0-9_]` over `\w`, and `[0-9]` over `\d`

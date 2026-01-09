@@ -115,9 +115,8 @@ sub cccheckip {
     }
     my $testip = $ip;
 
-    if ( $cidr ne "" ) {
-        unless ( $cidr =~ /^\d+$/ ) { return 0 }
-    }
+    return 0 unless length $ip;
+    return 0 if length $cidr and $cidr !~ /^\d+$/;
 
     if ( $ip =~ /^$ipv4reg$/ ) {
         $ret = 4;
@@ -142,14 +141,15 @@ sub cccheckip {
         }
         $ip =~ s/://g;
         $ip =~ s/^0*//g;
-        if ( $ip == 1 ) { return 0 }
+        return 0 if $ip eq '1';    # loopback found.
+
         if ($ipref) {
             eval {
                 local $SIG{__DIE__} = undef;
                 my $netip = Net::IP->new($testip);
                 my $myip  = $netip->short();
                 if ( $myip ne "" ) {
-                    if ( $cidr eq "" ) {
+                    if ( !length $cidr ) {
                         ${$ipin} = $myip;
                     }
                     else {
