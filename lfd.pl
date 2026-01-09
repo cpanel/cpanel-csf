@@ -10653,7 +10653,7 @@ sub lfdserver {
     $clusterip = $childpid;
     unless ($childpid) {
         $childproc = "Cluster";
-        my $cipher = Crypt::CBC->new( -key => $config{CLUSTER_KEY}, -cipher => 'Blowfish_PP' );
+        my $cipher = Crypt::CBC->new( -key => $config{CLUSTER_KEY}, -cipher => 'Blowfish' );
         my %cmembers;
         foreach my $cip ( split( /\,/, $config{CLUSTER_RECVFROM} ) ) { $cmembers{$cip} = 1 }
         if ( $config{CLUSTER_MASTER} ) { $cmembers{ $config{CLUSTER_MASTER} } = 1 }
@@ -10918,7 +10918,7 @@ sub lfdclient {
         if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "lfdclient", $timer ) }
         $0 = "lfd - Cluster client";
 
-        my $cipher = Crypt::CBC->new( -key => $config{CLUSTER_KEY}, -cipher => 'Blowfish_PP' );
+        my $cipher = Crypt::CBC->new( -key => $config{CLUSTER_KEY}, -cipher => 'Blowfish' );
         my $text;
         if ($perm) {
             $text = "D $ip $perm $port $inout $timeout $message";

@@ -857,7 +857,7 @@ sub docrestart {
 sub clustersend {
     my $text = shift;
 
-    my $cipher    = Crypt::CBC->new( -key => $config{CLUSTER_KEY}, -cipher => 'Blowfish_PP' );
+    my $cipher    = Crypt::CBC->new( -key => $config{CLUSTER_KEY}, -cipher => 'Blowfish' );
     my $encrypted = $cipher->encrypt($text) . "END\n";
 
     foreach my $cip ( split( /\,/, $config{CLUSTER_SENDTO} ) ) {
