@@ -29,9 +29,9 @@ use ConfigServer::Config;
 use ConfigServer::CheckIP qw(checkip);
 
 use Exporter qw(import);
-our $VERSION     = 1.03;
-our @ISA         = qw(Exporter);
-our @EXPORT_OK   = qw(abuseip);
+our $VERSION   = 1.03;
+our @ISA       = qw(Exporter);
+our @EXPORT_OK = qw(abuseip);
 
 my $abusemsg = 'Abuse Contact for [ip]: [[contact]]
 
@@ -48,52 +48,53 @@ my %config = $config->config();
 ###############################################################################
 # start abuseip
 sub abuseip {
-	my $ip = shift;
-	my $abuse = "";
-	my $netip;
-	my $reversed_ip;
+    my $ip    = shift;
+    my $abuse = "";
+    my $netip;
+    my $reversed_ip;
 
-	if (checkip(\$ip)) {
-		eval {
-			local $SIG{__DIE__} = undef;
-			$netip = Net::IP->new($ip);
-			$reversed_ip = $netip->reverse_ip();
-		};
-		
-		if ($reversed_ip =~ /^(\S+)\.in-addr\.arpa/) {$reversed_ip = $1}
-		if ($reversed_ip =~ /^(\S+)\s+(\S+)\.in-addr\.arpa/) {$reversed_ip = $2}
-		if ($reversed_ip =~ /^(\S+)\.ip6\.arpa/) {$reversed_ip = $1}
-		if ($reversed_ip =~ /^(\S+)\s+(\S+)\.ip6\.arpa/) {$reversed_ip = $2}
+    if ( checkip( \$ip ) ) {
+        eval {
+            local $SIG{__DIE__} = undef;
+            $netip       = Net::IP->new($ip);
+            $reversed_ip = $netip->reverse_ip();
+        };
 
-		if ($reversed_ip ne "") {
-			$reversed_ip .= ".abuse-contacts.abusix.org";
+        if ( $reversed_ip =~ /^(\S+)\.in-addr\.arpa/ )         { $reversed_ip = $1 }
+        if ( $reversed_ip =~ /^(\S+)\s+(\S+)\.in-addr\.arpa/ ) { $reversed_ip = $2 }
+        if ( $reversed_ip =~ /^(\S+)\.ip6\.arpa/ )             { $reversed_ip = $1 }
+        if ( $reversed_ip =~ /^(\S+)\s+(\S+)\.ip6\.arpa/ )     { $reversed_ip = $2 }
 
-			my $cmdpid;
-			eval {
-				local $SIG{__DIE__} = undef;
-				local $SIG{'ALRM'} = sub {die};
-				alarm(10);
-				my ($childin, $childout);
-				$cmdpid = open3($childin, $childout, $childout, $config{HOST},"-W","5","-t","TXT",$reversed_ip);
-				close $childin;
-				my @results = <$childout>;
-				waitpid ($cmdpid, 0);
-				chomp @results;
-				if ($results[0] =~ /^${reversed_ip}.+"(.*)"$/) {$abuse = $1}
-				alarm(0);
-			};
-			alarm(0);
-			if ($cmdpid =~ /\d+/ and $cmdpid > 1 and kill(0,$cmdpid)) {kill(9,$cmdpid)}
+        if ( $reversed_ip ne "" ) {
+            $reversed_ip .= ".abuse-contacts.abusix.org";
 
-			if ($abuse ne "") {
-				my $msg = $abusemsg;
-				$msg =~ s/\[ip\]/$ip/g;
-				$msg =~ s/\[contact\]/$abuse/g;
-				return $abuse, $msg;
-			}
-		}
-	}
+            my $cmdpid;
+            eval {
+                local $SIG{__DIE__} = undef;
+                local $SIG{'ALRM'}  = sub { die };
+                alarm(10);
+                my ( $childin, $childout );
+                $cmdpid = open3( $childin, $childout, $childout, $config{HOST}, "-W", "5", "-t", "TXT", $reversed_ip );
+                close $childin;
+                my @results = <$childout>;
+                waitpid( $cmdpid, 0 );
+                chomp @results;
+                if ( $results[0] =~ /^${reversed_ip}.+"(.*)"$/ ) { $abuse = $1 }
+                alarm(0);
+            };
+            alarm(0);
+            if ( $cmdpid =~ /\d+/ and $cmdpid > 1 and kill( 0, $cmdpid ) ) { kill( 9, $cmdpid ) }
+
+            if ( $abuse ne "" ) {
+                my $msg = $abusemsg;
+                $msg =~ s/\[ip\]/$ip/g;
+                $msg =~ s/\[contact\]/$abuse/g;
+                return $abuse, $msg;
+            }
+        }
+    }
 }
+
 # end abuseip
 ###############################################################################
 

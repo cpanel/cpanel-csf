@@ -28,92 +28,99 @@ use Fcntl qw(:DEFAULT :flock);
 use ConfigServer::Config;
 
 use Exporter qw(import);
-our $VERSION     = 1.01;
-our @ISA         = qw(Exporter);
-our @EXPORT_OK   = qw();
+our $VERSION   = 1.01;
+our @ISA       = qw(Exporter);
+our @EXPORT_OK = qw();
 
 my $config = ConfigServer::Config->loadconfig();
 my %config = $config->config();
 
-open (my $IN, "<", "/proc/1/comm");
-flock ($IN, LOCK_SH);
+open( my $IN, "<", "/proc/1/comm" );
+flock( $IN, LOCK_SH );
 my $sysinit = <$IN>;
-close ($IN);
+close($IN);
 chomp $sysinit;
-if ($sysinit ne "systemd") {$sysinit = "init"}
+if ( $sysinit ne "systemd" ) { $sysinit = "init" }
 
 # end main
 ###############################################################################
 # start type
 sub type {
-	return $sysinit;
+    return $sysinit;
 }
+
 # end type
 ###############################################################################
 # start startlfd
 sub startlfd {
-	if ($sysinit eq "systemd") {
-		&printcmd($config{SYSTEMCTL},"start","lfd.service");
-		&printcmd($config{SYSTEMCTL},"status","lfd.service");
-	} else {
-		&printcmd("/etc/init.d/lfd","start");
-	}
+    if ( $sysinit eq "systemd" ) {
+        &printcmd( $config{SYSTEMCTL}, "start",  "lfd.service" );
+        &printcmd( $config{SYSTEMCTL}, "status", "lfd.service" );
+    }
+    else {
+        &printcmd( "/etc/init.d/lfd", "start" );
+    }
 
-	return;
+    return;
 }
+
 # end startlfd
 ###############################################################################
 # start stoplfd
 sub stoplfd {
-	if ($sysinit eq "systemd") {
-		&printcmd($config{SYSTEMCTL},"stop","lfd.service");
-	}
-	else {
-		&printcmd("/etc/init.d/lfd","stop");
-	}
+    if ( $sysinit eq "systemd" ) {
+        &printcmd( $config{SYSTEMCTL}, "stop", "lfd.service" );
+    }
+    else {
+        &printcmd( "/etc/init.d/lfd", "stop" );
+    }
 
-	return;
+    return;
 }
+
 # end stoplfd
 ###############################################################################
 # start restartlfd
 sub restartlfd {
-	if ($sysinit eq "systemd") {
-		&printcmd($config{SYSTEMCTL},"restart","lfd.service");
-		&printcmd($config{SYSTEMCTL},"status","lfd.service");
-	}
-	else {
-		&printcmd("/etc/init.d/lfd","restart");
-	}
+    if ( $sysinit eq "systemd" ) {
+        &printcmd( $config{SYSTEMCTL}, "restart", "lfd.service" );
+        &printcmd( $config{SYSTEMCTL}, "status",  "lfd.service" );
+    }
+    else {
+        &printcmd( "/etc/init.d/lfd", "restart" );
+    }
 
-	return;
+    return;
 }
+
 # end restartlfd
 ###############################################################################
 # start restartlfd
 sub statuslfd {
-	if ($sysinit eq "systemd") {
-		&printcmd($config{SYSTEMCTL},"status","lfd.service");
-	}
-	else {
-		&printcmd("/etc/init.d/lfd","status");
-	}
+    if ( $sysinit eq "systemd" ) {
+        &printcmd( $config{SYSTEMCTL}, "status", "lfd.service" );
+    }
+    else {
+        &printcmd( "/etc/init.d/lfd", "status" );
+    }
 
-	return 0
+    return 0;
 }
+
 # end restartlfd
 ###############################################################################
 # start printcmd
 sub printcmd {
-	my @command = @_;
+    my @command = @_;
 
-	my ($childin, $childout);
-	my $pid = open3($childin, $childout, $childout, @command);
-	while (<$childout>) {print $_}
-	waitpid ($pid, 0);
+    my ( $childin, $childout );
+    my $pid = open3( $childin, $childout, $childout, @command );
+    while (<$childout>) { print $_ }
+    waitpid( $pid, 0 );
 
-	return;
+    return;
 }
+
 # end printcmd
 ###############################################################################
 

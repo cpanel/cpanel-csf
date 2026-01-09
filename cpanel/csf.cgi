@@ -21,7 +21,7 @@
 ## no critic (RequireUseWarnings, ProhibitExplicitReturnUndef, ProhibitMixedBooleanOperators, RequireBriefOpen)
 use strict;
 use File::Find;
-use Fcntl qw(:DEFAULT :flock);
+use Fcntl         qw(:DEFAULT :flock);
 use Sys::Hostname qw(hostname);
 use IPC::Open3;
 
@@ -41,117 +41,121 @@ require Cpanel::Version::Tiny;
 ###############################################################################
 # start main
 
-our ($reseller, $script, $images, %rprivs, $myv, %FORM);
+our ( $reseller, $script, $images, %rprivs, $myv, %FORM );
 
 Whostmgr::ACLS::init_acls();
 
 %FORM = Cpanel::Form::parseform();
 
-my $config = ConfigServer::Config->loadconfig();
-my %config = $config->config;
+my $config   = ConfigServer::Config->loadconfig();
+my %config   = $config->config;
 my $slurpreg = ConfigServer::Slurp->slurpreg;
 my $cleanreg = ConfigServer::Slurp->cleanreg;
 
 Cpanel::Rlimit::set_rlimit_to_infinity();
 
-if (-e "/usr/local/cpanel/bin/register_appconfig") {
-	$script = "csf.cgi";
-	$images = "csf";
-} else {
-	$script = "addon_csf.cgi";
-	$images = "csf";
+if ( -e "/usr/local/cpanel/bin/register_appconfig" ) {
+    $script = "csf.cgi";
+    $images = "csf";
+}
+else {
+    $script = "addon_csf.cgi";
+    $images = "csf";
 }
 
-foreach my $line (slurp("/etc/csf/csf.resellers")) {
-	$line =~ s/$cleanreg//g;
-	my ($user,$alert,$privs) = split(/\:/,$line);
-	$privs =~ s/\s//g;
-	foreach my $priv (split(/\,/,$privs)) {
-		$rprivs{$user}{$priv} = 1;
-	}
-	$rprivs{$user}{ALERT} = $alert;
+foreach my $line ( slurp("/etc/csf/csf.resellers") ) {
+    $line =~ s/$cleanreg//g;
+    my ( $user, $alert, $privs ) = split( /\:/, $line );
+    $privs =~ s/\s//g;
+    foreach my $priv ( split( /\,/, $privs ) ) {
+        $rprivs{$user}{$priv} = 1;
+    }
+    $rprivs{$user}{ALERT} = $alert;
 }
 
 $reseller = 0;
-if (!Whostmgr::ACLS::hasroot()) {
-	if ($rprivs{$ENV{REMOTE_USER}}{USE}) {
-		$reseller = 1;
-	} else {
-		print "Content-type: text/html\r\n\r\n";
-		print "You do not have access to this feature\n";
-		exit();
-	}
+if ( !Whostmgr::ACLS::hasroot() ) {
+    if ( $rprivs{ $ENV{REMOTE_USER} }{USE} ) {
+        $reseller = 1;
+    }
+    else {
+        print "Content-type: text/html\r\n\r\n";
+        print "You do not have access to this feature\n";
+        exit();
+    }
 }
 
-open (my $IN, "<", "/etc/csf/version.txt") or die $!;
+open( my $IN, "<", "/etc/csf/version.txt" ) or die $!;
 $myv = <$IN>;
-close ($IN);
+close($IN);
 chomp $myv;
 
 my $bootstrapcss = "<link rel='stylesheet' href='$images/bootstrap/css/bootstrap.min.css'>";
-my $jqueryjs = "<script src='$images/jquery.min.js'></script>";
-my $bootstrapjs = "<script src='$images/bootstrap/js/bootstrap.min.js'></script>";
+my $jqueryjs     = "<script src='$images/jquery.min.js'></script>";
+my $bootstrapjs  = "<script src='$images/bootstrap/js/bootstrap.min.js'></script>";
 
 my @header;
 my @footer;
 my $htmltag = "data-post='$FORM{action}'";
-if (-e "/etc/csf/csf.header") {
-	open (my $HEADER, "<", "/etc/csf/csf.header");
-	flock ($HEADER, LOCK_SH);
-	@header = <$HEADER>;
-	close ($HEADER);
+if ( -e "/etc/csf/csf.header" ) {
+    open( my $HEADER, "<", "/etc/csf/csf.header" );
+    flock( $HEADER, LOCK_SH );
+    @header = <$HEADER>;
+    close($HEADER);
 }
-if (-e "/etc/csf/csf.footer") {
-	open (my $FOOTER, "<", "/etc/csf/csf.footer");
-	flock ($FOOTER, LOCK_SH);
-	@footer = <$FOOTER>;
-	close ($FOOTER);
+if ( -e "/etc/csf/csf.footer" ) {
+    open( my $FOOTER, "<", "/etc/csf/csf.footer" );
+    flock( $FOOTER, LOCK_SH );
+    @footer = <$FOOTER>;
+    close($FOOTER);
 }
-unless ($config{STYLE_CUSTOM}) {
-	undef @header;
-	undef @footer;
-	$htmltag = "";
+unless ( $config{STYLE_CUSTOM} ) {
+    undef @header;
+    undef @footer;
+    $htmltag = "";
 }
 
 my $thisapp = "csf";
 my $reregister;
 my $modalstyle;
-if ($Cpanel::Version::Tiny::major_version >= 65) {
-	if (-e "/usr/local/cpanel/whostmgr/docroot/cgi/configserver/${thisapp}/${thisapp}.conf") {
-		sysopen (my $CONF, "/usr/local/cpanel/whostmgr/docroot/cgi/configserver/${thisapp}/${thisapp}.conf", O_RDWR | O_CREAT);
-		flock ($CONF, LOCK_EX);
-		my @confdata = <$CONF>;
-		chomp @confdata;
-		for (0..scalar(@confdata)) {
-			if ($confdata[$_] =~ /^target=mainFrame/) {
-				$confdata[$_] = "target=_self";
-				$reregister = 1;
-			}
-		}
-		if ($reregister) {
-			seek ($CONF, 0, 0);
-			truncate ($CONF, 0);
-			foreach (@confdata) {
-				print $CONF "$_\n";
-			}
-			&printcmd("/usr/local/cpanel/bin/register_appconfig","/usr/local/cpanel/whostmgr/docroot/cgi/configserver/${thisapp}/${thisapp}.conf");
-			$reregister = "<div class='bs-callout bs-callout-info'><h4>Updated application. The next time you login to WHM this will open within the native WHM main window instead of launching a separate window</h4></div>\n";
-		}
-		close ($CONF);
-	}
+if ( $Cpanel::Version::Tiny::major_version >= 65 ) {
+    if ( -e "/usr/local/cpanel/whostmgr/docroot/cgi/configserver/${thisapp}/${thisapp}.conf" ) {
+        sysopen( my $CONF, "/usr/local/cpanel/whostmgr/docroot/cgi/configserver/${thisapp}/${thisapp}.conf", O_RDWR | O_CREAT );
+        flock( $CONF, LOCK_EX );
+        my @confdata = <$CONF>;
+        chomp @confdata;
+        for ( 0 .. scalar(@confdata) ) {
+            if ( $confdata[$_] =~ /^target=mainFrame/ ) {
+                $confdata[$_] = "target=_self";
+                $reregister = 1;
+            }
+        }
+        if ($reregister) {
+            seek( $CONF, 0, 0 );
+            truncate( $CONF, 0 );
+            foreach (@confdata) {
+                print $CONF "$_\n";
+            }
+            &printcmd( "/usr/local/cpanel/bin/register_appconfig", "/usr/local/cpanel/whostmgr/docroot/cgi/configserver/${thisapp}/${thisapp}.conf" );
+            $reregister = "<div class='bs-callout bs-callout-info'><h4>Updated application. The next time you login to WHM this will open within the native WHM main window instead of launching a separate window</h4></div>\n";
+        }
+        close($CONF);
+    }
 }
 
 print "Content-type: text/html\r\n\r\n";
+
 #if ($Cpanel::Version::Tiny::major_version < 65) {$modalstyle = "style='top:120px'"}
 
 my $templatehtml;
 my $SCRIPTOUT;
-unless ($FORM{action} eq "tailcmd" or $FORM{action} =~ /^cf/ or $FORM{action} eq "logtailcmd" or $FORM{action} eq "loggrepcmd") {
-#	open(STDERR, ">&STDOUT");
-	open ($SCRIPTOUT, '>', \$templatehtml);
-	select $SCRIPTOUT;
+unless ( $FORM{action} eq "tailcmd" or $FORM{action} =~ /^cf/ or $FORM{action} eq "logtailcmd" or $FORM{action} eq "loggrepcmd" ) {
 
-	print <<EOF;
+    #	open(STDERR, ">&STDOUT");
+    open( $SCRIPTOUT, '>', \$templatehtml );
+    select $SCRIPTOUT;
+
+    print <<EOF;
 	<!-- $bootstrapcss -->
 	<link href='$images/configserver.css' rel='stylesheet' type='text/css'>
 	$jqueryjs
@@ -167,8 +171,8 @@ display:none;
 display:block;
 }
 EOF
-	if ($config{STYLE_MOBILE} or $reseller) {
-		print <<EOF;
+    if ( $config{STYLE_MOBILE} or $reseller ) {
+        print <<EOF;
 \@media (max-width: 600px) {
 .mobilecontainer {
 	display:block;
@@ -178,34 +182,36 @@ EOF
 }
 }
 EOF
-	}
-	print "</style>\n";
-	print @header;
+    }
+    print "</style>\n";
+    print @header;
 }
 
-unless ($FORM{action} eq "tailcmd" or $FORM{action} =~ /^cf/ or $FORM{action} eq "logtailcmd" or $FORM{action} eq "loggrepcmd") {
-	print <<EOF;
+unless ( $FORM{action} eq "tailcmd" or $FORM{action} =~ /^cf/ or $FORM{action} eq "logtailcmd" or $FORM{action} eq "loggrepcmd" ) {
+    print <<EOF;
 <div id="loader"></div><br />
 <div class='panel panel-default'>
 <h4><img src='$images/csf_small.png' style='padding-left: 10px'> ConfigServer Security &amp; Firewall - csf v$myv</h4></div>
 EOF
-	if ($reregister ne "") {print $reregister}
+    if ( $reregister ne "" ) { print $reregister }
 }
 
 #eval {
 if ($reseller) {
-	ConfigServer::DisplayResellerUI::main(\%FORM, $script, 0, $images, $myv);
-} else {
-	ConfigServer::DisplayUI::main(\%FORM, $script, 0, $images, $myv);
+    ConfigServer::DisplayResellerUI::main( \%FORM, $script, 0, $images, $myv );
 }
+else {
+    ConfigServer::DisplayUI::main( \%FORM, $script, 0, $images, $myv );
+}
+
 #};
 #if ($@) {
 #	print "Error during UI output generation: [$@]\n";
 #	warn "Error during UI output generation: [$@]\n";
 #}
 
-unless ($FORM{action} eq "tailcmd" or $FORM{action} =~ /^cf/ or $FORM{action} eq "logtailcmd" or $FORM{action} eq "loggrepcmd") {
-	print <<EOF;
+unless ( $FORM{action} eq "tailcmd" or $FORM{action} =~ /^cf/ or $FORM{action} eq "logtailcmd" or $FORM{action} eq "loggrepcmd" ) {
+    print <<EOF;
 <script>
 function getCookie(cname) {
 	var name = cname + "=";
@@ -256,8 +262,8 @@ function getCookie(cname) {
 		}
 	});
 EOF
-	if ($config{STYLE_MOBILE} or $reseller) {
-		print <<EOF;
+    if ( $config{STYLE_MOBILE} or $reseller ) {
+        print <<EOF;
 	var csfview = getCookie('csfview');
 	if (csfview == 'mobile') {
 		\$(".mobilecontainer").css('display','block');
@@ -288,10 +294,10 @@ EOF
 		}
 	});
 EOF
-	}
-	print "});\n";
-	if ($config{STYLE_MOBILE} or $reseller) {
-		print <<EOF;
+    }
+    print "});\n";
+    if ( $config{STYLE_MOBILE} or $reseller ) {
+        print <<EOF;
 \$("#NormalView").click(function(){
 	document.cookie = "csfview=desktop; path=/";
 	\$(".mobilecontainer").css('display','none');
@@ -307,32 +313,33 @@ EOF
 	}
 });
 EOF
-	}
-	print "</script>\n";
-	print @footer;
+    }
+    print "</script>\n";
+    print @footer;
 }
-unless ($FORM{action} eq "tailcmd" or $FORM{action} =~ /^cf/ or $FORM{action} eq "logtailcmd" or $FORM{action} eq "loggrepcmd") {
-	close ($SCRIPTOUT);
-	select STDOUT;
-	Cpanel::Template::process_template(
-		'whostmgr',
-		{
-			"template_file" => "${thisapp}.tmpl",
-			"${thisapp}_output" => $templatehtml,
-			"print"         => 1,
-		}
-	);
+unless ( $FORM{action} eq "tailcmd" or $FORM{action} =~ /^cf/ or $FORM{action} eq "logtailcmd" or $FORM{action} eq "loggrepcmd" ) {
+    close($SCRIPTOUT);
+    select STDOUT;
+    Cpanel::Template::process_template(
+        'whostmgr',
+        {
+            "template_file"     => "${thisapp}.tmpl",
+            "${thisapp}_output" => $templatehtml,
+            "print"             => 1,
+        }
+    );
 }
+
 # end main
 ###############################################################################
 ## start printcmd
 sub printcmd {
-	my @command = @_;
-	my ($childin, $childout);
-	my $pid = open3($childin, $childout, $childout, @command);
-	while (<$childout>) {print $_}
-	waitpid ($pid, 0);
-	return;
+    my @command = @_;
+    my ( $childin, $childout );
+    my $pid = open3( $childin, $childout, $childout, @command );
+    while (<$childout>) { print $_ }
+    waitpid( $pid, 0 );
+    return;
 }
 ## end printcmd
 ###############################################################################

@@ -6,7 +6,7 @@ our $VERSION = 1.1;
 
 #use parent qw(Cpanel::Config::ConfigObj::Interface::Config::Version::v1);
 sub spec_version {
-	return 1;
+    return 1;
 }
 
 sub meta_version {

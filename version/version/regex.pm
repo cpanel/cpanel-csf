@@ -57,20 +57,17 @@ my $LAX_ALPHA_PART = qr/_[0-9]+/;
 
 # Strict decimal version number.
 
-my $STRICT_DECIMAL_VERSION =
-    qr/ $STRICT_INTEGER_PART $FRACTION_PART? /x;
+my $STRICT_DECIMAL_VERSION = qr/ $STRICT_INTEGER_PART $FRACTION_PART? /x;
 
 # Strict dotted-decimal version number.  Must have both leading "v" and
 # at least three parts, to avoid confusion with decimal syntax.
 
-my $STRICT_DOTTED_DECIMAL_VERSION =
-    qr/ v $STRICT_INTEGER_PART $STRICT_DOTTED_DECIMAL_PART{2,} /x;
+my $STRICT_DOTTED_DECIMAL_VERSION = qr/ v $STRICT_INTEGER_PART $STRICT_DOTTED_DECIMAL_PART{2,} /x;
 
 # Complete strict version number syntax -- should generally be used
 # anchored: qr/ \A $STRICT \z /x
 
-$STRICT =
-    qr/ $STRICT_DECIMAL_VERSION | $STRICT_DOTTED_DECIMAL_VERSION /x;
+$STRICT = qr/ $STRICT_DECIMAL_VERSION | $STRICT_DOTTED_DECIMAL_VERSION /x;
 
 #--------------------------------------------------------------------------#
 # Lax version regexp definitions
@@ -80,8 +77,7 @@ $STRICT =
 # allowing an alpha suffix or allowing a leading or trailing
 # decimal-point
 
-my $LAX_DECIMAL_VERSION =
-    qr/ $LAX_INTEGER_PART (?: \. | $FRACTION_PART $LAX_ALPHA_PART? )?
+my $LAX_DECIMAL_VERSION = qr/ $LAX_INTEGER_PART (?: \. | $FRACTION_PART $LAX_ALPHA_PART? )?
 	|
 	$FRACTION_PART $LAX_ALPHA_PART?
     /x;
@@ -92,8 +88,7 @@ my $LAX_DECIMAL_VERSION =
 # enough, without the leading "v", Perl takes .1.2 to mean v0.1.2,
 # so when there is no "v", the leading part is optional
 
-my $LAX_DOTTED_DECIMAL_VERSION =
-    qr/
+my $LAX_DOTTED_DECIMAL_VERSION = qr/
 	v $LAX_INTEGER_PART (?: $LAX_DOTTED_DECIMAL_PART+ $LAX_ALPHA_PART? )?
 	|
 	$LAX_INTEGER_PART? $LAX_DOTTED_DECIMAL_PART{2,} $LAX_ALPHA_PART?
@@ -105,13 +100,12 @@ my $LAX_DOTTED_DECIMAL_VERSION =
 # The string 'undef' is a special case to make for easier handling
 # of return values from ExtUtils::MM->parse_version
 
-$LAX =
-    qr/ undef | $LAX_DECIMAL_VERSION | $LAX_DOTTED_DECIMAL_VERSION /x;
+$LAX = qr/ undef | $LAX_DECIMAL_VERSION | $LAX_DOTTED_DECIMAL_VERSION /x;
 
 #--------------------------------------------------------------------------#
 
 # Preloaded methods go here.
-sub is_strict	{ defined $_[0] && $_[0] =~ qr/ \A $STRICT \z /x }
-sub is_lax	{ defined $_[0] && $_[0] =~ qr/ \A $LAX \z /x }
+sub is_strict { defined $_[0] && $_[0] =~ qr/ \A $STRICT \z /x }
+sub is_lax    { defined $_[0] && $_[0] =~ qr/ \A $LAX \z /x }
 
 1;
