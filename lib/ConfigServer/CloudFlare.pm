@@ -30,6 +30,8 @@ use Time::Local();
 use ConfigServer::Config;
 use ConfigServer::Slurp  qw(slurp);
 use ConfigServer::Logger qw(logfile);
+use YAML::Tiny;
+use Data::Dumper;
 
 use Exporter qw(import);
 our $VERSION   = 1.00;
@@ -44,15 +46,6 @@ my $cleanreg = ConfigServer::Slurp->cleanreg;
 
 my %args;
 $args{"content-type"} = "application/json";
-
-if ( $config{DEBUG} >= 2 ) {
-    require Data::Dumper;
-    import Data::Dumper;
-}
-
-if ( -e "/usr/local/cpanel/version" ) {
-    require YAML::Tiny;
-}
 
 # end main
 ###############################################################################
