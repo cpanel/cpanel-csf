@@ -38,22 +38,25 @@ my $ipv6reg = ConfigServer::Config->ipv6reg;
 ###############################################################################
 # start checkip
 sub checkip {
-    my $ipin  = shift;
+    my $ipin = shift;
+    length $ipin or return 0;
     my $ret   = 0;
     my $ipref = 0;
     my $ip;
     my $cidr;
     if ( ref $ipin ) {
+        length $$ipin or return;
         ( $ip, $cidr ) = split( /\//, ${$ipin} );
         $ipref = 1;
     }
     else {
+        length $ipin or return;
         ( $ip, $cidr ) = split( /\//, $ipin );
     }
     my $testip = $ip;
 
-    if ( $cidr ne "" ) {
-        unless ( $cidr =~ /^\d+$/ ) { return 0 }
+    if ( length $cidr ) {
+        return 0 unless $cidr =~ /^\d+$/;
     }
 
     if ( $ip =~ /^$ipv4reg$/ ) {
@@ -71,14 +74,15 @@ sub checkip {
         }
         $ip =~ s/://g;
         $ip =~ s/^0*//g;
-        if ( $ip == 1 ) { return 0 }
+        return 0 if $ip eq '1';    # Found a loopback address
+
         if ($ipref) {
             eval {
                 local $SIG{__DIE__} = undef;
                 my $netip = Net::IP->new($testip);
                 my $myip  = $netip->short();
                 if ( $myip ne "" ) {
-                    if ( $cidr eq "" ) {
+                    unless ( length $cidr ) {
                         ${$ipin} = $myip;
                     }
                     else {
