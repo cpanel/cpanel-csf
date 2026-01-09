@@ -48,6 +48,23 @@ You should prefer to use `done_testing();` at the end of your run not providing 
 
 Place any subroutines in your code after `done_testing;` to make the test code more legible.
 
+### Loading Modules
+
+- **NEVER use `require_ok()` or `use_ok()`** - these functions are from Test::More and should not be used
+- Instead, use regular `use Module::Name;` statements directly
+- If the module fails to load, the test will fail automatically with a clear error message
+- This approach is cleaner and more idiomatic in Test2
+
+Example:
+```perl
+# CORRECT - just use the module
+use ConfigServer::CloudFlare;
+
+# WRONG - do not use require_ok or use_ok
+require_ok('ConfigServer::CloudFlare');  # NEVER DO THIS
+use_ok('ConfigServer::CloudFlare');      # NEVER DO THIS
+```
+
 ## Example header code.
 This is what the header for most tests should look like, depending on the year you modified the file.
 
