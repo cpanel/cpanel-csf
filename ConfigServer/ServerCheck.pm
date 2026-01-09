@@ -56,10 +56,7 @@ sub report {
 	$cleanreg = ConfigServer::Slurp->cleanreg;
 	$| = 1;
 
-	if (defined $ENV{WEBMIN_VAR} and defined $ENV{WEBMIN_CONFIG}) {
-		$config{GENERIC} = 1;
-	}
-	elsif (-e "/usr/local/cpanel/version") {
+	if (-e "/usr/local/cpanel/version") {
 		use lib "/usr/local/cpanel";
 		require Cpanel::Form;
 		import Cpanel::Form;
@@ -96,10 +93,10 @@ sub report {
 	&firewallcheck;
 	&servercheck;
 	&sshtelnetcheck;
-	unless ($config{DNSONLY} or $config{GENERIC}) {&mailcheck}
-	unless ($config{DNSONLY} or $config{GENERIC}) {&apachecheck}
-	unless ($config{DNSONLY} or $config{GENERIC}) {&phpcheck}
-	unless ($config{DNSONLY} or $config{GENERIC}) {&whmcheck}
+	unless ($config{DNSONLY}) {&mailcheck}
+	unless ($config{DNSONLY}) {&apachecheck}
+	unless ($config{DNSONLY}) {&phpcheck}
+	unless ($config{DNSONLY}) {&whmcheck}
 	&servicescheck;
 
 	&endoutput;
@@ -109,7 +106,7 @@ sub report {
 ###############################################################################
 # start startoutput
 sub startoutput {
-	if ($config{THIS_UI} and !$config{GENERIC}) {
+	if ($config{THIS_UI}) {
 		$output .= "<p align='center'><strong>Note: Internal WHM links will not work within the csf Integrated UI</strong></p>\n";
 	}
 
@@ -250,7 +247,7 @@ sub firewallcheck {
 	if ($config{TCP_IN} =~ /\b3306\b/) {$status = 1}
 	&addline($status,"Incoming MySQL port check","The TCP incoming MySQL port (3306) is open. This can pose both a security and server abuse threat since not only can hackers attempt to break into MySQL, any user can host their SQL database on your server and access it from another host and so (ab)use your server resources");
 
-	unless ($config{DNSONLY} or $config{GENERIC}) {
+	unless ($config{DNSONLY}) {
 		unless ($config{VPS}) {
 			$status = 0;
 			unless ($config{SMTP_BLOCK}) {$status = 1}
@@ -264,7 +261,6 @@ sub firewallcheck {
 
 	$status = 0;
 	my @options = ("LF_SSHD","LF_FTPD","LF_SMTPAUTH","LF_POP3D","LF_IMAPD","LF_HTACCESS","LF_MODSEC","LF_CPANEL","LF_CPANEL_ALERT","SYSLOG_CHECK","RESTRICT_UI");
-	if ($config{GENERIC}) {@options = ("LF_SSHD","LF_FTPD","LF_SMTPAUTH","LF_POP3D","LF_IMAPD","LF_HTACCESS","LF_MODSEC","SYSLOG_CHECK","FASTSTART","RESTRICT_UI");}
 	if ($config{DNSONLY}) {@options = ("LF_SSHD","LF_CPANEL","SYSLOG_CHECK","FASTSTART","RESTRICT_UI")}
 
 	foreach my $option (@options) {
@@ -293,7 +289,7 @@ sub firewallcheck {
 	if ($config{PT_USERKILL} == 1) {$status = 1}
 	&addline($status,"PT_USERKILL option check","This option should not normally be enabled as it can easily lead to legitimate processes being terminated, use csf.pignore instead");
 
-	unless ($config{DNSONLY} or $config{GENERIC}) {
+	unless ($config{DNSONLY}) {
 		$status = 0;
 		if ($config{PT_SKIP_HTTP}) {$status = 1}
 		&addline($status,"PT_SKIP_HTTP option check","This option disables checking of processes running under apache and can limit false-positives but may then miss running exploits");
@@ -303,7 +299,7 @@ sub firewallcheck {
 	if (!$config{LF_IPSET} and !$config{VPS} and ($config{CC_DENY} or $config{CC_ALLOW} or $config{CC_ALLOW_FILTER} or $config{CC_ALLOW_PORTS} or $config{CC_DENY_PORTS})) {$status = 1}
 	&addline($status,"LF_IPSET option check","If support by your OS, you should install ipset and enable LF_IPSET when using Country Code (CC_*) filters");
 
-	unless ($config{DNSONLY} or $config{GENERIC}) {
+	unless ($config{DNSONLY}) {
 		$status = 0;
 		unless ($config{PT_ALL_USERS}) {$status = 1}
 		&addline($status,"PT_ALL_USERS option check","This option ensures that almost all Linux accounts are checked with Process Tracking, not just the cPanel ones");
@@ -1460,7 +1456,7 @@ sub sshtelnetcheck {
 	if ($check) {$status = 1}
 	&addline($status,"Check telnet port 23 is not in use","It appears that something is listening on port 23 which is normally used for telnet. Telnet is an insecure protocol and you should disable the telnet daemon if it is running");
 
-	unless ($config{DNSONLY} or $config{GENERIC}) {
+	unless ($config{DNSONLY}) {
 		unless ($config{VPS}) {
 			if (-e "/etc/redhat-release") {
 				open (my $IN, "<", "/etc/redhat-release");

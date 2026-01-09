@@ -78,7 +78,6 @@ sub main {
 	%config = $config->config();
 
 	$panel = "cPanel";
-	if ($config{GENERIC}) {$panel = "Generic"}
 
 	if ($FORM{ip} ne "") {$FORM{ip} =~ s/(^\s+)|(\s+$)//g}
 

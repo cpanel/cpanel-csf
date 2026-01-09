@@ -223,9 +223,9 @@ sub loadconfig {
 		$config{IPV6} = 0;
 	}
 	
-	if (!$config{GENERIC} and -e "/var/cpanel/dnsonly") {$config{DNSONLY} = 1}
+	if (-e "/var/cpanel/dnsonly") {$config{DNSONLY} = 1}
 
-	if (-e "/var/cpanel/smtpgidonlytweak" and !$config{GENERIC}) {
+	if (-e "/var/cpanel/smtpgidonlytweak") {
 		if ($config{DNSONLY}) {
 			$warning .= "*WARNING* The cPanel option to 'Restrict outgoing SMTP to root, exim, and mailman' is incompatible with this firewall. The option must be disabled using \"/usr/local/cpanel/scripts/smtpmailgidonly off\" and the SMTP_BLOCK alternative in csf used instead\n";
 		} else {

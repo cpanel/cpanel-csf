@@ -5,6 +5,7 @@ ChangeLog:
         Remove support for interworx.
         Remove support for VestaCP.
         Remove support for DirectAdmin.
+	Remove GENERIC support.
 
 15.00 - Changed license to GPLv3
 

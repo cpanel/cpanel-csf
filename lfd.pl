@@ -264,9 +264,7 @@ flock ($IN, LOCK_SH);
 $version = <$IN>;
 close ($IN);
 chomp $version;
-my $generic = " (cPanel)";
-if ($config{GENERIC}) {$generic = " (generic)"}
-logfile("daemon started on $hostname - csf v$version$generic");
+logfile("daemon started on $hostname - csf v$version (cPanel)");
 if ($config{DEBUG} >= 1) {logfile("Clock Ticks: $clock_ticks")}
 if ($config{DEBUG} >= 1) {logfile("debug: **** DEBUG LEVEL $config{DEBUG} ENABLED ****")}
 
@@ -3960,15 +3958,13 @@ sub processtracking {
 		my %users;
 		my %net;
 
-		unless ($config{GENERIC}) {
-			opendir (DIR, "/var/cpanel/users");
-			while (my $user = readdir (DIR)) {
-				if ($user =~ /^\./) {next}
-				$users{$user} = 1;
-			}
-			closedir (DIR);
-			$users{nobody} = 1;
+		opendir (DIR, "/var/cpanel/users");
+		while (my $user = readdir (DIR)) {
+			if ($user =~ /^\./) {next}
+			$users{$user} = 1;
 		}
+		closedir (DIR);
+		$users{nobody} = 1;
 
 		foreach my $proto ("udp","tcp","udp6","tcp6") {
 			open (my $IN, "<", "/proc/net/$proto");
@@ -4081,7 +4077,7 @@ sub processtracking {
 				}
 			}
 
-			if ($users{$user} or $config{GENERIC} or $config{PT_ALL_USERS}) {
+			if ($users{$user} or $config{PT_ALL_USERS}) {
 				if ($pids{$pid}) {next}
 				if ($skip{user}{$user}) {next}
 				my $pmatch = 0;

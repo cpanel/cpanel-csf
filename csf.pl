@@ -405,9 +405,7 @@ sub dostatus6 {
 ###############################################################################
 # start doversion
 sub doversion {
-my $generic = " (cPanel)";
-if ($config{GENERIC}) {$generic = " (generic)"}
-	print "csf: v$version$generic\n";
+	print "csf: v$version (cPanel)\n";
 	return;
 }
 # end doversion
@@ -1836,9 +1834,7 @@ sub doakill {
 ###############################################################################
 # start help
 sub dohelp {
-	my $generic = " (cPanel)";
-	if ($config{GENERIC}) {$generic = " (generic)"}
-	print "csf: v$version$generic\n";
+	print "csf: v$version (cPanel)\n";
 	open (my $IN, "<", "/usr/local/csf/lib/csf.help");
 	flock ($IN, LOCK_SH);
 	print <$IN>;
@@ -3270,20 +3266,21 @@ sub dodisable {
 	open (my $OUT, ">", "/etc/csf/csf.disable");
 	flock ($OUT, LOCK_EX);
 	close ($OUT);
-	unless ($config{GENERIC}) {
-		sysopen (my $CONF, "/etc/chkserv.d/chkservd.conf", O_RDWR | O_CREAT) or &error(__LINE__,"Could not open /etc/chkserv.d/chkservd.conf: $!");
-		flock ($CONF, LOCK_EX) or &error(__LINE__,"Could not lock /etc/chkserv.d/chkservd.conf: $!");
-		my $text = join("", <$CONF>);
-		my @conf = split(/$slurpreg/,$text);
-		chomp @conf;
-		seek ($CONF, 0, 0);
-		truncate ($CONF, 0);
-		foreach my $line (@conf) {
-			if ($line =~ /^lfd:/) {$line = "lfd:0"}
-			print $CONF $line."\n";
-		}
-		close ($CONF) or &error(__LINE__,"Could not close /etc/conf: $!");
+
+	sysopen (my $CONF, "/etc/chkserv.d/chkservd.conf", O_RDWR | O_CREAT) or &error(__LINE__,"Could not open /etc/chkserv.d/chkservd.conf: $!");
+	flock ($CONF, LOCK_EX) or &error(__LINE__,"Could not lock /etc/chkserv.d/chkservd.conf: $!");
+
+	my $text = join("", <$CONF>);
+	my @conf = split(/$slurpreg/,$text);
+	chomp @conf;
+	seek ($CONF, 0, 0);
+	truncate ($CONF, 0);
+	foreach my $line (@conf) {
+		if ($line =~ /^lfd:/) {$line = "lfd:0"}
+		print $CONF $line."\n";
 	}
+	close ($CONF) or &error(__LINE__,"Could not close /etc/conf: $!");
+
 	ConfigServer::Service::stoplfd();
 	&dostop(0);
 
@@ -3301,24 +3298,24 @@ sub doenable {
 	unlink ("/etc/csf/csf.disable");
 	&dostart;
 	ConfigServer::Service::startlfd();
-	unless ($config{GENERIC}) {
-		sysopen (my $CONF, "/etc/chkserv.d/chkservd.conf", O_RDWR | O_CREAT) or &error(__LINE__,"Could not open /etc/chkserv.d/chkservd.conf: $!");
-		flock ($CONF, LOCK_EX) or &error(__LINE__,"Could not lock /etc/chkserv.d/chkservd.conf: $!");
-		my $text = join("", <$CONF>);
-		my @conf = split(/$slurpreg/,$text);
-		chomp @conf;
-		seek ($CONF, 0, 0);
-		truncate ($CONF, 0);
-		foreach my $line (@conf) {
-			if ($line =~ /^lfd:/) {$line = "lfd:1"}
-			print $CONF $line."\n";
-		}
-		close ($CONF) or &error(__LINE__,"Could not close /etc/conf: $!");
-		open (my $OUT, ">", "/etc/chkserv.d/lfd");
-		flock ($OUT, LOCK_EX);
-		print $OUT "service[lfd]=x,x,x,service lfd restart,lfd,root\n";
-		close ($OUT);
+	sysopen (my $CONF, "/etc/chkserv.d/chkservd.conf", O_RDWR | O_CREAT) or &error(__LINE__,"Could not open /etc/chkserv.d/chkservd.conf: $!");
+	flock ($CONF, LOCK_EX) or &error(__LINE__,"Could not lock /etc/chkserv.d/chkservd.conf: $!");
+
+	my $text = join("", <$CONF>);
+	my @conf = split(/$slurpreg/,$text);
+	chomp @conf;
+	seek ($CONF, 0, 0);
+	truncate ($CONF, 0);
+	foreach my $line (@conf) {
+		if ($line =~ /^lfd:/) {$line = "lfd:1"}
+		print $CONF $line."\n";
 	}
+	close ($CONF) or &error(__LINE__,"Could not close /etc/conf: $!");
+
+	open (my $OUT, ">", "/etc/chkserv.d/lfd");
+	flock ($OUT, LOCK_EX);
+	print $OUT "service[lfd]=x,x,x,service lfd restart,lfd,root\n";
+	close ($OUT);
 
 	print "csf and lfd have been enabled\n";
 	return;

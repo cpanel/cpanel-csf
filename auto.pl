@@ -56,11 +56,6 @@ if (-e "/proc/vz/veinfo") {
 	close (IN);
 }
 
-if ($config{GENERIC}) {
-	exec "./auto.generic.pl";
-	exit;
-}
-
 foreach my $alertfile ("sshalert.txt","sualert.txt","sudoalert.txt","webminalert.txt","cpanelalert.txt") {
 	if (-e "/usr/local/csf/tpl/".$alertfile) {
 		sysopen (my $IN, "/usr/local/csf/tpl/".$alertfile, O_RDWR | O_CREAT);
