@@ -114,7 +114,7 @@ sub loadconfig {
         }
     }
 
-    if ( $config{WAITLOCK} ) { $config{IPTABLESWAIT} = "--wait"; }
+    $config{IPTABLESWAIT} = $config{WAITLOCK} ? "--wait" : "";
     my @results = &systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} --version");
     if ( $results[0] =~ /iptables v(\d+\.\d+\.\d+)/ ) {
         $version = $1;
@@ -181,9 +181,9 @@ sub loadconfig {
 
     if ( $config{DROP_OUT} ne "DROP" ) {
         my @data = &systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} -N TESTDENY");
-        unless ( $data[0] =~ /^iptables/ ) {
+        unless ( length $data[0] && $data[0] =~ /^iptables/ ) {
             my @ipdata = &systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} -I TESTDENY -j $config{DROP_OUT}");
-            if ( $ipdata[0] =~ /^iptables/ ) {
+            if ( length $ipdata[0] && $ipdata[0] =~ /^iptables/ ) {
                 $warning .= "*WARNING* Cannot use DROP_OUT value of [$config{DROP_OUT}] on this server, set to DROP\n";
                 $config{DROP_OUT} = "DROP";
             }
@@ -451,7 +451,7 @@ sub systemcmd {
         @result = <$childout>;
         waitpid( $pid, 0 );
         chomp @result;
-        if ( $result[0] =~ /# Warning: iptables-legacy tables present/ ) { shift @result }
+        if ( length $result[0] && $result[0] =~ /# Warning: iptables-legacy tables present/ ) { shift @result }
     };
 
     return @result;
