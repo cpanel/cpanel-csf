@@ -36,6 +36,16 @@ PERL5LIB='' prove -wlvm t/ConfigServer-AbuseIP.t
 
 **Note:** The `-l` flag in `prove -wlvm` automatically adds the `lib/` directory to `@INC`, so there is no need to include `use lib` statements in test files. Test files should not contain `use lib` directives.
 
+### Regression Testing
+
+After completing work on a test and verifying it passes, **always run `make test`** to ensure all existing tests still pass. This catches any regressions introduced by changes to shared modules or dependencies.
+
+```bash
+make test
+```
+
+This is critical because changes to one module (like ConfigServer::Slurp) can affect multiple test files that depend on it.
+
 ## Packages Requirements
 
 ### NoWarnings

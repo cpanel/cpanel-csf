@@ -92,8 +92,8 @@ use ConfigServer::Slurp ();
 
 our $VERSION = 1.05;
 
-our $ipv4reg = qr/(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/;
-our $ipv6reg =
+my $ipv4reg = qr/(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/;
+my $ipv6reg =
   qr/((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))(%.+)?/;
 
 my %config;
@@ -101,7 +101,6 @@ my %configsetting;
 my $warning;
 my $version;
 
-my $cleanreg   = ConfigServer::Slurp->cleanreg;
 my $configfile = "/etc/csf/csf.conf";
 
 # end main
@@ -185,6 +184,7 @@ sub loadconfig {
     undef %config;
     undef $warning;
 
+    my $cleanreg = ConfigServer::Slurp->cleanreg();
     my @file = ConfigServer::Slurp::slurp($configfile);
     foreach my $line (@file) {
         $line =~ s/$cleanreg//g;
@@ -521,8 +521,50 @@ sub loadconfig {
     return $self;
 }
 
-# start _config
-sub _config {
+=head2 config
+
+    my %config = ConfigServer::Config::config();
+    my $iptables_path = $config{IPTABLES};
+
+Returns the loaded configuration hash.
+
+This method provides access to the parsed configuration settings from
+C</etc/csf/csf.conf> along with any system-detected values added during
+the configuration load process.
+
+=head3 Returns
+
+A hash containing all configuration keys and values. Common keys include:
+
+=over 4
+
+=item * C<IPTABLES> - Path to iptables binary
+
+=item * C<IP6TABLES> - Path to ip6tables binary
+
+=item * C<IPV6> - Whether IPv6 support is enabled
+
+=item * C<RAW>, C<MANGLE>, C<NAT> - Whether iptables tables are available
+
+=item * C<VPS> - Whether running in a VPS environment
+
+=back
+
+Note: The configuration must be loaded via C<loadconfig()> before this
+method returns meaningful data.
+
+=head3 Side Effects
+
+None.
+
+=head3 Errors
+
+None.
+
+=cut
+
+# start config
+sub config {
     return %config;
 }
 
@@ -534,8 +576,47 @@ sub _resetconfig {
     return;
 }
 
-# start _configsetting
-sub _configsetting {
+=head2 configsetting
+
+    my %configsetting = ConfigServer::Config::configsetting();
+
+    if ( $configsetting{IPTABLES} ) {
+        print "IPTABLES setting was found in config file\n";
+    }
+
+Returns a hash tracking which configuration settings were defined.
+
+This method provides a boolean hash where keys are configuration setting
+names and values are C<1> if that setting was found in the configuration
+file. This is useful for distinguishing between settings that are explicitly
+set versus default values.
+
+=head3 Returns
+
+A hash where:
+
+=over 4
+
+=item * Keys are configuration setting names (e.g., C<IPTABLES>, C<IPV6>)
+
+=item * Values are C<1> if the setting was defined in C</etc/csf/csf.conf>
+
+=item * Undefined keys indicate settings not present in the config file
+
+=back
+
+=head3 Side Effects
+
+None.
+
+=head3 Errors
+
+None.
+
+=cut
+
+# start configsetting
+sub configsetting {
     return %configsetting;
 }
 
@@ -606,6 +687,7 @@ sub _systemcmd {
 }
 
 sub _getdownloadserver {
+    my $cleanreg = ConfigServer::Slurp->cleanreg();
     my @servers;
     my $downloadservers = "/etc/csf/downloadservers";
     my $chosen;

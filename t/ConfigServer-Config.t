@@ -24,8 +24,8 @@ subtest 'Module basics' => sub {
 # Test package exports
 subtest 'Package variables' => sub {
     ok( defined $ConfigServer::Config::VERSION, 'VERSION is defined' );
-    is( ref $ConfigServer::Config::ipv4reg, 'Regexp', 'ipv4reg is a regexp' );
-    is( ref $ConfigServer::Config::ipv6reg, 'Regexp', 'ipv6reg is a regexp' );
+    is( ref ConfigServer::Config->ipv4reg(), 'Regexp', 'ipv4reg is a regexp' );
+    is( ref ConfigServer::Config->ipv6reg(), 'Regexp', 'ipv6reg is a regexp' );
 };
 
 # Test ipv4reg patterns
@@ -66,10 +66,10 @@ subtest 'IPv6 regex validation' => sub {
 subtest 'resetconfig functionality' => sub {
     ConfigServer::Config::_resetconfig();
 
-    my %config = ConfigServer::Config::_config();
+    my %config = ConfigServer::Config::config();
     is( scalar keys %config, 0, 'config is empty after resetconfig' );
 
-    my %configsetting = ConfigServer::Config::_configsetting();
+    my %configsetting = ConfigServer::Config::configsetting();
     is( scalar keys %configsetting, 0, 'configsetting is empty after resetconfig' );
 };
 
@@ -91,10 +91,10 @@ subtest 'systemcmd basic execution' => sub {
 
 # Test config methods return types
 subtest 'config return types' => sub {
-    my %config = ConfigServer::Config::_config();
+    my %config = ConfigServer::Config::config();
     is( ref \%config, 'HASH', 'config() returns hash' );
 
-    my %configsetting = ConfigServer::Config::_configsetting();
+    my %configsetting = ConfigServer::Config::configsetting();
     is( ref \%configsetting, 'HASH', 'configsetting() returns hash' );
 
     my $ipv4 = ConfigServer::Config->ipv4reg();
