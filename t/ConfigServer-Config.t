@@ -173,4 +173,36 @@ subtest 'systemcmd handles errors gracefully' => sub {
     }, 'systemcmd handles stderr without dying';
 };
 
+# Test get_config method
+subtest 'get_config auto-loading and retrieval' => sub {
+
+    # Reset config to ensure fresh state
+    ConfigServer::Config::_resetconfig();
+
+    # Verify config is empty
+    my %empty_config = ConfigServer::Config::config();
+    is( scalar keys %empty_config, 0, 'config is empty before get_config call' );
+
+    # Call get_config - it should auto-load config
+    my $tcp_in = ConfigServer::Config->get_config('TCP_IN');
+    ok( defined $tcp_in, 'get_config returns defined value for valid key' );
+
+    # Verify config was loaded
+    my %loaded_config = ConfigServer::Config::config();
+    ok( scalar keys %loaded_config > 0, 'config was auto-loaded by get_config' );
+
+    # Test retrieving a known value
+    my $iptables = ConfigServer::Config->get_config('IPTABLES');
+    ok( defined $iptables, 'get_config retrieves IPTABLES value' );
+    like( $iptables, qr{/iptables$}, 'IPTABLES path looks valid' );
+
+    # Test non-existent key returns undef
+    my $nonexistent = ConfigServer::Config->get_config('THIS_KEY_DOES_NOT_EXIST_123');
+    is( $nonexistent, undef, 'get_config returns undef for non-existent key' );
+
+    # Test that subsequent calls don't reload config
+    my $tcp_in2 = ConfigServer::Config->get_config('TCP_IN');
+    is( $tcp_in2, $tcp_in, 'get_config returns same value on repeated calls' );
+};
+
 done_testing;

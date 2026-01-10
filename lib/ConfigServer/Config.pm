@@ -185,7 +185,7 @@ sub loadconfig {
     undef $warning;
 
     my $cleanreg = ConfigServer::Slurp->cleanreg();
-    my @file = ConfigServer::Slurp::slurp($configfile);
+    my @file     = ConfigServer::Slurp::slurp($configfile);
     foreach my $line (@file) {
         $line =~ s/$cleanreg//g;
         if ( $line =~ /^(\s|\#|$)/ ) { next }
@@ -566,6 +566,71 @@ None.
 # start config
 sub config {
     return %config;
+}
+
+=head2 get_config
+
+    my $value = ConfigServer::Config->get_config($key);
+
+    my $tcp_in = ConfigServer::Config->get_config('TCP_IN');
+    my $ipv6   = ConfigServer::Config->get_config('IPV6');
+
+Gets a single configuration value by key, automatically loading the
+configuration if not already loaded.
+
+This method provides a convenient way to retrieve individual configuration
+values without needing to explicitly call C<loadconfig()> first. If the
+configuration hash is empty, it will automatically load the configuration
+before returning the requested value.
+
+=head3 Parameters
+
+=over 4
+
+=item * C<$key> - String name of the configuration setting to retrieve
+
+=back
+
+=head3 Returns
+
+The value of the requested configuration setting, or C<undef> if the key
+does not exist in the configuration.
+
+=head3 Side Effects
+
+=over 4
+
+=item * Calls C<loadconfig()> if C<%config> is empty
+
+=item * Populates package-level C<%config> and C<%configsetting> hashes
+
+=back
+
+=head3 Errors
+
+None - returns C<undef> for non-existent keys.
+
+=head3 Example
+
+    # These are equivalent:
+    my $config_obj = ConfigServer::Config->loadconfig();
+    my %cfg = $config_obj->config();
+    my $tcp_in = $cfg{TCP_IN};
+
+    # Simpler approach:
+    my $tcp_in = ConfigServer::Config->get_config('TCP_IN');
+
+=cut
+
+sub get_config {
+    my ( $class, $key ) = @_;
+
+    # Load config if hash is empty
+    if ( !%config ) {
+        $class->loadconfig();
+    }
+
+    return $config{$key};
 }
 
 sub _resetconfig {
