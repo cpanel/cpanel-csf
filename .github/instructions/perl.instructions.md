@@ -223,8 +223,10 @@ This pattern is preferred when:
 
 - New modules must include inline POD documentation.
 - Document all new public functions and modules using inline POD.
-- The pod documentation should be placed after the `package` declaration and copyright tag but before any `use` statements.
-- The pod documentation for a function should be placed immediately before the function definition.
+- Module-level POD documentation (NAME, SYNOPSIS, DESCRIPTION, etc.) should be placed after the `package` declaration but before any `use` statements.
+- Subroutine POD documentation should be placed immediately before the subroutine declaration it documents.
+- Use `=head2` for subroutine documentation (e.g., `=head2 new`, `=head2 urlget`).
+- End each POD block with `=cut` before the subroutine declaration.
 - No need to add documentation for private functions. by convention private functions start with an underscore `_`.
 - At least 50% of the public interface must be documented.
 - Document the public interface of modules with POD: constructors, attributes, functions, and methods.
@@ -234,9 +236,10 @@ This pattern is preferred when:
 - The code example from the SYNOPSIS should be linted and indented for easier reading.
 - The DESCRIPTION section should provide an overview of the module's purpose and functionality.
 - Optional sections: METHODS, FUNCTIONS, ATTRIBUTES, EXAMPLES, SEE ALSO.
+- Encouraged end-of-file sections (placed after the final `1;`): VERSION, AUTHOR, COPYRIGHT (or COPYRIGHT AND LICENSE).
+- End-of-file POD sections should be placed at the end of the file, after all code and the final `1;` statement.
+- When writing POD never add the following prohibited sections: BUGS, TODO.
 - Remove empty sections.
-- When writing POD never add the following prohibited sections: AUTHOR, COPYRIGHT AND LICENSE, BUGS, TODO.
-- If one of the previously prohibited sections listed above is present in the file, remove that section from the POD.
 - Use proper POD format for compatibility with `perldoc` and related tools.
 - Audience: cPanel developers and customers; follow cPanel communication policies.
 - Ensure POD is well-formed and passes `podcheck` without warnings or errors.
