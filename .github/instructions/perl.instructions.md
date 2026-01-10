@@ -36,6 +36,81 @@ description: "Perl development standards, module patterns, and Perl conventions"
 - When no cPanel module exists, prefer CPAN modules already used in the codebase.
 - For tests, CPAN modules may be preferred to minimize spurious failures.
 
+## ConfigServer::Config Usage
+
+- **Never call `loadconfig()` at module load time** (outside of subroutines).
+- Calling `loadconfig()` at the package level happens when the module is loaded, which:
+  - Complicates unit testing by requiring configuration files to exist
+  - Makes unnecessary system calls during module compilation
+  - Prevents mocking configuration in tests
+  - Can cause circular dependency issues
+
+### Patterns for Accessing Configuration
+
+When refactoring code that has `loadconfig()` calls at module load time, use one of these patterns:
+
+#### Pattern 1: Use `get_config()` for Individual Values
+
+When accessing a single or few configuration values, use `ConfigServer::Config->get_config($key)`:
+
+```perl
+# BAD - calls loadconfig at module load time
+my $config = ConfigServer::Config->loadconfig();
+my %config = $config->config();
+
+sub my_function {
+    my $host = $config{HOST};
+    # ...
+}
+
+# GOOD - calls loadconfig only when needed
+sub my_function {
+    my $host_bin = ConfigServer::Config->get_config('HOST');
+    # ...
+}
+```
+
+The `get_config()` method automatically loads configuration if not already loaded, and returns the specific value you need.
+
+#### Pattern 2: Use `config()` for Multiple Values
+
+When accessing many configuration values within a function, call `config()` and create a local hash copy:
+
+```perl
+# BAD - calls loadconfig at module load time
+my $config = ConfigServer::Config->loadconfig();
+my %config = $config->config();
+
+sub my_function {
+    if ($config{IPV6} && $config{IPV6_SPI}) {
+        my $raw = $config{RAW6};
+        # ... many more config accesses
+    }
+}
+
+# GOOD - loads config within the function
+sub my_function {
+    my $config = ConfigServer::Config->loadconfig();
+    my %config = $config->config();
+    
+    if ($config{IPV6} && $config{IPV6_SPI}) {
+        my $raw = $config{RAW6};
+        # ... many more config accesses
+    }
+}
+```
+
+This pattern is preferred when:
+- You need to access many (5+) configuration values
+- The function already has the config loading pattern
+- Performance is critical (single hash lookup vs. multiple method calls)
+
+#### Choosing the Right Pattern
+
+- **Single/few values**: Use `get_config()`
+- **Many values (5+)**: Use `config()` with local copy
+- **Tests**: Both patterns support mocking via `local` for package variables
+
 ## Error Handling
 
 - Execute external commands using `Cpanel::SafeRun::Object` whenever possible in production code. Backticks are tolerable in unit tests.
