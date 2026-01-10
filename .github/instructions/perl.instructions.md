@@ -27,6 +27,7 @@ description: "Perl development standards, module patterns, and Perl conventions"
 - Always disable imports: use `use Module ();` instead of `use Module;`.
 - Always use fully qualified names when referencing functions or variables from another package.
 - Use `unless` sparingly; prefer when it reads more naturally than `if (!$cond)`.
+- When refactoring modules, remove `use Exporter` and related variables (`@EXPORT`, `@EXPORT_OK`) if the module is not exporting anything. You should also remove `@ISA` if it's only there for `Exporter`.
 
 ## Preferred Modules
 

@@ -20,10 +20,10 @@ Read the [Test2 Framework Guide](#test2-framework-guide) section for more detail
 
 ## Running tests
 
-Every test file created or updated should pass `perl -cw` syntax check.
+Every test file created or updated should pass `perl -cw -Ilib` syntax check.
 Every test file should pass when running `prove` command to run it locally.
 
-Before running a single test file, ensure the file has no syntax error.
+Before running a single test file, ensure the file has no syntax error using `perl -cw -Ilib`.
 When running tests locally, prefer using `prove` command with `-wlvm`.
 ```bash
 prove -wlvm t/ConfigServer-AbuseIP.t
