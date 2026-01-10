@@ -20,6 +20,65 @@
 # start main
 package ConfigServer::Config;
 
+=head1 NAME
+
+ConfigServer::Config - Configuration loader and system capability detector
+for CSF (ConfigServer Security & Firewall)
+
+=head1 SYNOPSIS
+
+    use ConfigServer::Config;
+
+    # Load the configuration
+    my $config_obj = ConfigServer::Config->loadconfig();
+
+    # Check for warnings during configuration load
+    if ( $config_obj->{warning} ) {
+        print "Warnings: $config_obj->{warning}\n";
+    }
+
+    # Get IPv4 and IPv6 regex patterns
+    my $ipv4_pattern = ConfigServer::Config->ipv4reg();
+    my $ipv6_pattern = ConfigServer::Config->ipv6reg();
+
+    # Validate an IP address
+    if ( $ip =~ /^$ipv4_pattern$/ ) {
+        print "Valid IPv4 address\n";
+    }
+
+=head1 DESCRIPTION
+
+This module loads the CSF configuration from C</etc/csf/csf.conf> and
+detects system capabilities including iptables version, kernel features,
+and available netfilter tables. It validates configuration settings and
+provides warnings for problematic or incompatible configurations.
+
+The module performs extensive system detection to determine:
+
+=over 4
+
+=item * iptables and ip6tables version and capabilities
+
+=item * Availability of raw, mangle, and nat tables
+
+=item * Kernel version and IPv6 support
+
+=item * cPanel-specific configuration options
+
+=item * VPS/virtualization environment detection
+
+=item * Country code and ASN database sources
+
+=back
+
+Configuration is loaded once and cached in package variables for
+performance. The module also provides regex patterns for validating
+IPv4 and IPv6 addresses.
+
+=head1 METHODS
+
+=cut
+
 use strict;
 use warnings;
 
@@ -42,13 +101,76 @@ my %configsetting;
 my $warning;
 my $version;
 
-my $slurpreg   = ConfigServer::Slurp->slurpreg;
 my $cleanreg   = ConfigServer::Slurp->cleanreg;
 my $configfile = "/etc/csf/csf.conf";
 
 # end main
 ###############################################################################
 # start loadconfig
+
+=head2 loadconfig
+
+    my $config = ConfigServer::Config->loadconfig();
+
+    if ( $config->{warning} ) {
+        print "Configuration warnings:\n$config->{warning}";
+    }
+
+Loads the CSF configuration file and detects system capabilities.
+
+This method reads C</etc/csf/csf.conf>, parses configuration settings,
+and performs extensive system detection including iptables version,
+kernel capabilities, and available netfilter tables. It validates
+configuration values and generates warnings for problematic settings.
+
+The configuration is loaded once and cached in package variables.
+Subsequent calls return the cached configuration without re-parsing.
+
+=head3 Returns
+
+A blessed hash reference containing:
+
+=over 4
+
+=item * C<warning> - String containing any configuration warnings or errors
+generated during loading. Empty string if no warnings.
+
+=back
+
+=head3 Side Effects
+
+=over 4
+
+=item * Populates package variables C<%config> and C<%configsetting> with
+configuration data
+
+=item * May execute iptables commands to detect system capabilities
+
+=item * May modify C</proc/sys/net/netfilter/nf_conntrack_helper> if
+nf_conntrack_helper is disabled
+
+=item * Reads various system files to detect environment (VPS, cPanel, etc.)
+
+=back
+
+=head3 Errors
+
+Dies (via C<Carp::croak>) if:
+
+=over 4
+
+=item * Configuration file contains invalid syntax
+
+=item * Duplicate configuration settings are found
+
+=item * iptables path is not set or executable not found
+
+=item * iptables --wait option times out (when WAITLOCK enabled)
+
+=back
+
+=cut
+
 sub loadconfig {
     my $class = shift;
     my $self  = {};
@@ -399,16 +521,11 @@ sub loadconfig {
     return $self;
 }
 
-# end loadconfig
-###############################################################################
 # start _config
 sub _config {
     return %config;
 }
 
-# end _config
-###############################################################################
-# start _resetconfig
 sub _resetconfig {
     undef %config;
     undef %configsetting;
@@ -417,29 +534,60 @@ sub _resetconfig {
     return;
 }
 
-# end _resetconfig
-###############################################################################
 # start _configsetting
 sub _configsetting {
     return %configsetting;
 }
 
-# end _configsetting
-###############################################################################
-# start ipv4reg
+=head2 ipv4reg
+
+    my $ipv4_regex = ConfigServer::Config->ipv4reg();
+
+    if ( $address =~ /^$ipv4_regex$/ ) {
+        print "Valid IPv4 address\n";
+    }
+
+Returns a compiled regular expression for validating IPv4 addresses.
+
+The regex matches standard dotted-decimal IPv4 addresses with proper
+range validation (0-255 for each octet). This pattern is suitable for
+validating individual IPv4 addresses but does not match CIDR notation.
+
+=head3 Returns
+
+A compiled C<Regexp> object (C<qr//>) that matches valid IPv4 addresses.
+
+=cut
+
 sub ipv4reg {
     return $ipv4reg;
 }
 
-# end ipv4reg
-###############################################################################
-# start ipv6reg
+=head2 ipv6reg
+
+    my $ipv6_regex = ConfigServer::Config->ipv6reg();
+
+    if ( $address =~ /^$ipv6_regex$/ ) {
+        print "Valid IPv6 address\n";
+    }
+
+Returns a compiled regular expression for validating IPv6 addresses.
+
+The regex matches standard IPv6 addresses including compressed notation,
+full notation, IPv4-mapped IPv6 addresses, and link-local addresses. It
+supports all valid IPv6 formats including zone IDs (scope identifiers).
+
+=head3 Returns
+
+A compiled C<Regexp> object (C<qr//>) that matches valid IPv6 addresses
+in any standard format.
+
+=cut
+
 sub ipv6reg {
     return $ipv6reg;
 }
 
-# end ipv6reg
-###############################################################################
 # start _systemcmd
 sub _systemcmd {
     my @command = @_;
@@ -457,9 +605,6 @@ sub _systemcmd {
     return @result;
 }
 
-# end _systemcmd
-###############################################################################
-## start _getdownloadserver
 sub _getdownloadserver {
     my @servers;
     my $downloadservers = "/etc/csf/downloadservers";
@@ -474,7 +619,5 @@ sub _getdownloadserver {
 ##	if ($chosen eq "") {$chosen = "download.configserver.com"}
     return $chosen;
 }
-## end _getdownloadserver
-###############################################################################
 
 1;

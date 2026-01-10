@@ -82,6 +82,7 @@ description: "Perl development standards, module patterns, and Perl conventions"
 ## Code convention
 
 - Code should be tidy using the Perl Tidy Policy located in the base of the repo `.perltidyrc`
+- Perl code must never have trailing whitespace, including in POD documentation.
 - Each function should always use an explicit `return` statement at the end.
 - Subroutines should use less than 4 arguments when posible.
 - Subroutine names should be less than 30 lines when possible.
