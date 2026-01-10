@@ -34,6 +34,8 @@ Also make sure that `PERL5LIB=''` environment variable is set to avoid loading a
 PERL5LIB='' prove -wlvm t/ConfigServer-AbuseIP.t
 ```
 
+**Note:** The `-l` flag in `prove -wlvm` automatically adds the `lib/` directory to `@INC`, so there is no need to include `use lib` statements in test files. Test files should not contain `use lib` directives.
+
 ## Packages Requirements
 
 ### NoWarnings
