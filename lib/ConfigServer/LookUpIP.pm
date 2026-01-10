@@ -17,54 +17,157 @@
 # this program; if not, see <https://www.gnu.org/licenses>.
 ###############################################################################
 ## no critic (RequireUseWarnings, ProhibitExplicitReturnUndef, ProhibitMixedBooleanOperators, RequireBriefOpen)
-# start main
 package ConfigServer::LookUpIP;
 
+=head1 NAME
+
+ConfigServer::LookUpIP - IP address lookup with geolocation and DNS resolution
+
+=head1 SYNOPSIS
+
+    use ConfigServer::LookUpIP qw(iplookup);
+
+    # Full IP lookup with geolocation and hostname
+    my $result = iplookup('8.8.8.8');
+    # Returns: "8.8.8.8 (US/United States/hostname)"
+
+    # Country code only lookup
+    my $cc = iplookup('8.8.8.8', 1);
+    # Returns: "US"
+
+=head1 DESCRIPTION
+
+This module provides IP address lookup functionality including geolocation
+data and DNS hostname resolution. It supports both IPv4 and IPv6 addresses
+and can query multiple geolocation data sources.
+
+The module performs binary search lookups against local GeoIP CSV databases
+for fast geolocation resolution. It also provides DNS caching to improve
+performance for repeated hostname lookups.
+
+=head1 FUNCTIONS
+
+=cut
+
 use strict;
-use lib '/usr/local/csf/lib';
-use Carp;
-use Fcntl qw(:DEFAULT :flock);
-use IPC::Open3;
-use JSON::Tiny;
-use Net::IP;
-use Socket;
+use warnings;
+
+use Carp                  ();
+use Fcntl                 ();
+use IPC::Open3            ();
+use JSON::Tiny            ();
+use Net::IP               ();
+use Socket                ();
 use ConfigServer::CheckIP qw(checkip);
-use ConfigServer::Config;
-use ConfigServer::URLGet;
+use ConfigServer::Config  ();
+use ConfigServer::URLGet  ();
 
 use Exporter qw(import);
 our $VERSION   = 2.00;
 our @ISA       = qw(Exporter);
 our @EXPORT_OK = qw(iplookup);
 
-my $config = ConfigServer::Config->loadconfig();
-my %config = $config->config();
+my $_urlget;
 
-my $urlget;
-if ( $config{CC_LOOKUPS} == 4 ) {
-    $urlget = ConfigServer::URLGet->new( $config{URLGET}, "", $config{URLPROXY} );
-    unless ( defined $urlget ) {
-        $config{URLGET} = 1;
-        $urlget = ConfigServer::URLGet->new( $config{URLGET}, "", $config{URLPROXY} );
+sub _urlget {
+    return $_urlget if defined $_urlget;
+
+    # Only called if CC_LOOKUPS == 4
+    my $urlget_mode = ConfigServer::Config->get_config('URLGET');
+    my $urlproxy    = ConfigServer::Config->get_config('URLPROXY');
+
+    $_urlget = ConfigServer::URLGet->new( $urlget_mode, "", $urlproxy );
+
+    if ( !defined $_urlget ) {
+        $_urlget = ConfigServer::URLGet->new( 1, "", $urlproxy );
     }
+    return $_urlget;
 }
 
-# end main
-###############################################################################
-# start iplookup
+=head2 iplookup
+
+    my $result = iplookup($ip);
+    my $result = iplookup($ip, $cconly);
+
+Performs IP address lookup with geolocation and optional DNS resolution.
+
+=over 4
+
+=item B<Parameters>
+
+=over 4
+
+=item * C<$ip> - IP address to lookup (IPv4 or IPv6)
+
+=item * C<$cconly> - Optional boolean flag. When true, returns only country
+code (and ASN if CC_LOOKUPS=3). When false or omitted, returns full
+geolocation and hostname information.
+
+=back
+
+=item B<Returns>
+
+When C<$cconly> is false (default):
+
+=over 4
+
+=item * With CC_LOOKUPS=1: C<"IP (CC/Country/hostname)">
+
+=item * With CC_LOOKUPS=2 or 4: C<"IP (CC/Country/Region/City/hostname)">
+
+=item * With CC_LOOKUPS=3: C<"IP (CC/Country/Region/City/hostname/[ASN])">
+
+=item * With LF_LOOKUPS only: C<"IP (hostname)">
+
+=item * Without lookups: C<"IP">
+
+=back
+
+When C<$cconly> is true:
+
+=over 4
+
+=item * With CC_LOOKUPS=3: Returns array C<($country_code, $asn)>
+
+=item * Otherwise: Returns scalar C<$country_code>
+
+=back
+
+=item B<Configuration>
+
+Behavior is controlled by configuration settings:
+
+=over 4
+
+=item * C<LF_LOOKUPS> - Enable DNS hostname lookups
+
+=item * C<CC_LOOKUPS> - Country code lookup mode (1-4)
+
+=item * C<CC6_LOOKUPS> - Enable IPv6 country lookups
+
+=item * C<CC_SRC> - Geolocation data source ("1" for GeoLite2, "2" for DB-IP)
+
+=item * C<HOST> - Path to host command for DNS lookups
+
+=back
+
+=back
+
+=cut
+
 sub iplookup {
     my $ip     = shift;
     my $cconly = shift;
     my $host   = "-";
     my $iptype = checkip( \$ip );
 
-    if ( $config{LF_LOOKUPS} and !$cconly ) {
+    if ( ConfigServer::Config->get_config('LF_LOOKUPS') and !$cconly ) {
         my $dnsip;
         my $dnsrip;
         my $dnshost;
         my $cachehit;
         open( my $DNS, "<", "/var/lib/csf/csf.dnscache" );
-        flock( $DNS, LOCK_SH );
+        flock( $DNS, Fcntl::LOCK_SH );
         while ( my $line = <$DNS> ) {
             chomp $line;
             ( $dnsip, $dnsrip, $dnshost ) = split( /\|/, $line );
@@ -78,14 +181,15 @@ sub iplookup {
             $host = $dnshost;
         }
         else {
-            if ( -e $config{HOST} and -x $config{HOST} ) {
+            my $host_bin = ConfigServer::Config->get_config('HOST');
+            if ( -e $host_bin and -x $host_bin ) {
                 my $cmdpid;
                 eval {
                     local $SIG{__DIE__} = undef;
                     local $SIG{'ALRM'}  = sub { die };
                     alarm(10);
                     my ( $childin, $childout );
-                    $cmdpid = open3( $childin, $childout, $childout, $config{HOST}, "-W", "5", $ip );
+                    $cmdpid = IPC::Open3::open3( $childin, $childout, $childout, $host_bin, "-W", "5", $ip );
                     close $childin;
                     my @results = <$childout>;
                     waitpid( $cmdpid, 0 );
@@ -102,8 +206,8 @@ sub iplookup {
                         local $SIG{__DIE__} = undef;
                         local $SIG{'ALRM'}  = sub { die };
                         alarm(10);
-                        my $ipaddr = inet_aton($ip);
-                        $host = gethostbyaddr( $ipaddr, AF_INET );
+                        my $ipaddr = Socket::inet_aton($ip);
+                        $host = gethostbyaddr( $ipaddr, Socket::AF_INET );
                         alarm(0);
                     };
                     alarm(0);
@@ -114,26 +218,28 @@ sub iplookup {
                         local $SIG{'ALRM'}  = sub { die };
                         alarm(10);
                         eval('use Socket6;');    ##no critic
-                        my $ipaddr = inet_pton( AF_INET6, $ip );
-                        $host = gethostbyaddr( $ipaddr, AF_INET6 );
+                        my $ipaddr = Socket::inet_pton( Socket::AF_INET6, $ip );
+                        $host = gethostbyaddr( $ipaddr, Socket::AF_INET6 );
                         alarm(0);
                     };
                     alarm(0);
                 }
             }
-            sysopen( DNS, "/var/lib/csf/csf.dnscache", O_WRONLY | O_APPEND | O_CREAT );
-            flock( DNS, LOCK_EX );
+            sysopen( DNS, "/var/lib/csf/csf.dnscache", Fcntl::O_WRONLY | Fcntl::O_APPEND | Fcntl::O_CREAT );
+            flock( DNS, Fcntl::LOCK_EX );
             print DNS "$ip|$ip|$host\n";
             close(DNS);
         }
         if ( $host eq "" ) { $host = "-" }
     }
 
-    if ( ( $config{CC_LOOKUPS} and $iptype == 4 ) or ( $config{CC_LOOKUPS} and $config{CC6_LOOKUPS} and $iptype == 6 ) ) {
+    my $cc_lookups  = ConfigServer::Config->get_config('CC_LOOKUPS');
+    my $cc6_lookups = ConfigServer::Config->get_config('CC6_LOOKUPS');
+    if ( ( $cc_lookups and $iptype == 4 ) or ( $cc_lookups and $cc6_lookups and $iptype == 6 ) ) {
         my @result;
         eval {
             local $SIG{__DIE__} = undef;
-            @result = &geo_binary( $ip, $iptype );
+            @result = geo_binary( $ip, $iptype );
         };
         my $asn = $result[4];
         if   ( $result[0] eq "" ) { $result[0] = "-" }
@@ -143,14 +249,14 @@ sub iplookup {
         if   ( $result[4] eq "" ) { $result[4] = "-" }
         else                      { $result[4] = "[$result[4]]" }
 
-        if ( $config{CC_LOOKUPS} == 3 ) {
+        if ( $cc_lookups == 3 ) {
             if ($cconly) { return ( $result[0], $asn ) }
             my $return = "$ip ($result[0]/$result[1]/$result[2]/$result[3]/$host/$result[4])";
             if ( $result[0] eq "-" ) { $return = "$ip ($host)" }
             $return =~ s/'|"//g;
             return $return;
         }
-        elsif ( $config{CC_LOOKUPS} == 2 or $config{CC_LOOKUPS} == 4 ) {
+        elsif ( $cc_lookups == 2 or $cc_lookups == 4 ) {
             if ($cconly) { return $result[0] }
             my $return = "$ip ($result[0]/$result[1]/$result[2]/$result[3]/$host)";
             if ( $result[0] eq "-" ) { $return = "$ip ($host)" }
@@ -166,7 +272,7 @@ sub iplookup {
         }
     }
 
-    if ( $config{LF_LOOKUPS} ) {
+    if ( ConfigServer::Config->get_config('LF_LOOKUPS') ) {
         if ( $host eq "-" ) { $host = "Unknown" }
         my $return = "$ip ($host)";
         $return =~ s/'//g;
@@ -177,9 +283,6 @@ sub iplookup {
     }
 }
 
-# end iplookup
-###############################################################################
-# start geo_binary
 sub geo_binary {
     my $myip = shift;
     my $ipv  = shift;
@@ -190,8 +293,9 @@ sub geo_binary {
     my $type  = $netip->iptype();
     if ( $type eq "PRIVATE" ) { return }
 
-    if ( $config{CC_LOOKUPS} == 4 ) {
-        my ( $status, $text ) = $urlget->urlget("http://api.db-ip.com/v2/free/$myip");
+    my $cc_lookups = ConfigServer::Config->get_config('CC_LOOKUPS');
+    if ( $cc_lookups == 4 ) {
+        my ( $status, $text ) = _urlget()->urlget("http://api.db-ip.com/v2/free/$myip");
         if ($status) { $text = "" }
         if ( $text ne "" ) {
             my $json = JSON::Tiny::decode_json($text);
@@ -203,9 +307,10 @@ sub geo_binary {
         return;
     }
 
-    if ( $config{CC_SRC} eq "" or $config{CC_SRC} eq "1" ) {
+    my $cc_src = ConfigServer::Config->get_config('CC_SRC');
+    if ( $cc_src eq "" or $cc_src eq "1" ) {
         my $file = "/var/lib/csf/Geo/GeoLite2-Country-Blocks-IPv${ipv}.csv";
-        if ( $config{CC_LOOKUPS} == 2 or $config{CC_LOOKUPS} == 3 ) {
+        if ( $cc_lookups == 2 or $cc_lookups == 3 ) {
             $file = "/var/lib/csf/Geo/GeoLite2-City-Blocks-IPv${ipv}.csv";
         }
         my $start = 0;
@@ -216,7 +321,7 @@ sub geo_binary {
         my $range;
         my $geoid;
         open( my $CSV, "<", $file );
-        flock( $CSV, LOCK_SH );
+        flock( $CSV, Fcntl::LOCK_SH );
 
         while (1) {
             my $mid = int( ( $end + $start ) / 2 );
@@ -249,7 +354,7 @@ sub geo_binary {
 
         if ( $geoid > 0 ) {
             my $file = "/var/lib/csf/Geo/GeoLite2-Country-Locations-en.csv";
-            if ( $config{CC_LOOKUPS} == 2 or $config{CC_LOOKUPS} == 3 ) {
+            if ( $cc_lookups == 2 or $cc_lookups == 3 ) {
                 $file = "/var/lib/csf/Geo/GeoLite2-City-Locations-en.csv";
             }
             my $start = 0;
@@ -258,7 +363,7 @@ sub geo_binary {
             my $cnt = 0;
             my $last;
             open( my $CSV, "<", $file );
-            flock( $CSV, LOCK_SH );
+            flock( $CSV, Fcntl::LOCK_SH );
 
             while (1) {
                 my $mid = int( ( $end + $start ) / 2 );
@@ -293,7 +398,7 @@ sub geo_binary {
             close($CSV);
         }
 
-        if ( $config{CC_LOOKUPS} == 3 ) {
+        if ( $cc_lookups == 3 ) {
             my $file  = "/var/lib/csf/Geo/GeoLite2-ASN-Blocks-IPv${ipv}.csv";
             my $start = 0;
             my $end   = -s $file;
@@ -304,7 +409,7 @@ sub geo_binary {
             my $asn;
             my $asnorg;
             open( my $CSV, "<", $file );
-            flock( $CSV, LOCK_SH );
+            flock( $CSV, Fcntl::LOCK_SH );
 
             while (1) {
                 my $mid = int( ( $end + $start ) / 2 );
@@ -337,10 +442,10 @@ sub geo_binary {
             close($CSV);
         }
     }
-    elsif ( $config{CC_SRC} eq "2" ) {
+    elsif ( $cc_src eq "2" ) {
         my %country_name;
         open( my $CC, "<", "/var/lib/csf/Geo/countryInfo.txt" );
-        flock( $CC, LOCK_SH );
+        flock( $CC, Fcntl::LOCK_SH );
         foreach my $line (<$CC>) {
             if ( $line eq "" or $line =~ /^\#/ or $line =~ /^\s/ ) { next }
             my ( $cc, undef, undef, undef, $country, undef ) = split( /\t/, $line );
@@ -349,7 +454,7 @@ sub geo_binary {
         close($CC);
 
         my $file = "/var/lib/csf/Geo/dbip-country-lite.csv";
-        if ( $config{CC_LOOKUPS} == 2 or $config{CC_LOOKUPS} == 3 ) {
+        if ( $cc_lookups == 2 or $cc_lookups == 3 ) {
             $file = "/var/lib/csf/Geo/dbip-city-lite.csv";
         }
         my $start = 0;
@@ -360,7 +465,7 @@ sub geo_binary {
         my $range;
         my $geoid;
         open( my $CSV, "<", $file );
-        flock( $CSV, LOCK_SH );
+        flock( $CSV, Fcntl::LOCK_SH );
 
         while (1) {
             my $mid = int( ( $end + $start ) / 2 );
@@ -390,7 +495,7 @@ sub geo_binary {
                     $start = $mid + 1;
                 }
                 else {
-                    if ( $config{CC_LOOKUPS} == 1 )  { $country_iso_code = $cc_lookups1 }
+                    if ( $cc_lookups == 1 )          { $country_iso_code = $cc_lookups1 }
                     if ( $country_iso_code eq "ZZ" ) { last }
                     $return[0] = $country_iso_code;
                     $return[1] = $country_name{$country_iso_code};
@@ -404,7 +509,7 @@ sub geo_binary {
         }
         close($CSV);
 
-        if ( $config{CC_LOOKUPS} == 3 ) {
+        if ( $cc_lookups == 3 ) {
             my $file  = "/var/lib/csf/Geo/ip2asn-combined.tsv";
             my $start = 0;
             my $end   = -s $file;
@@ -415,7 +520,7 @@ sub geo_binary {
             my $asn;
             my $asnorg;
             open( my $CSV, "<", $file );
-            flock( $CSV, LOCK_SH );
+            flock( $CSV, Fcntl::LOCK_SH );
 
             while (1) {
                 my $mid = int( ( $end + $start ) / 2 );
@@ -459,7 +564,10 @@ sub geo_binary {
     return @return;
 }
 
-# end geo_binary
-###############################################################################
-
 1;
+
+=head1 SEE ALSO
+
+L<ConfigServer::CheckIP>, L<ConfigServer::Config>, L<ConfigServer::URLGet>
+
+=cut

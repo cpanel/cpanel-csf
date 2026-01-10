@@ -77,6 +77,94 @@ require_ok('ConfigServer::CloudFlare');  # NEVER DO THIS
 use_ok('ConfigServer::CloudFlare');      # NEVER DO THIS
 ```
 
+### Mocking ConfigServer::Config
+
+When testing modules that depend on `ConfigServer::Config`, **ALWAYS use MockConfig** to isolate tests from distribution configuration files and behavior.
+
+#### Using MockConfig
+
+MockConfig is a reusable test utility located at `t/lib/MockConfig.pm` that provides:
+- Prevention of actual `ConfigServer::Config` module loading via `$INC` manipulation
+- Clean configuration state management between tests
+- Simple API for setting test-specific configuration values
+
+**Example usage:**
+
+```perl
+use lib 't/lib';
+use MockConfig;
+
+# Set configuration values for your test
+set_config(
+    LF_LOOKUPS  => 1,
+    CC_LOOKUPS  => 2,
+    HOST        => '/usr/bin/host',
+);
+
+# Run your test code
+my $result = some_function_that_uses_config();
+
+# Clear configuration between subtests
+clear_config();
+```
+
+#### Benefits of MockConfig
+
+- **Test Isolation**: Tests don't depend on system configuration files or distribution-specific behavior
+- **Reproducibility**: Tests produce consistent results across different environments
+- **Speed**: No file I/O for configuration loading
+- **Clarity**: Configuration values are explicit in the test code
+
+#### MockConfig API
+
+```perl
+# Set one or more configuration values
+set_config(
+    KEY1 => 'value1',
+    KEY2 => 'value2',
+);
+
+# Clear all configuration (use between subtests)
+clear_config();
+
+# Get the mock configuration hash (for advanced usage)
+my $config = get_mock_config();
+```
+
+#### When to Use MockConfig
+
+Use MockConfig when testing any module that calls:
+- `ConfigServer::Config->loadconfig()`
+- `ConfigServer::Config->get_config($key)`
+- `ConfigServer::Config->config()`
+- Any other `ConfigServer::Config` methods
+
+**Example test structure:**
+
+```perl
+use Test2::V0;
+use Test2::Plugin::NoWarnings;
+
+use lib 't/lib';
+use MockConfig;
+
+use YourModule qw(your_function);
+
+subtest 'test with specific config' => sub {
+    set_config(
+        OPTION1 => 1,
+        OPTION2 => 'test',
+    );
+
+    my $result = your_function();
+    is($result, 'expected', 'function behaves as expected');
+
+    clear_config();
+};
+
+done_testing;
+```
+
 ## Example header code.
 This is what the header for most tests should look like, depending on the year you modified the file.
 
