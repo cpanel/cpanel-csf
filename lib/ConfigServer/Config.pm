@@ -115,7 +115,7 @@ sub loadconfig {
     }
 
     $config{IPTABLESWAIT} = $config{WAITLOCK} ? "--wait" : "";
-    my @results = systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} --version");
+    my @results = _systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} --version");
     if ( $results[0] =~ /iptables v(\d+\.\d+\.\d+)/ ) {
         $version = $1;
 
@@ -180,21 +180,21 @@ sub loadconfig {
     }
 
     if ( $config{DROP_OUT} ne "DROP" ) {
-        my @data = systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} -N TESTDENY");
+        my @data = _systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} -N TESTDENY");
         unless ( length $data[0] && $data[0] =~ /^iptables/ ) {
-            my @ipdata = systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} -I TESTDENY -j $config{DROP_OUT}");
+            my @ipdata = _systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} -I TESTDENY -j $config{DROP_OUT}");
             if ( length $ipdata[0] && $ipdata[0] =~ /^iptables/ ) {
                 $warning .= "*WARNING* Cannot use DROP_OUT value of [$config{DROP_OUT}] on this server, set to DROP\n";
                 $config{DROP_OUT} = "DROP";
             }
-            systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} -F TESTDENY");
-            systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} -X TESTDENY");
+            _systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} -F TESTDENY");
+            _systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} -X TESTDENY");
         }
     }
-    my @raw = systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} -L PREROUTING -t raw");
+    my @raw = _systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} -L PREROUTING -t raw");
     if   ( $raw[0] =~ /^Chain PREROUTING/ ) { $config{RAW} = 1 }
     else                                    { $config{RAW} = 0 }
-    my @mangle = systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} -L PREROUTING -t mangle");
+    my @mangle = _systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} -L PREROUTING -t mangle");
     if   ( $mangle[0] =~ /^Chain PREROUTING/ ) { $config{MANGLE} = 1 }
     else                                       { $config{MANGLE} = 0 }
 
@@ -204,7 +204,7 @@ sub loadconfig {
         if ( $config{CONNLIMIT}     and version->parse($version) >= version->parse("1.4.3") )  { $config{CONNLIMIT6}     = 1 }
         if ( $config{MESSENGER}     and version->parse($version) >= version->parse("1.4.17") ) { $config{MESSENGER6}     = 1 }
         if ( $config{SMTP_REDIRECT} and version->parse($version) >= version->parse("1.4.17") ) { $config{SMTP_REDIRECT6} = 1 }
-        my @ipdata = systemcmd("$config{IP6TABLES} $config{IPTABLESWAIT} -t nat -L POSTROUTING -nv");
+        my @ipdata = _systemcmd("$config{IP6TABLES} $config{IPTABLESWAIT} -t nat -L POSTROUTING -nv");
         if ( $ipdata[0] =~ /^Chain POSTROUTING/ ) {
             $config{NAT6} = 1;
         }
@@ -221,10 +221,10 @@ sub loadconfig {
                 $warning .= "*WARNING* ip6tables nat table not present - disabling DOCKER for IPv6\n";
             }
         }
-        my @raw = systemcmd("$config{IP6TABLES} $config{IPTABLESWAIT} -L PREROUTING -t raw");
+        my @raw = _systemcmd("$config{IP6TABLES} $config{IPTABLESWAIT} -L PREROUTING -t raw");
         if   ( $raw[0] =~ /^Chain PREROUTING/ ) { $config{RAW6} = 1 }
         else                                    { $config{RAW6} = 0 }
-        my @mangle = systemcmd("$config{IP6TABLES} $config{IPTABLESWAIT} -L PREROUTING -t mangle");
+        my @mangle = _systemcmd("$config{IP6TABLES} $config{IPTABLESWAIT} -L PREROUTING -t mangle");
         if   ( $mangle[0] =~ /^Chain PREROUTING/ ) { $config{MANGLE6} = 1 }
         else                                       { $config{MANGLE6} = 0 }
     }
@@ -359,7 +359,7 @@ sub loadconfig {
         }
     }
 
-    my @ipdata = systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} -t nat -L POSTROUTING -nv");
+    my @ipdata = _systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} -t nat -L POSTROUTING -nv");
     if ( $ipdata[0] =~ /^Chain POSTROUTING/ ) {
         $config{NAT} = 1;
     }
@@ -392,7 +392,7 @@ sub loadconfig {
         $config{cc_cc}      = "http://download.geonames.org/export/dump/countryInfo.txt";
     }
 
-    $config{DOWNLOADSERVER} = getdownloadserver();
+    $config{DOWNLOADSERVER} = _getdownloadserver();
 
     $self->{warning} = $warning;
 
@@ -401,15 +401,15 @@ sub loadconfig {
 
 # end loadconfig
 ###############################################################################
-# start config
-sub config {
+# start _config
+sub _config {
     return %config;
 }
 
-# end config
+# end _config
 ###############################################################################
-# start resetconfig
-sub resetconfig {
+# start _resetconfig
+sub _resetconfig {
     undef %config;
     undef %configsetting;
     undef $warning;
@@ -417,14 +417,14 @@ sub resetconfig {
     return;
 }
 
-# end resetconfig
+# end _resetconfig
 ###############################################################################
-# start configsetting
-sub configsetting {
+# start _configsetting
+sub _configsetting {
     return %configsetting;
 }
 
-# end configsetting
+# end _configsetting
 ###############################################################################
 # start ipv4reg
 sub ipv4reg {
@@ -440,8 +440,8 @@ sub ipv6reg {
 
 # end ipv6reg
 ###############################################################################
-# start systemcmd
-sub systemcmd {
+# start _systemcmd
+sub _systemcmd {
     my @command = @_;
     my @result;
 
@@ -457,10 +457,10 @@ sub systemcmd {
     return @result;
 }
 
-# end systemcmd
+# end _systemcmd
 ###############################################################################
-## start getdownloadserver
-sub getdownloadserver {
+## start _getdownloadserver
+sub _getdownloadserver {
     my @servers;
     my $downloadservers = "/etc/csf/downloadservers";
     my $chosen;
@@ -474,7 +474,7 @@ sub getdownloadserver {
 ##	if ($chosen eq "") {$chosen = "download.configserver.com"}
     return $chosen;
 }
-## end getdownloadserver
+## end _getdownloadserver
 ###############################################################################
 
 1;

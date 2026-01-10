@@ -16,13 +16,9 @@ use ConfigServer::Config;
 
 # Test module loading and basic functionality
 subtest 'Module basics' => sub {
-    ok( ConfigServer::Config->can('loadconfig'),    'loadconfig method exists' );
-    ok( ConfigServer::Config->can('config'),        'config method exists' );
-    ok( ConfigServer::Config->can('resetconfig'),   'resetconfig method exists' );
-    ok( ConfigServer::Config->can('configsetting'), 'configsetting method exists' );
-    ok( ConfigServer::Config->can('ipv4reg'),       'ipv4reg method exists' );
-    ok( ConfigServer::Config->can('ipv6reg'),       'ipv6reg method exists' );
-    ok( ConfigServer::Config->can('systemcmd'),     'systemcmd method exists' );
+    ok( ConfigServer::Config->can('loadconfig'), 'loadconfig method exists' );
+    ok( ConfigServer::Config->can('ipv4reg'),    'ipv4reg method exists' );
+    ok( ConfigServer::Config->can('ipv6reg'),    'ipv6reg method exists' );
 };
 
 # Test package exports
@@ -68,25 +64,25 @@ subtest 'IPv6 regex validation' => sub {
 
 # Test resetconfig
 subtest 'resetconfig functionality' => sub {
-    ConfigServer::Config->resetconfig();
+    ConfigServer::Config::_resetconfig();
 
-    my %config = ConfigServer::Config->config();
+    my %config = ConfigServer::Config::_config();
     is( scalar keys %config, 0, 'config is empty after resetconfig' );
 
-    my %configsetting = ConfigServer::Config->configsetting();
+    my %configsetting = ConfigServer::Config::_configsetting();
     is( scalar keys %configsetting, 0, 'configsetting is empty after resetconfig' );
 };
 
 # Test systemcmd
 subtest 'systemcmd basic execution' => sub {
-    my @result = ConfigServer::Config::systemcmd( 'echo', 'test' );
+    my @result = ConfigServer::Config::_systemcmd( 'echo', 'test' );
     is( \@result, ['test'], 'systemcmd executes echo command' );
 
-    @result = ConfigServer::Config::systemcmd('true');
+    @result = ConfigServer::Config::_systemcmd('true');
     is( ref \@result, 'ARRAY', 'systemcmd returns array for true command' );
 
     # Test that systemcmd handles multiline output
-    @result = ConfigServer::Config::systemcmd( 'printf', "line1\\nline2\\nline3" );
+    @result = ConfigServer::Config::_systemcmd( 'printf', "line1\\nline2\\nline3" );
     is( scalar @result, 3,       'systemcmd captures multiple lines' );
     is( $result[0],     'line1', 'first line captured correctly' );
     is( $result[1],     'line2', 'second line captured correctly' );
@@ -95,10 +91,10 @@ subtest 'systemcmd basic execution' => sub {
 
 # Test config methods return types
 subtest 'config return types' => sub {
-    my %config = ConfigServer::Config->config();
+    my %config = ConfigServer::Config::_config();
     is( ref \%config, 'HASH', 'config() returns hash' );
 
-    my %configsetting = ConfigServer::Config->configsetting();
+    my %configsetting = ConfigServer::Config::_configsetting();
     is( ref \%configsetting, 'HASH', 'configsetting() returns hash' );
 
     my $ipv4 = ConfigServer::Config->ipv4reg();
@@ -168,12 +164,12 @@ subtest 'systemcmd handles errors gracefully' => sub {
 
     # Command that doesn't exist should return empty or handle gracefully
     ok lives {
-        my @result = ConfigServer::Config::systemcmd('this_command_does_not_exist_12345');
+        my @result = ConfigServer::Config::_systemcmd('this_command_does_not_exist_12345');
     }, 'systemcmd handles non-existent commands without dying';
 
     # Test with stderr output
     ok lives {
-        my @result = ConfigServer::Config::systemcmd( 'sh', '-c', 'echo error >&2' );
+        my @result = ConfigServer::Config::_systemcmd( 'sh', '-c', 'echo error >&2' );
     }, 'systemcmd handles stderr without dying';
 };
 
