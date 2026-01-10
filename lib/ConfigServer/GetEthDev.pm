@@ -80,7 +80,6 @@ use POSIX      ();
 
 use ConfigServer::Config  ();
 use ConfigServer::CheckIP qw(checkip);
-use ConfigServer::Logger;
 
 our $VERSION = 1.01;
 
