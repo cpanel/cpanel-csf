@@ -1,4 +1,4 @@
 .PHONY: test
 
 test:
-	prove -wl t/*.t
+	yath test -j8 t/*.t
