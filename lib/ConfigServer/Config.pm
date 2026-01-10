@@ -21,17 +21,17 @@
 package ConfigServer::Config;
 
 use strict;
-use lib '/usr/local/csf/lib';
-use version;
-use Fcntl qw(:DEFAULT :flock);
-use Carp;
-use IPC::Open3;
-use ConfigServer::Slurp qw(slurp);
+use warnings;
 
-use Exporter qw(import);
-our $VERSION   = 1.05;
-our @ISA       = qw(Exporter);
-our @EXPORT_OK = qw();
+use version    ();
+use Carp       ();
+use IPC::Open3 ();
+use Fcntl      ();
+
+use lib '/usr/local/csf/lib';
+use ConfigServer::Slurp ();
+
+our $VERSION = 1.05;
 
 our $ipv4reg = qr/(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/;
 our $ipv6reg =
@@ -63,7 +63,7 @@ sub loadconfig {
     undef %config;
     undef $warning;
 
-    my @file = slurp($configfile);
+    my @file = ConfigServer::Slurp::slurp($configfile);
     foreach my $line (@file) {
         $line =~ s/$cleanreg//g;
         if ( $line =~ /^(\s|\#|$)/ ) { next }
@@ -74,10 +74,10 @@ sub loadconfig {
             $value = $1;
         }
         else {
-            croak "*Error* Invalid configuration line [$line] in $configfile";
+            Carp::croak "*Error* Invalid configuration line [$line] in $configfile";
         }
         if ( $configsetting{$name} ) {
-            croak "*Error* Setting $name is repeated in $configfile - you must remove the duplicates and then restart csf and lfd";
+            Carp::croak "*Error* Setting $name is repeated in $configfile - you must remove the duplicates and then restart csf and lfd";
         }
         $config{$name}        = $value;
         $configsetting{$name} = 1;
@@ -100,11 +100,11 @@ sub loadconfig {
     }
 
     if ( $config{IPTABLES} eq "" or !( -x $config{IPTABLES} ) ) {
-        croak "*Error* The path to iptables is either not set or incorrect for IPTABLES [$config{IPTABLES}] in /etc/csf/csf.conf";
+        Carp::croak "*Error* The path to iptables is either not set or incorrect for IPTABLES [$config{IPTABLES}] in /etc/csf/csf.conf";
     }
 
     if ( -e "/proc/sys/net/netfilter/nf_conntrack_helper" and !$config{USE_FTPHELPER} ) {
-        my $setting = slurp("/proc/sys/net/netfilter/nf_conntrack_helper");
+        my $setting = ConfigServer::Slurp::slurp("/proc/sys/net/netfilter/nf_conntrack_helper");
         chomp $setting;
 
         if ( $setting == 0 ) {
@@ -115,7 +115,7 @@ sub loadconfig {
     }
 
     $config{IPTABLESWAIT} = $config{WAITLOCK} ? "--wait" : "";
-    my @results = &systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} --version");
+    my @results = systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} --version");
     if ( $results[0] =~ /iptables v(\d+\.\d+\.\d+)/ ) {
         $version = $1;
 
@@ -127,7 +127,7 @@ sub loadconfig {
                 local $SIG{'ALRM'}  = sub { die "alarm\n" };
                 alarm( $config{WAITLOCK_TIMEOUT} );
                 my ( $childin, $childout );
-                my $cmdpid = open3( $childin, $childout, $childout, "$config{IPTABLES} --wait -L OUTPUT -nv" );
+                my $cmdpid = IPC::Open3::open3( $childin, $childout, $childout, "$config{IPTABLES} --wait -L OUTPUT -nv" );
                 @ipdata = <$childout>;
                 waitpid( $cmdpid, 0 );
                 chomp @ipdata;
@@ -136,7 +136,7 @@ sub loadconfig {
             };
             alarm(0);
             if ( $@ eq "alarm\n" ) {
-                croak "*ERROR* Timeout after $config{WAITLOCK_TIMEOUT} seconds for iptables --wait - WAITLOCK\n";
+                Carp::croak "*ERROR* Timeout after $config{WAITLOCK_TIMEOUT} seconds for iptables --wait - WAITLOCK\n";
             }
             if ( $ipdata[0] =~ /^Chain OUTPUT/ ) {
                 $config{IPTABLESWAIT} = "--wait";
@@ -180,21 +180,21 @@ sub loadconfig {
     }
 
     if ( $config{DROP_OUT} ne "DROP" ) {
-        my @data = &systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} -N TESTDENY");
+        my @data = systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} -N TESTDENY");
         unless ( length $data[0] && $data[0] =~ /^iptables/ ) {
-            my @ipdata = &systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} -I TESTDENY -j $config{DROP_OUT}");
+            my @ipdata = systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} -I TESTDENY -j $config{DROP_OUT}");
             if ( length $ipdata[0] && $ipdata[0] =~ /^iptables/ ) {
                 $warning .= "*WARNING* Cannot use DROP_OUT value of [$config{DROP_OUT}] on this server, set to DROP\n";
                 $config{DROP_OUT} = "DROP";
             }
-            &systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} -F TESTDENY");
-            &systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} -X TESTDENY");
+            systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} -F TESTDENY");
+            systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} -X TESTDENY");
         }
     }
-    my @raw = &systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} -L PREROUTING -t raw");
+    my @raw = systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} -L PREROUTING -t raw");
     if   ( $raw[0] =~ /^Chain PREROUTING/ ) { $config{RAW} = 1 }
     else                                    { $config{RAW} = 0 }
-    my @mangle = &systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} -L PREROUTING -t mangle");
+    my @mangle = systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} -L PREROUTING -t mangle");
     if   ( $mangle[0] =~ /^Chain PREROUTING/ ) { $config{MANGLE} = 1 }
     else                                       { $config{MANGLE} = 0 }
 
@@ -204,7 +204,7 @@ sub loadconfig {
         if ( $config{CONNLIMIT}     and version->parse($version) >= version->parse("1.4.3") )  { $config{CONNLIMIT6}     = 1 }
         if ( $config{MESSENGER}     and version->parse($version) >= version->parse("1.4.17") ) { $config{MESSENGER6}     = 1 }
         if ( $config{SMTP_REDIRECT} and version->parse($version) >= version->parse("1.4.17") ) { $config{SMTP_REDIRECT6} = 1 }
-        my @ipdata = &systemcmd("$config{IP6TABLES} $config{IPTABLESWAIT} -t nat -L POSTROUTING -nv");
+        my @ipdata = systemcmd("$config{IP6TABLES} $config{IPTABLESWAIT} -t nat -L POSTROUTING -nv");
         if ( $ipdata[0] =~ /^Chain POSTROUTING/ ) {
             $config{NAT6} = 1;
         }
@@ -221,10 +221,10 @@ sub loadconfig {
                 $warning .= "*WARNING* ip6tables nat table not present - disabling DOCKER for IPv6\n";
             }
         }
-        my @raw = &systemcmd("$config{IP6TABLES} $config{IPTABLESWAIT} -L PREROUTING -t raw");
+        my @raw = systemcmd("$config{IP6TABLES} $config{IPTABLESWAIT} -L PREROUTING -t raw");
         if   ( $raw[0] =~ /^Chain PREROUTING/ ) { $config{RAW6} = 1 }
         else                                    { $config{RAW6} = 0 }
-        my @mangle = &systemcmd("$config{IP6TABLES} $config{IPTABLESWAIT} -L PREROUTING -t mangle");
+        my @mangle = systemcmd("$config{IP6TABLES} $config{IPTABLESWAIT} -L PREROUTING -t mangle");
         if   ( $mangle[0] =~ /^Chain PREROUTING/ ) { $config{MANGLE6} = 1 }
         else                                       { $config{MANGLE6} = 0 }
     }
@@ -245,7 +245,7 @@ sub loadconfig {
     }
     if ( -e "/proc/vz/veinfo" ) { $config{VPS} = 1 }
     else {
-        foreach my $line ( slurp("/proc/self/status") ) {
+        foreach my $line ( ConfigServer::Slurp::slurp("/proc/self/status") ) {
             $line =~ s/$cleanreg//g;
             if ( $line =~ /^envID:\s*(\d+)\s*$/ ) {
                 if ( $1 > 0 ) {
@@ -330,7 +330,7 @@ sub loadconfig {
 
     if ( $config{IPV6} and $config{IPV6_SPI} ) {
         open( my $FH, "<", "/proc/sys/kernel/osrelease" );
-        flock( $FH, LOCK_SH );
+        Fcntl::flock( $FH, Fcntl::LOCK_SH );
         my @data = <$FH>;
         close($FH);
         chomp @data;
@@ -349,17 +349,17 @@ sub loadconfig {
     if ( ( $config{CLUSTER_SENDTO} or $config{CLUSTER_RECVFROM} ) ) {
         if ( -f $config{CLUSTER_SENDTO} ) {
             if ( $config{DEBUG} >= 1 ) { $warning .= "*DEBUG* CLUSTER_SENDTO retrieved from $config{CLUSTER_SENDTO} and set to: " }
-            $config{CLUSTER_SENDTO} = join( ",", slurp( $config{CLUSTER_SENDTO} ) );
+            $config{CLUSTER_SENDTO} = join( ",", ConfigServer::Slurp::slurp( $config{CLUSTER_SENDTO} ) );
             if ( $config{DEBUG} >= 1 ) { $warning .= "[$config{CLUSTER_SENDTO}]\n" }
         }
         if ( -f $config{CLUSTER_RECVFROM} ) {
             if ( $config{DEBUG} >= 1 ) { $warning .= "*DEBUG* CLUSTER_RECVFROM retrieved from $config{CLUSTER_RECVFROM} and set to: " }
-            $config{CLUSTER_RECVFROM} = join( ",", slurp( $config{CLUSTER_RECVFROM} ) );
+            $config{CLUSTER_RECVFROM} = join( ",", ConfigServer::Slurp::slurp( $config{CLUSTER_RECVFROM} ) );
             if ( $config{DEBUG} >= 1 ) { $warning .= "[$config{CLUSTER_RECVFROM}]\n" }
         }
     }
 
-    my @ipdata = &systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} -t nat -L POSTROUTING -nv");
+    my @ipdata = systemcmd("$config{IPTABLES} $config{IPTABLESWAIT} -t nat -L POSTROUTING -nv");
     if ( $ipdata[0] =~ /^Chain POSTROUTING/ ) {
         $config{NAT} = 1;
     }
@@ -392,7 +392,7 @@ sub loadconfig {
         $config{cc_cc}      = "http://download.geonames.org/export/dump/countryInfo.txt";
     }
 
-    $config{DOWNLOADSERVER} = &getdownloadserver;
+    $config{DOWNLOADSERVER} = getdownloadserver();
 
     $self->{warning} = $warning;
 
@@ -447,7 +447,7 @@ sub systemcmd {
 
     eval {
         my ( $childin, $childout );
-        my $pid = open3( $childin, $childout, $childout, @command );
+        my $pid = IPC::Open3::open3( $childin, $childout, $childout, @command );
         @result = <$childout>;
         waitpid( $pid, 0 );
         chomp @result;
@@ -465,7 +465,7 @@ sub getdownloadserver {
     my $downloadservers = "/etc/csf/downloadservers";
     my $chosen;
     if ( -e $downloadservers ) {
-        foreach my $line ( slurp($downloadservers) ) {
+        foreach my $line ( ConfigServer::Slurp::slurp($downloadservers) ) {
             $line =~ s/$cleanreg//g;
             if ( $line =~ /^download/ ) { push @servers, $line }
         }
