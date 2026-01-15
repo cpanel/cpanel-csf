@@ -33,7 +33,8 @@ use ConfigServer::Config;
 use ConfigServer::CheckIP qw(checkip);
 use ConfigServer::Logger  qw(logfile);
 use ConfigServer::URLGet;
-use ConfigServer::Slurp  qw(slurp);
+use Cpanel::Slurper ();
+use ConfigServer::Slurp ();
 use ConfigServer::GetIPs qw(getips);
 use ConfigServer::GetEthDev;
 
@@ -176,7 +177,7 @@ sub messenger {
         foreach my $serverports ( split( /\,/, $config{MESSENGER_HTTPS_IN} ) ) { $messengerports{$serverports} = 1 }
         foreach my $file        ( glob( $config{MESSENGER_HTTPS_CONF} ) ) {
             if ( -e $file ) {
-                foreach my $line ( slurp($file) ) {
+                foreach my $line ( Cpanel::Slurper::read_lines($file) ) {
                     $line =~ s/\'|\"//g;
                     if ( $line =~ /^\s*<VirtualHost\s+[^\>]+>/ ) {
                         $start = 1;
@@ -611,7 +612,7 @@ sub messengerv2 {
         }
         foreach my $file ( glob( $config{MESSENGER_HTTPS_CONF} ) ) {
             if ( -e $file ) {
-                foreach my $line ( slurp($file) ) {
+                foreach my $line ( Cpanel::Slurper::read_lines($file) ) {
                     $line =~ s/\'|\"//g;
                     if ( $line =~ /^\s*<VirtualHost\s+[^\>]+>/ ) {
                         $start = 1;
@@ -834,7 +835,7 @@ EOF
     else {
         my $file = "/etc/httpd/conf/extra/httpd-hostname.conf";
         if ( -e $file ) {
-            foreach my $line ( slurp($file) ) {
+            foreach my $line ( Cpanel::Slurper::read_lines($file) ) {
                 if ( $line =~ /^\s*AddHandler\s+.+\s+\.php/ ) {
                     $phphandler = $line;
                     if ( $config{DEBUG} >= 1 ) { logfile("SSL: PHP Handler found in [$file]") }
@@ -843,7 +844,7 @@ EOF
         }
     }
 
-    foreach my $line ( slurp("/usr/local/csf/tpl/$webserver.main.txt") ) {
+    foreach my $line ( Cpanel::Slurper::read_lines("/usr/local/csf/tpl/$webserver.main.txt") ) {
         $line =~ s/\[PORT\]/$config{MESSENGER_HTML}/g;
         if ( $line =~ /Listen \[::\]:/ and !$config{IPV6} ) { next }
         $line =~ s/\[SERVERNAME\]/$hostname/g;
@@ -855,7 +856,7 @@ EOF
     }
 
     if ( $config{MESSENGER_HTML_IN} ne "" ) {
-        foreach my $line ( slurp("/usr/local/csf/tpl/$webserver.http.txt") ) {
+        foreach my $line ( Cpanel::Slurper::read_lines("/usr/local/csf/tpl/$webserver.http.txt") ) {
             $line =~ s/\[PORT\]/$config{MESSENGER_HTML}/g;
             if ( $line =~ /Listen \[::\]:/ and !$config{IPV6} ) { next }
             $line =~ s/\[SERVERNAME\]/$hostname/g;
@@ -913,7 +914,7 @@ EOF
         my @virtualhost;
         my $start = 0;
         my $key   = $ssldomainkeys[0];
-        foreach my $line ( slurp("/usr/local/csf/tpl/$webserver.https.txt") ) {
+        foreach my $line ( Cpanel::Slurper::read_lines("/usr/local/csf/tpl/$webserver.https.txt") ) {
             if ( $line =~ /^\# Virtualhost start/ ) { $start = 1 }
             if ($start) {
                 if ( $line =~ /^\# Virtualhost end/ ) { $start = 0 }
@@ -1011,7 +1012,7 @@ EOF
         $location = $config{MESSENGERV3LOCATION} . "/csf.messenger.conf";
     }
     elsif ( -f $config{MESSENGERV3LOCATION} ) {
-        my @conf = slurp( $config{MESSENGERV3LOCATION} );
+        my @conf = Cpanel::Slurper::read_lines( $config{MESSENGERV3LOCATION} );
         unless ( grep { $_ =~ m[^Include /var/lib/csf/csf.conf]i } @conf ) {
             sysopen( my $FILE, $config{MESSENGERV3LOCATION}, O_WRONLY | O_APPEND | O_CREAT );
             flock( $FILE, LOCK_EX );
@@ -1055,7 +1056,7 @@ EOF
                 unlink( $config{MESSENGERV3LOCATION} . "/csf.messenger.conf" );
             }
             elsif ( -f $config{MESSENGERV3LOCATION} ) {
-                my @conf = slurp( $config{MESSENGERV3LOCATION} );
+                my @conf = Cpanel::Slurper::read_lines( $config{MESSENGERV3LOCATION} );
                 if ( grep { $_ =~ m[^Include /var/lib/csf/csf.conf]i } @conf ) {
                     sysopen( my $FILE, $config{MESSENGERV3LOCATION}, O_WRONLY | O_CREAT | O_TRUNC );
                     flock( $FILE, LOCK_EX );
@@ -1163,7 +1164,7 @@ sub conftree {
         if ( -e $file ) {
             if ( $config{DEBUG} >= 1 ) { logfile("SSL: Processing [$file]") }
             my $start = 0;
-            foreach my $line ( slurp($file) ) {
+            foreach my $line ( Cpanel::Slurper::read_lines($file) ) {
                 if ( $webserver eq "apache" ) {
                     $line =~ s/\'|\"//g;
                     if ( $line =~ /^\s*ServerRoot\s+\"?(\S+)\"?/ ) {

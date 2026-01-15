@@ -88,6 +88,7 @@ use IPC::Open3 ();
 use Fcntl      ();
 
 use lib '/usr/local/csf/lib';
+use Cpanel::Slurper ();
 use ConfigServer::Slurp ();
 
 our $VERSION = 1.05;
@@ -185,7 +186,7 @@ sub loadconfig {
     undef $warning;
 
     my $cleanreg = ConfigServer::Slurp->cleanreg();
-    my @file     = ConfigServer::Slurp::slurp($configfile);
+    my @file     = Cpanel::Slurper::read_lines($configfile);
     foreach my $line (@file) {
         $line =~ s/$cleanreg//g;
         if ( $line =~ /^(\s|\#|$)/ ) { next }
@@ -226,7 +227,7 @@ sub loadconfig {
     }
 
     if ( -e "/proc/sys/net/netfilter/nf_conntrack_helper" and !$config{USE_FTPHELPER} ) {
-        my $setting = ConfigServer::Slurp::slurp("/proc/sys/net/netfilter/nf_conntrack_helper");
+        my ($setting) = Cpanel::Slurper::read_lines("/proc/sys/net/netfilter/nf_conntrack_helper");
         chomp $setting;
 
         if ( $setting == 0 ) {
@@ -367,7 +368,7 @@ sub loadconfig {
     }
     if ( -e "/proc/vz/veinfo" ) { $config{VPS} = 1 }
     else {
-        foreach my $line ( ConfigServer::Slurp::slurp("/proc/self/status") ) {
+        foreach my $line ( Cpanel::Slurper::read_lines("/proc/self/status") ) {
             $line =~ s/$cleanreg//g;
             if ( $line =~ /^envID:\s*(\d+)\s*$/ ) {
                 if ( $1 > 0 ) {
@@ -471,12 +472,12 @@ sub loadconfig {
     if ( ( $config{CLUSTER_SENDTO} or $config{CLUSTER_RECVFROM} ) ) {
         if ( -f $config{CLUSTER_SENDTO} ) {
             if ( $config{DEBUG} >= 1 ) { $warning .= "*DEBUG* CLUSTER_SENDTO retrieved from $config{CLUSTER_SENDTO} and set to: " }
-            $config{CLUSTER_SENDTO} = join( ",", ConfigServer::Slurp::slurp( $config{CLUSTER_SENDTO} ) );
+            $config{CLUSTER_SENDTO} = join( ",", Cpanel::Slurper::read_lines( $config{CLUSTER_SENDTO} ) );
             if ( $config{DEBUG} >= 1 ) { $warning .= "[$config{CLUSTER_SENDTO}]\n" }
         }
         if ( -f $config{CLUSTER_RECVFROM} ) {
             if ( $config{DEBUG} >= 1 ) { $warning .= "*DEBUG* CLUSTER_RECVFROM retrieved from $config{CLUSTER_RECVFROM} and set to: " }
-            $config{CLUSTER_RECVFROM} = join( ",", ConfigServer::Slurp::slurp( $config{CLUSTER_RECVFROM} ) );
+            $config{CLUSTER_RECVFROM} = join( ",", Cpanel::Slurper::read_lines( $config{CLUSTER_RECVFROM} ) );
             if ( $config{DEBUG} >= 1 ) { $warning .= "[$config{CLUSTER_RECVFROM}]\n" }
         }
     }
@@ -757,7 +758,7 @@ sub _getdownloadserver {
     my $downloadservers = "/etc/csf/downloadservers";
     my $chosen;
     if ( -e $downloadservers ) {
-        foreach my $line ( ConfigServer::Slurp::slurp($downloadservers) ) {
+        foreach my $line ( Cpanel::Slurper::read_lines($downloadservers) ) {
             $line =~ s/$cleanreg//g;
             if ( $line =~ /^download/ ) { push @servers, $line }
         }

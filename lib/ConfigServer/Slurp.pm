@@ -21,14 +21,11 @@ package ConfigServer::Slurp;
 
 =head1 NAME
 
-ConfigServer::Slurp - File reading utilities with line-ending normalization
+ConfigServer::Slurp - File reading regexes with line-ending normalization
 
 =head1 SYNOPSIS
 
-    use ConfigServer::Slurp qw(slurp);
-
-    # Read file and split by line endings
-    my @lines = slurp('/path/to/file.txt');
+    use ConfigServer::Slurp ();
 
     # Get line-ending regex pattern
     my $regex = ConfigServer::Slurp->slurpreg();
@@ -38,112 +35,24 @@ ConfigServer::Slurp - File reading utilities with line-ending normalization
 
 =head1 DESCRIPTION
 
-This module provides utilities for reading files and handling various line-ending
+This module provides regexes for reading files and handling various line-ending
 formats (Unix LF, Windows CRLF, old Mac CR, Unicode line separators). It includes
 helper functions to access pre-compiled regular expressions for line-ending
 detection and cleanup.
 
 =cut
 
-use strict;
-use warnings;
+use cPstrict;
 
 use Fcntl ();
 use Carp  ();
 
-use Exporter qw(import);
 our $VERSION   = 1.02;
-our @ISA       = qw(Exporter);
-our @EXPORT_OK = qw(slurp);
 
-my $slurpreg = qr/(?>\x0D\x0A?|[\x0A-\x0C\x85\x{2028}\x{2029}])/;
-my $cleanreg = qr/(\r)|(\n)|(^\s+)|(\s+$)/;
+our $slurpreg = qr/(?>\x0D\x0A?|[\x0A-\x0C\x85\x{2028}\x{2029}])/;
+our $cleanreg = qr/(\r)|(\n)|(^\s+)|(\s+$)/;
 
 =head1 FUNCTIONS
-
-=head2 slurp
-
-Reads a file and returns its contents as an array of lines, split by various
-line-ending formats.
-
-    my @lines = slurp($filepath);
-
-=head3 Parameters
-
-=over 4
-
-=item * C<$filepath> - Path to the file to read
-
-=back
-
-=head3 Returns
-
-In list context, returns an array of lines from the file (split by line endings).
-Returns an empty list if the file does not exist or cannot be read.
-
-=head3 Side Effects
-
-=over 4
-
-=item * Opens and locks the file for shared reading using C<flock>
-
-=item * Emits a warning via C<Carp::carp> if the file cannot be opened, locked, or does not exist
-
-=item * Closes the file handle after reading
-
-=back
-
-=head3 Errors
-
-Issues warnings (via C<Carp::carp>) for:
-
-=over 4
-
-=item * File does not exist
-
-=item * Unable to open file
-
-=item * Unable to lock file
-
-=back
-
-=head3 Line Ending Support
-
-Recognizes and splits on:
-
-=over 4
-
-=item * Unix line feed (LF, C<\x0A>)
-
-=item * Windows carriage return + line feed (CRLF, C<\x0D\x0A>)
-
-=item * Old Mac carriage return (CR, C<\x0D>)
-
-=item * Form feed (C<\x0C>)
-
-=item * Unicode line separator (C<\x{2028}>)
-
-=item * Unicode paragraph separator (C<\x{2029}>)
-
-=back
-
-=cut
-
-sub slurp {
-    my $file = shift;
-    if ( -e $file ) {
-        sysopen( my $FILE, $file, Fcntl::O_RDONLY ) or Carp::carp "*Error* Unable to open [$file]: $!";
-        flock( $FILE, Fcntl::LOCK_SH )              or Carp::carp "*Error* Unable to lock [$file]: $!";
-        my $text = do { local $/; <$FILE> };
-        close($FILE);
-        return split( /$slurpreg/, $text );
-    }
-    else {
-        Carp::carp "*Error* File does not exist: [$file]";
-    }
-
-    return;
-}
 
 =head2 slurpreg
 

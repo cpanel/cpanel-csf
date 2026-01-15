@@ -18,8 +18,9 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, see <https://www.gnu.org/licenses>.
 ###############################################################################
-## no critic (RequireUseWarnings, ProhibitExplicitReturnUndef, ProhibitMixedBooleanOperators, RequireBriefOpen)
-use strict;
+
+use cPstrict;
+
 use File::Find;
 use Fcntl         qw(:DEFAULT :flock);
 use Sys::Hostname qw(hostname);
@@ -29,15 +30,16 @@ use lib '/usr/local/csf/lib';
 use ConfigServer::DisplayUI;
 use ConfigServer::DisplayResellerUI;
 use ConfigServer::Config;
-use ConfigServer::Slurp qw(slurp);
+use ConfigServer::Slurp ();
 
-use lib '/usr/local/cpanel';
-require Cpanel::Form;
-require Cpanel::Config;
-require Whostmgr::ACLS;
-require Cpanel::Rlimit;
-require Cpanel::Template;
-require Cpanel::Version::Tiny;
+use Cpanel::Config        ();
+use Cpanel::Form          ();
+use Cpanel::Rlimit        ();
+use Cpanel::Slurper       ();
+use Cpanel::Template      ();
+use Cpanel::Version::Tiny ();
+use Whostmgr::ACLS        ();
+
 ###############################################################################
 # start main
 
@@ -49,21 +51,14 @@ Whostmgr::ACLS::init_acls();
 
 my $config   = ConfigServer::Config->loadconfig();
 my %config   = $config->config;
-my $slurpreg = ConfigServer::Slurp->slurpreg;
 my $cleanreg = ConfigServer::Slurp->cleanreg;
 
 Cpanel::Rlimit::set_rlimit_to_infinity();
 
-if ( -e "/usr/local/cpanel/bin/register_appconfig" ) {
-    $script = "csf.cgi";
-    $images = "csf";
-}
-else {
-    $script = "addon_csf.cgi";
-    $images = "csf";
-}
+$script = "csf.cgi";
+$images = "csf";
 
-foreach my $line ( slurp("/etc/csf/csf.resellers") ) {
+foreach my $line ( Cpanel::Slurper::read_lines("/etc/csf/csf.resellers") ) {
     $line =~ s/$cleanreg//g;
     my ( $user, $alert, $privs ) = split( /\:/, $line );
     $privs =~ s/\s//g;

@@ -28,7 +28,8 @@ use IPC::Open3;
 use Net::CIDR::Lite;
 use Socket;
 use ConfigServer::Config;
-use ConfigServer::Slurp   qw(slurp);
+use Cpanel::Slurper ();
+use ConfigServer::Slurp ();
 use ConfigServer::CheckIP qw(checkip cccheckip);
 use ConfigServer::Ports;
 use ConfigServer::URLGet;
@@ -278,10 +279,10 @@ sub load_config {
         $statemodule6new = "";
     }
 
-    my @entries = slurp("/etc/csf/csf.blocklists");
+    my @entries = Cpanel::Slurper::read_lines("/etc/csf/csf.blocklists");
     foreach my $line (@entries) {
         if ( $line =~ /^Include\s*(.*)$/ ) {
-            my @incfile = slurp($1);
+            my @incfile = Cpanel::Slurper::read_lines($1);
             push @entries, @incfile;
         }
     }
@@ -306,7 +307,7 @@ sub load_config {
         $cxsreputation = 1;
         if ( -e "/etc/cxs/cxs.blocklists" ) {
             my $all   = 0;
-            my @lines = slurp("/etc/cxs/cxs.blocklists");
+            my @lines = Cpanel::Slurper::read_lines("/etc/cxs/cxs.blocklists");
             if ( grep { $_ =~ /^CXS_ALL/ } @lines ) {
                 $all = 1;
             }
@@ -1016,7 +1017,7 @@ sub dostart {
 
     if ( $csfpre ne "" ) {
         chmod( 0700, $csfpre );
-        my @conf = slurp($csfpre);
+        my @conf = Cpanel::Slurper::read_lines($csfpre);
         if ( $conf[0] !~ /^\#\!/ ) {
             open( my $CONF, ">", $csfpre );
             flock( $CONF, LOCK_EX );
@@ -1319,7 +1320,7 @@ sub dostart {
     }
 
     unless ( $config{DNS_STRICT_NS} ) {
-        foreach my $line ( slurp("/etc/resolv.conf") ) {
+        foreach my $line ( Cpanel::Slurper::read_lines("/etc/resolv.conf") ) {
             $line =~ s/$cleanreg//g;
             if ( $line =~ /^(\s|\#|$)/ ) { next }
             if ( $line =~ /^nameserver\s+($ipv4reg)/ ) {
@@ -1438,7 +1439,7 @@ sub dostart {
 
     if ( $csfpost ne "" ) {
         chmod( 0700, $csfpost );
-        my @conf = slurp($csfpost);
+        my @conf = Cpanel::Slurper::read_lines($csfpost);
 
         if ( $conf[0] !~ /^\#\!/ ) {
             open( my $CONF, ">", $csfpost );
@@ -1469,7 +1470,7 @@ sub dostart {
             else {
                 my $status = 0;
                 if ( -e "/etc/pure-ftpd.conf" ) {
-                    my @conf = slurp("/etc/pure-ftpd.conf");
+                    my @conf = Cpanel::Slurper::read_lines("/etc/pure-ftpd.conf");
                     if ( my @ls = grep { $_ =~ /^PassivePortRange\s+(\d+)\s+(\d+)/ } @conf ) {
                         if ( $ls[0] =~ /^PassivePortRange\s+(\d+)\s+(\d+)/ ) {
                             if ( $config{TCP_IN} !~ /\b$1:$2\b/ ) { $status = 1 }
@@ -1479,7 +1480,7 @@ sub dostart {
                     if ($status) { $warning .= "*WARNING* Since the Virtuozzo VPS iptables ip_conntrack_ftp kernel module is currently broken you have to open a PASV port hole in iptables for incoming FTP connections to work correctly. See the csf readme.txt under 'A note about FTP Connection Issues' on how to do this if you have not already done so.\n" }
                 }
                 elsif ( -e "/etc/proftpd.conf" ) {
-                    my @conf = slurp("/etc/proftpd.conf");
+                    my @conf = Cpanel::Slurper::read_lines("/etc/proftpd.conf");
                     if ( my @ls = grep { $_ =~ /^PassivePorts\s+(\d+)\s+(\d+)/ } @conf ) {
                         if ( $ls[0] =~ /^PassivePorts\s+(\d+)\s+(\d+)/ ) {
                             if ( $config{TCP_IN} !~ /\b$1:$2\b/ ) { $status = 1 }
@@ -1519,7 +1520,7 @@ sub doadd {
     }
 
     my $hit;
-    my @deny = slurp("/etc/csf/csf.deny");
+    my @deny = Cpanel::Slurper::read_lines("/etc/csf/csf.deny");
     foreach my $line (@deny) {
         $line =~ s/$cleanreg//g;
         if ( $line eq "" )               { next }
@@ -1538,10 +1539,10 @@ sub doadd {
     }
 
     my $allowmatches;
-    my @allow = slurp("/etc/csf/csf.allow");
+    my @allow = Cpanel::Slurper::read_lines("/etc/csf/csf.allow");
     foreach my $line (@allow) {
         if ( $line =~ /^Include\s*(.*)$/ ) {
-            my @incfile = slurp($1);
+            my @incfile = Cpanel::Slurper::read_lines($1);
             push @allow, @incfile;
         }
     }
@@ -1605,10 +1606,10 @@ sub dodeny {
         return;
     }
 
-    my @allow = slurp("/etc/csf/csf.allow");
+    my @allow = Cpanel::Slurper::read_lines("/etc/csf/csf.allow");
     foreach my $line (@allow) {
         if ( $line =~ /^Include\s*(.*)$/ ) {
-            my @incfile = slurp($1);
+            my @incfile = Cpanel::Slurper::read_lines($1);
             push @allow, @incfile;
         }
     }
@@ -1635,10 +1636,10 @@ sub dodeny {
         }
     }
 
-    my @ignore = slurp("/etc/csf/csf.ignore");
+    my @ignore = Cpanel::Slurper::read_lines("/etc/csf/csf.ignore");
     foreach my $line (@ignore) {
         if ( $line =~ /^Include\s*(.*)$/ ) {
-            my @incfile = slurp($1);
+            my @incfile = Cpanel::Slurper::read_lines($1);
             push @ignore, @incfile;
         }
     }
@@ -1666,10 +1667,10 @@ sub dodeny {
     }
 
     my $denymatches;
-    my @deny = slurp("/etc/csf/csf.deny");
+    my @deny = Cpanel::Slurper::read_lines("/etc/csf/csf.deny");
     foreach my $line (@deny) {
         if ( $line =~ /^Include\s*(.*)$/ ) {
-            my @incfile = slurp($1);
+            my @incfile = Cpanel::Slurper::read_lines($1);
             push @deny, @incfile;
         }
     }
@@ -1994,10 +1995,10 @@ sub doportfilters {
     if ( $config{DROP_LOGGING} ) { $dropin  = "LOGDROPIN" }
     if ( $config{DROP_LOGGING} ) { $dropout = "LOGDROPOUT" }
 
-    my @entries = slurp("/etc/csf/csf.sips");
+    my @entries = Cpanel::Slurper::read_lines("/etc/csf/csf.sips");
     foreach my $line (@entries) {
         if ( $line =~ /^Include\s*(.*)$/ ) {
-            my @incfile = slurp($1);
+            my @incfile = Cpanel::Slurper::read_lines($1);
             push @entries, @incfile;
         }
     }
@@ -2034,7 +2035,7 @@ sub doportfilters {
         }
         if ( -e "/var/lib/csf/csf.gdeny" ) {
             if ( $config{FASTSTART} ) { $faststart = 1 }
-            foreach my $line ( slurp("/var/lib/csf/csf.gdeny") ) {
+            foreach my $line ( Cpanel::Slurper::read_lines("/var/lib/csf/csf.gdeny") ) {
                 $line =~ s/$cleanreg//g;
                 if ( $line =~ /^(\s|\#|$)/ ) { next }
                 my ( $ip, $comment ) = split( /\s/, $line, 2 );
@@ -2050,10 +2051,10 @@ sub doportfilters {
         }
     }
 
-    my @deny = slurp("/etc/csf/csf.deny");
+    my @deny = Cpanel::Slurper::read_lines("/etc/csf/csf.deny");
     foreach my $line (@deny) {
         if ( $line =~ /^Include\s*(.*)$/ ) {
-            my @incfile = slurp($1);
+            my @incfile = Cpanel::Slurper::read_lines($1);
             push @deny, @incfile;
         }
     }
@@ -2237,7 +2238,7 @@ sub doportfilters {
         }
         if ( -e "/var/lib/csf/csf.gallow" ) {
             if ( $config{FASTSTART} ) { $faststart = 1 }
-            foreach my $line ( slurp("/var/lib/csf/csf.gallow") ) {
+            foreach my $line ( Cpanel::Slurper::read_lines("/var/lib/csf/csf.gallow") ) {
                 $line =~ s/$cleanreg//g;
                 if ( $line =~ /^(\s|\#|$)/ ) { next }
                 my ( $ip, $comment ) = split( /\s/, $line, 2 );
@@ -2268,7 +2269,7 @@ sub doportfilters {
             if ( -e "/var/lib/csf/zone/$cc.zone" ) {
                 if ( $config{LF_IPSET} ) {
                     undef @ipset;
-                    foreach my $line ( slurp("/var/lib/csf/zone/$cc.zone") ) {
+                    foreach my $line ( Cpanel::Slurper::read_lines("/var/lib/csf/zone/$cc.zone") ) {
                         $line =~ s/$cleanreg//g;
                         if ( $line =~ /^(\s|\#|$)/ ) { next }
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
@@ -2283,7 +2284,7 @@ sub doportfilters {
                 }
                 else {
                     if ( $config{FASTSTART} ) { $faststart = 1 }
-                    foreach my $line ( slurp("/var/lib/csf/zone/$cc.zone") ) {
+                    foreach my $line ( Cpanel::Slurper::read_lines("/var/lib/csf/zone/$cc.zone") ) {
                         $line =~ s/$cleanreg//g;
                         if ( $line =~ /^(\s|\#|$)/ ) { next }
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
@@ -2302,7 +2303,7 @@ sub doportfilters {
             if ( $config{CC6_LOOKUPS} and -e "/var/lib/csf/zone/$cc.zone6" ) {
                 if ( $config{LF_IPSET} ) {
                     undef @ipset;
-                    foreach my $line ( slurp("/var/lib/csf/zone/$cc.zone6") ) {
+                    foreach my $line ( Cpanel::Slurper::read_lines("/var/lib/csf/zone/$cc.zone6") ) {
                         $line =~ s/$cleanreg//g;
                         if ( $line =~ /^(\s|\#|$)/ ) { next }
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
@@ -2312,7 +2313,7 @@ sub doportfilters {
                 }
                 else {
                     if ( $config{FASTSTART} ) { $faststart = 1 }
-                    foreach my $line ( slurp("/var/lib/csf/zone/$cc.zone6") ) {
+                    foreach my $line ( Cpanel::Slurper::read_lines("/var/lib/csf/zone/$cc.zone6") ) {
                         $line =~ s/$cleanreg//g;
                         if ( $line =~ /^(\s|\#|$)/ ) { next }
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
@@ -2342,7 +2343,7 @@ sub doportfilters {
             }
         }
         if ( -e "/var/lib/csf/csf.tempdyn" ) {
-            foreach my $line ( slurp("/var/lib/csf/csf.tempdyn") ) {
+            foreach my $line ( Cpanel::Slurper::read_lines("/var/lib/csf/csf.tempdyn") ) {
                 $line =~ s/$cleanreg//g;
                 if ( $line =~ /^(\s|\#|$)/ ) { next }
                 my ( $ip, $comment ) = split( /\s/, $line, 2 );
@@ -2369,7 +2370,7 @@ sub doportfilters {
         }
         if ( -e "/var/lib/csf/csf.tempgdyn" ) {
             if ( $config{FASTSTART} ) { $faststart = 1 }
-            foreach my $line ( slurp("/var/lib/csf/csf.tempgdyn") ) {
+            foreach my $line ( Cpanel::Slurper::read_lines("/var/lib/csf/csf.tempgdyn") ) {
                 $line =~ s/$cleanreg//g;
                 if ( $line =~ /^(\s|\#|$)/ ) { next }
                 my ( $ip, $comment ) = split( /\s/, $line, 2 );
@@ -2385,10 +2386,10 @@ sub doportfilters {
         }
     }
 
-    my @allow = slurp("/etc/csf/csf.allow");
+    my @allow = Cpanel::Slurper::read_lines("/etc/csf/csf.allow");
     foreach my $line (@allow) {
         if ( $line =~ /^Include\s*(.*)$/ ) {
-            my @incfile = slurp($1);
+            my @incfile = Cpanel::Slurper::read_lines($1);
             push @allow, @incfile;
         }
     }
@@ -2427,7 +2428,7 @@ sub doportfilters {
             if ( $config{LF_IPSET} ) {
                 undef @ipset;
                 my @ipset6;
-                foreach my $line ( slurp("/var/lib/csf/csf.block.$name") ) {
+                foreach my $line ( Cpanel::Slurper::read_lines("/var/lib/csf/csf.block.$name") ) {
                     $line =~ s/$cleanreg//g;
                     if ( $line =~ /^(\s|\#|$)/ ) { next }
                     my ( $ip, $comment ) = split( /\s/, $line, 2 );
@@ -2447,7 +2448,7 @@ sub doportfilters {
             }
             else {
                 if ( $config{FASTSTART} ) { $faststart = 1 }
-                foreach my $line ( slurp("/var/lib/csf/csf.block.$name") ) {
+                foreach my $line ( Cpanel::Slurper::read_lines("/var/lib/csf/csf.block.$name") ) {
                     $line =~ s/$cleanreg//g;
                     if ( $line =~ /^(\s|\#|$)/ ) { next }
                     my ( $ip, $comment ) = split( /\s/, $line, 2 );
@@ -2496,10 +2497,10 @@ sub doportfilters {
         print $SMTPAUTH "\"::1/128\"\n";
 
         if ( -e "/etc/csf/csf.smtpauth" ) {
-            my @entries = slurp("/etc/csf/csf.smtpauth");
+            my @entries = Cpanel::Slurper::read_lines("/etc/csf/csf.smtpauth");
             foreach my $line (@entries) {
                 if ( $line =~ /^Include\s*(.*)$/ ) {
-                    my @incfile = slurp($1);
+                    my @incfile = Cpanel::Slurper::read_lines($1);
                     push @entries, @incfile;
                 }
             }
@@ -2517,7 +2518,7 @@ sub doportfilters {
             $cc = lc $cc;
             if ( -e "/var/lib/csf/zone/$cc.zone" ) {
                 print $SMTPAUTH "\n# IPv4 addresses for [" . uc($cc) . "]:\n";
-                foreach my $line ( slurp("/var/lib/csf/zone/$cc.zone") ) {
+                foreach my $line ( Cpanel::Slurper::read_lines("/var/lib/csf/zone/$cc.zone") ) {
                     $line =~ s/$cleanreg//g;
                     if ( $line =~ /^(\s|\#|$)/ ) { next }
                     my ( $ip, undef ) = split( /\s/, $line, 2 );
@@ -2533,7 +2534,7 @@ sub doportfilters {
             }
             if ( $config{CC6_LOOKUPS} and -e "/var/lib/csf/zone/$cc.zone6" ) {
                 print $SMTPAUTH "\n# IPv6 addresses for [" . uc($cc) . "]:\n";
-                foreach my $line ( slurp("/var/lib/csf/zone/$cc.zone6") ) {
+                foreach my $line ( Cpanel::Slurper::read_lines("/var/lib/csf/zone/$cc.zone6") ) {
                     $line =~ s/$cleanreg//g;
                     if ( $line =~ /^(\s|\#|$)/ ) { next }
                     my ( $ip, undef ) = split( /\s/, $line, 2 );
@@ -2564,7 +2565,7 @@ sub doportfilters {
             if ( -e "/var/lib/csf/zone/$cc.zone" ) {
                 if ( $config{LF_IPSET} ) {
                     undef @ipset;
-                    foreach my $line ( slurp("/var/lib/csf/zone/$cc.zone") ) {
+                    foreach my $line ( Cpanel::Slurper::read_lines("/var/lib/csf/zone/$cc.zone") ) {
                         $line =~ s/$cleanreg//g;
                         if ( $line =~ /^(\s|\#|$)/ ) { next }
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
@@ -2579,7 +2580,7 @@ sub doportfilters {
                 }
                 else {
                     if ( $config{FASTSTART} ) { $faststart = 1 }
-                    foreach my $line ( slurp("/var/lib/csf/zone/$cc.zone") ) {
+                    foreach my $line ( Cpanel::Slurper::read_lines("/var/lib/csf/zone/$cc.zone") ) {
                         $line =~ s/$cleanreg//g;
                         if ( $line =~ /^(\s|\#|$)/ ) { next }
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
@@ -2598,7 +2599,7 @@ sub doportfilters {
             if ( $config{CC6_LOOKUPS} and -e "/var/lib/csf/zone/$cc.zone6" ) {
                 if ( $config{LF_IPSET} ) {
                     undef @ipset;
-                    foreach my $line ( slurp("/var/lib/csf/zone/$cc.zone6") ) {
+                    foreach my $line ( Cpanel::Slurper::read_lines("/var/lib/csf/zone/$cc.zone6") ) {
                         $line =~ s/$cleanreg//g;
                         if ( $line =~ /^(\s|\#|$)/ ) { next }
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
@@ -2608,7 +2609,7 @@ sub doportfilters {
                 }
                 else {
                     if ( $config{FASTSTART} ) { $faststart = 1 }
-                    foreach my $line ( slurp("/var/lib/csf/zone/$cc.zone6") ) {
+                    foreach my $line ( Cpanel::Slurper::read_lines("/var/lib/csf/zone/$cc.zone6") ) {
                         $line =~ s/$cleanreg//g;
                         if ( $line =~ /^(\s|\#|$)/ ) { next }
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
@@ -2643,7 +2644,7 @@ sub doportfilters {
             if ( -e "/var/lib/csf/zone/$cc.zone" ) {
                 if ( $config{LF_IPSET} ) {
                     undef @ipset;
-                    foreach my $line ( slurp("/var/lib/csf/zone/$cc.zone") ) {
+                    foreach my $line ( Cpanel::Slurper::read_lines("/var/lib/csf/zone/$cc.zone") ) {
                         $line =~ s/$cleanreg//g;
                         if ( $line =~ /^(\s|\#|$)/ ) { next }
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
@@ -2661,7 +2662,7 @@ sub doportfilters {
                 }
                 else {
                     if ( $config{FASTSTART} ) { $faststart = 1 }
-                    foreach my $line ( slurp("/var/lib/csf/zone/$cc.zone") ) {
+                    foreach my $line ( Cpanel::Slurper::read_lines("/var/lib/csf/zone/$cc.zone") ) {
                         $line =~ s/$cleanreg//g;
                         if ( $line =~ /^(\s|\#|$)/ ) { next }
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
@@ -2681,7 +2682,7 @@ sub doportfilters {
             if ( $config{CC6_LOOKUPS} and -e "/var/lib/csf/zone/$cc.zone6" ) {
                 if ( $config{LF_IPSET} ) {
                     undef @ipset;
-                    foreach my $line ( slurp("/var/lib/csf/zone/$cc.zone6") ) {
+                    foreach my $line ( Cpanel::Slurper::read_lines("/var/lib/csf/zone/$cc.zone6") ) {
                         $line =~ s/$cleanreg//g;
                         if ( $line =~ /^(\s|\#|$)/ ) { next }
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
@@ -2694,7 +2695,7 @@ sub doportfilters {
                 }
                 else {
                     if ( $config{FASTSTART} ) { $faststart = 1 }
-                    foreach my $line ( slurp("/var/lib/csf/zone/$cc.zone6") ) {
+                    foreach my $line ( Cpanel::Slurper::read_lines("/var/lib/csf/zone/$cc.zone6") ) {
                         $line =~ s/$cleanreg//g;
                         if ( $line =~ /^(\s|\#|$)/ ) { next }
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
@@ -2776,7 +2777,7 @@ sub doportfilters {
             if ( -e "/var/lib/csf/zone/$cc.zone" ) {
                 if ( $config{LF_IPSET} ) {
                     undef @ipset;
-                    foreach my $line ( slurp("/var/lib/csf/zone/$cc.zone") ) {
+                    foreach my $line ( Cpanel::Slurper::read_lines("/var/lib/csf/zone/$cc.zone") ) {
                         $line =~ s/$cleanreg//g;
                         if ( $line =~ /^(\s|\#|$)/ ) { next }
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
@@ -2791,7 +2792,7 @@ sub doportfilters {
                 }
                 else {
                     if ( $config{FASTSTART} ) { $faststart = 1 }
-                    foreach my $line ( slurp("/var/lib/csf/zone/$cc.zone") ) {
+                    foreach my $line ( Cpanel::Slurper::read_lines("/var/lib/csf/zone/$cc.zone") ) {
                         $line =~ s/$cleanreg//g;
                         if ( $line =~ /^(\s|\#|$)/ ) { next }
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
@@ -2811,7 +2812,7 @@ sub doportfilters {
             if ( $config{CC6_LOOKUPS} and -e "/var/lib/csf/zone/$cc.zone6" ) {
                 if ( $config{LF_IPSET} ) {
                     undef @ipset;
-                    foreach my $line ( slurp("/var/lib/csf/zone/$cc.zone6") ) {
+                    foreach my $line ( Cpanel::Slurper::read_lines("/var/lib/csf/zone/$cc.zone6") ) {
                         $line =~ s/$cleanreg//g;
                         if ( $line =~ /^(\s|\#|$)/ ) { next }
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
@@ -2821,7 +2822,7 @@ sub doportfilters {
                 }
                 else {
                     if ( $config{FASTSTART} ) { $faststart = 1 }
-                    foreach my $line ( slurp("/var/lib/csf/zone/$cc.zone6") ) {
+                    foreach my $line ( Cpanel::Slurper::read_lines("/var/lib/csf/zone/$cc.zone6") ) {
                         $line =~ s/$cleanreg//g;
                         if ( $line =~ /^(\s|\#|$)/ ) { next }
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
@@ -2879,7 +2880,7 @@ sub doportfilters {
             if ( -e "/var/lib/csf/zone/$cc.zone" ) {
                 if ( $config{LF_IPSET} ) {
                     undef @ipset;
-                    foreach my $line ( slurp("/var/lib/csf/zone/$cc.zone") ) {
+                    foreach my $line ( Cpanel::Slurper::read_lines("/var/lib/csf/zone/$cc.zone") ) {
                         $line =~ s/$cleanreg//g;
                         if ( $line =~ /^(\s|\#|$)/ ) { next }
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
@@ -2894,7 +2895,7 @@ sub doportfilters {
                 }
                 else {
                     if ( $config{FASTSTART} ) { $faststart = 1 }
-                    foreach my $line ( slurp("/var/lib/csf/zone/$cc.zone") ) {
+                    foreach my $line ( Cpanel::Slurper::read_lines("/var/lib/csf/zone/$cc.zone") ) {
                         $line =~ s/$cleanreg//g;
                         if ( $line =~ /^(\s|\#|$)/ ) { next }
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
@@ -2914,7 +2915,7 @@ sub doportfilters {
             if ( $config{CC6_LOOKUPS} and -e "/var/lib/csf/zone/$cc.zone6" ) {
                 if ( $config{LF_IPSET} ) {
                     undef @ipset;
-                    foreach my $line ( slurp("/var/lib/csf/zone/$cc.zone6") ) {
+                    foreach my $line ( Cpanel::Slurper::read_lines("/var/lib/csf/zone/$cc.zone6") ) {
                         $line =~ s/$cleanreg//g;
                         if ( $line =~ /^(\s|\#|$)/ ) { next }
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
@@ -2924,7 +2925,7 @@ sub doportfilters {
                 }
                 else {
                     if ( $config{FASTSTART} ) { $faststart = 1 }
-                    foreach my $line ( slurp("/var/lib/csf/zone/$cc.zone6") ) {
+                    foreach my $line ( Cpanel::Slurper::read_lines("/var/lib/csf/zone/$cc.zone6") ) {
                         $line =~ s/$cleanreg//g;
                         if ( $line =~ /^(\s|\#|$)/ ) { next }
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
@@ -2971,11 +2972,11 @@ sub doportfilters {
     if ( $config{PORTFLOOD} ) {
         my $maxrecent = 20;
         if ( -e "/sys/module/ipt_recent/parameters/ip_pkt_list_tot" ) {
-            my @new = slurp("/sys/module/ipt_recent/parameters/ip_pkt_list_tot");
+            my @new = Cpanel::Slurper::read_lines("/sys/module/ipt_recent/parameters/ip_pkt_list_tot");
             if ( $new[0] > 1 ) { $maxrecent = $new[0] }
         }
         if ( -e "/sys/module/xt_recent/parameters/ip_pkt_list_tot" ) {
-            my @new = slurp("/sys/module/xt_recent/parameters/ip_pkt_list_tot");
+            my @new = Cpanel::Slurper::read_lines("/sys/module/xt_recent/parameters/ip_pkt_list_tot");
             if ( $new[0] > 1 ) { $maxrecent = $new[0] }
         }
         foreach my $portflood ( split( /\,/, $config{PORTFLOOD} ) ) {
@@ -3321,10 +3322,10 @@ sub doportfilters {
 
     if ( -e "/etc/csf/csf.redirect" ) {
         my $dnat    = 0;
-        my @entries = slurp("/etc/csf/csf.redirect");
+        my @entries = Cpanel::Slurper::read_lines("/etc/csf/csf.redirect");
         foreach my $line (@entries) {
             if ( $line =~ /^Include\s*(.*)$/ ) {
-                my @incfile = slurp($1);
+                my @incfile = Cpanel::Slurper::read_lines($1);
                 push @entries, @incfile;
             }
         }
@@ -3441,7 +3442,7 @@ sub doenable {
 # start crontab
 sub crontab {
     my $act     = shift;
-    my @crontab = slurp("/etc/crontab");
+    my @crontab = Cpanel::Slurper::read_lines("/etc/crontab");
     my $hit     = 0;
     my @newcrontab;
     foreach my $line (@crontab) {
@@ -4191,10 +4192,10 @@ $table, $chain, $rest
             }
         }
     }
-    my @allow = slurp("/etc/csf/csf.allow");
+    my @allow = Cpanel::Slurper::read_lines("/etc/csf/csf.allow");
     foreach my $line (@allow) {
         if ( $line =~ /^Include\s*(.*)$/ ) {
-            my @incfile = slurp($1);
+            my @incfile = Cpanel::Slurper::read_lines($1);
             push @allow, @incfile;
         }
     }
@@ -4240,10 +4241,10 @@ $table, $chain, $rest
             }
         }
     }
-    my @deny = slurp("/etc/csf/csf.deny");
+    my @deny = Cpanel::Slurper::read_lines("/etc/csf/csf.deny");
     foreach my $line (@deny) {
         if ( $line =~ /^Include\s*(.*)$/ ) {
-            my @incfile = slurp($1);
+            my @incfile = Cpanel::Slurper::read_lines($1);
             push @deny, @incfile;
         }
     }
@@ -4399,10 +4400,10 @@ sub dotempdeny {
     $comment =~ s/^\s*|\s*$//g;
     if ( $comment eq "" ) { $comment = "Manually added: " . iplookup($ip) }
 
-    my @deny = slurp("/etc/csf/csf.deny");
+    my @deny = Cpanel::Slurper::read_lines("/etc/csf/csf.deny");
     foreach my $line (@deny) {
         if ( $line =~ /^Include\s*(.*)$/ ) {
-            my @incfile = slurp($1);
+            my @incfile = Cpanel::Slurper::read_lines($1);
             push @deny, @incfile;
         }
     }
@@ -4537,10 +4538,10 @@ sub dotempallow {
     $comment =~ s/^\s*|\s*$//g;
     if ( $comment eq "" ) { $comment = "Manually added: " . iplookup($ip) }
 
-    my @allow = slurp("/etc/csf/csf.allow");
+    my @allow = Cpanel::Slurper::read_lines("/etc/csf/csf.allow");
     foreach my $line (@allow) {
         if ( $line =~ /^Include\s*(.*)$/ ) {
-            my @incfile = slurp($1);
+            my @incfile = Cpanel::Slurper::read_lines($1);
             push @allow, @incfile;
         }
     }
