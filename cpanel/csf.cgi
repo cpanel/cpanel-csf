@@ -54,14 +54,8 @@ my $cleanreg = ConfigServer::Slurp->cleanreg;
 
 Cpanel::Rlimit::set_rlimit_to_infinity();
 
-if ( -e "/usr/local/cpanel/bin/register_appconfig" ) {
-    $script = "csf.cgi";
-    $images = "csf";
-}
-else {
-    $script = "addon_csf.cgi";
-    $images = "csf";
-}
+$script = "csf.cgi";
+$images = "csf";
 
 foreach my $line ( slurp("/etc/csf/csf.resellers") ) {
     $line =~ s/$cleanreg//g;

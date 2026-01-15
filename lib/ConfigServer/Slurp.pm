@@ -45,11 +45,9 @@ detection and cleanup.
 
 =cut
 
-use strict;
-use warnings;
+use cPstrict;
 
-use Fcntl ();
-use Carp  ();
+use Cpanel::Slurper;
 
 use Exporter qw(import);
 our $VERSION   = 1.02;
@@ -129,19 +127,14 @@ Recognizes and splits on:
 
 =cut
 
-sub slurp {
-    my $file = shift;
-    if ( -e $file ) {
-        sysopen( my $FILE, $file, Fcntl::O_RDONLY ) or Carp::carp "*Error* Unable to open [$file]: $!";
-        flock( $FILE, Fcntl::LOCK_SH )              or Carp::carp "*Error* Unable to lock [$file]: $!";
-        my $text = do { local $/; <$FILE> };
-        close($FILE);
-        return split( /$slurpreg/, $text );
+sub slurp ($file) {
+    my $text = Cpanel::Slurper::read($file);
+    if ( !defined $text ) {
+        require Carp;
+        Carp::carp( "*Error* File does not exist: [$file]" );
+        return;
     }
-    else {
-        Carp::carp "*Error* File does not exist: [$file]";
-    }
-
+    return split( /$slurpreg/, $text ) if length $text;
     return;
 }
 
