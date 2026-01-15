@@ -25,8 +25,7 @@ use lib '/usr/local/csf/lib';
 use IPC::Open3;
 use ConfigServer::Config;
 use ConfigServer::CheckIP qw(checkip);
-use Cpanel::Slurper ();
-use ConfigServer::Slurp ();
+use ConfigServer::Slurp   qw(slurp);
 use ConfigServer::Logger  qw(logfile);
 use ConfigServer::GetEthDev;
 
@@ -44,7 +43,7 @@ $slurpreg = ConfigServer::Slurp->slurpreg;
 $cleanreg = ConfigServer::Slurp->cleanreg;
 
 if ( -e "/etc/wwwacct.conf" ) {
-    foreach my $line ( Cpanel::Slurper::read_lines("/etc/wwwacct.conf") ) {
+    foreach my $line ( slurp("/etc/wwwacct.conf") ) {
         $line =~ s/$cleanreg//g;
         if ( $line =~ /^(\s|\#|$)/ ) { next }
         my ( $name, $value ) = split( / /, $line, 2 );
@@ -52,7 +51,7 @@ if ( -e "/etc/wwwacct.conf" ) {
     }
 }
 if ( -e "/usr/local/cpanel/version" ) {
-    foreach my $line ( Cpanel::Slurper::read_lines("/usr/local/cpanel/version") ) {
+    foreach my $line ( slurp("/usr/local/cpanel/version") ) {
         $line =~ s/$cleanreg//g;
         if ( $line =~ /\d/ ) { $cpconfig{version} = $line }
     }

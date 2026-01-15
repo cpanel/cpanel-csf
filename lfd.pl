@@ -28,8 +28,7 @@ use Net::CIDR::Lite;
 use POSIX qw(:sys_wait_h sysconf strftime setsid);
 use Socket;
 use ConfigServer::Config;
-use Cpanel::Slurper ();
-use ConfigServer::Slurp ();
+use ConfigServer::Slurp   qw(slurp);
 use ConfigServer::CheckIP qw(checkip cccheckip);
 use ConfigServer::URLGet;
 use ConfigServer::GetIPs qw(getips);
@@ -244,7 +243,7 @@ unless ( defined $urlget ) {
 }
 
 if ( -e "/etc/wwwacct.conf" ) {
-    foreach my $line ( Cpanel::Slurper::read_lines("/etc/wwwacct.conf") ) {
+    foreach my $line ( slurp("/etc/wwwacct.conf") ) {
         $line =~ s/$cleanreg//g;
         if ( $line =~ /^(\s|\#|$)/ ) { next }
         my ( $name, $value ) = split( / /, $line, 2 );
@@ -252,7 +251,7 @@ if ( -e "/etc/wwwacct.conf" ) {
     }
 }
 if ( -e "/usr/local/cpanel/version" ) {
-    foreach my $line ( Cpanel::Slurper::read_lines("/usr/local/cpanel/version") ) {
+    foreach my $line ( slurp("/usr/local/cpanel/version") ) {
         $line =~ s/$cleanreg//g;
         if ( $line =~ /\d/ ) { $cpconfig{version} = $line }
     }
@@ -322,10 +321,10 @@ if ( $config{SYSLOG} or $config{SYSLOG_CHECK} ) {
 }
 
 if ( -e "/etc/csf/csf.blocklists" ) {
-    my @entries = Cpanel::Slurper::read_lines("/etc/csf/csf.blocklists");
+    my @entries = slurp("/etc/csf/csf.blocklists");
     foreach my $line (@entries) {
         if ( $line =~ /^Include\s*(.*)$/ ) {
-            my @incfile = Cpanel::Slurper::read_lines($1);
+            my @incfile = slurp($1);
             push @entries, @incfile;
         }
     }
@@ -347,7 +346,7 @@ if ( -e "/etc/csf/csf.blocklists" ) {
 }
 if ( $cxsreputation and -e "/etc/cxs/cxs.blocklists" ) {
     my $all   = 0;
-    my @lines = Cpanel::Slurper::read_lines("/etc/cxs/cxs.blocklists");
+    my @lines = slurp("/etc/cxs/cxs.blocklists");
     if ( grep { $_ =~ /^CXS_ALL/ } @lines ) {
         $all = 1;
     }
@@ -368,10 +367,10 @@ if ( $cxsreputation and -e "/etc/cxs/cxs.blocklists" ) {
 }
 
 if ( -e "/etc/csf/csf.ignore" ) {
-    my @ignore = Cpanel::Slurper::read_lines("/etc/csf/csf.ignore");
+    my @ignore = slurp("/etc/csf/csf.ignore");
     foreach my $line (@ignore) {
         if ( $line =~ /^Include\s*(.*)$/ ) {
-            my @incfile = Cpanel::Slurper::read_lines($1);
+            my @incfile = slurp($1);
             push @ignore, @incfile;
         }
     }
@@ -398,10 +397,10 @@ if ( -e "/etc/csf/csf.ignore" ) {
     }
 }
 if ( -e "/etc/csf/csf.rignore" ) {
-    my @entries = Cpanel::Slurper::read_lines("/etc/csf/csf.rignore");
+    my @entries = slurp("/etc/csf/csf.rignore");
     foreach my $line (@entries) {
         if ( $line =~ /^Include\s*(.*)$/ ) {
-            my @incfile = Cpanel::Slurper::read_lines($1);
+            my @incfile = slurp($1);
             push @entries, @incfile;
         }
     }
@@ -416,10 +415,10 @@ if ( -e "/etc/csf/csf.rignore" ) {
     }
 }
 if ( $config{IGNORE_ALLOW} and -e "/etc/csf/csf.allow" ) {
-    my @ignore = Cpanel::Slurper::read_lines("/etc/csf/csf.allow");
+    my @ignore = slurp("/etc/csf/csf.allow");
     foreach my $line (@ignore) {
         if ( $line =~ /^Include\s*(.*)$/ ) {
-            my @incfile = Cpanel::Slurper::read_lines($1);
+            my @incfile = slurp($1);
             push @ignore, @incfile;
         }
     }
@@ -471,7 +470,7 @@ if ( $config{LT_POP3D} ) { $loginproto{pop3d} = $config{LT_POP3D} }
 for ( my $x = 1; $x < 10; $x++ ) { &globlog("CUSTOM${x}_LOG") }
 
 if ( -e "/usr/local/cpanel/version" and -e "/etc/cpanel/ea4/is_ea4" and -e "/etc/cpanel/ea4/paths.conf" ) {
-    my @file = Cpanel::Slurper::read_lines("/etc/cpanel/ea4/paths.conf");
+    my @file = slurp("/etc/cpanel/ea4/paths.conf");
     foreach my $line (@file) {
         $line =~ s/$cleanreg//g;
         if ( $line =~ /^(\s|\#|$)/ ) { next }
@@ -499,10 +498,10 @@ if ( -e "/usr/local/cpanel/version" and -e "/etc/cpanel/ea4/is_ea4" and -e "/etc
 }
 
 if ( $config{LOGSCANNER} ) {
-    my @entries = Cpanel::Slurper::read_lines("/etc/csf/csf.logfiles");
+    my @entries = slurp("/etc/csf/csf.logfiles");
     foreach my $line (@entries) {
         if ( $line =~ /^Include\s*(.*)$/ ) {
-            my @incfile = Cpanel::Slurper::read_lines($1);
+            my @incfile = slurp($1);
             push @entries, @incfile;
         }
     }
@@ -525,10 +524,10 @@ if ( $config{LOGSCANNER} ) {
             }
         }
     }
-    my @entries2 = Cpanel::Slurper::read_lines("/etc/csf/csf.logignore");
+    my @entries2 = slurp("/etc/csf/csf.logignore");
     foreach my $line (@entries2) {
         if ( $line =~ /^Include\s*(.*)$/ ) {
-            my @incfile = Cpanel::Slurper::read_lines($1);
+            my @incfile = slurp($1);
             push @entries2, @incfile;
         }
     }
@@ -787,10 +786,10 @@ if ( $config{LF_INTEGRITY} ) {
 if ( $config{LF_EXPLOIT} ) {
     if ( -e "/var/lib/csf/csf.tempexploit" ) { unlink("/var/lib/csf/csf.tempexploit") }
     if ( -e "/etc/csf/csf.suignore" ) {
-        my @entries = Cpanel::Slurper::read_lines("/etc/csf/csf.suignore");
+        my @entries = slurp("/etc/csf/csf.suignore");
         foreach my $line (@entries) {
             if ( $line =~ /^Include\s*(.*)$/ ) {
-                my @incfile = Cpanel::Slurper::read_lines($1);
+                my @incfile = slurp($1);
                 push @entries, @incfile;
             }
         }
@@ -816,10 +815,10 @@ if ( $config{X_ARF} ) {
 
 if ( $config{LF_DIRWATCH} ) {
     if ( -e "/etc/csf/csf.fignore" ) {
-        my @entries = Cpanel::Slurper::read_lines("/etc/csf/csf.fignore");
+        my @entries = slurp("/etc/csf/csf.fignore");
         foreach my $line (@entries) {
             if ( $line =~ /^Include\s*(.*)$/ ) {
-                my @incfile = Cpanel::Slurper::read_lines($1);
+                my @incfile = slurp($1);
                 push @entries, @incfile;
             }
         }
@@ -848,10 +847,10 @@ if ( $config{LF_DIRWATCH} ) {
 if ( $config{LF_DIRWATCH_FILE} ) {
     if ( -e "/etc/csf/csf.dirwatch" ) {
         logfile("Directory File Watching...");
-        my @entries = Cpanel::Slurper::read_lines("/etc/csf/csf.dirwatch");
+        my @entries = slurp("/etc/csf/csf.dirwatch");
         foreach my $line (@entries) {
             if ( $line =~ /^Include\s*(.*)$/ ) {
-                my @incfile = Cpanel::Slurper::read_lines($1);
+                my @incfile = slurp($1);
                 push @entries, @incfile;
             }
         }
@@ -874,10 +873,10 @@ if ( $config{LF_DIRWATCH_FILE} ) {
 if ( $config{LF_SCRIPT_ALERT} ) {
     logfile("Email Script Tracking...");
     if ( -e "/etc/csf/csf.signore" ) {
-        my @entries = Cpanel::Slurper::read_lines("/etc/csf/csf.signore");
+        my @entries = slurp("/etc/csf/csf.signore");
         foreach my $line (@entries) {
             if ( $line =~ /^Include\s*(.*)$/ ) {
-                my @incfile = Cpanel::Slurper::read_lines($1);
+                my @incfile = slurp($1);
                 push @entries, @incfile;
             }
         }
@@ -910,10 +909,10 @@ if ( $config{RT_RELAY_ALERT} or $config{RT_AUTHRELAY_ALERT} or $config{RT_POPREL
     logfile("Email Relay Tracking...");
     if ( $config{RT_LOCALRELAY_ALERT} ) {
         if ( -e "/etc/csf/csf.mignore" ) {
-            my @entries = Cpanel::Slurper::read_lines("/etc/csf/csf.mignore");
+            my @entries = slurp("/etc/csf/csf.mignore");
             foreach my $line (@entries) {
                 if ( $line =~ /^Include\s*(.*)$/ ) {
-                    my @incfile = Cpanel::Slurper::read_lines($1);
+                    my @incfile = slurp($1);
                     push @entries, @incfile;
                 }
             }
@@ -989,10 +988,10 @@ if ( $config{UID_INTERVAL} ) {
         $config{UID_INTERVAL} = 60;
     }
     $uidtimeout = 0;
-    my @entries = Cpanel::Slurper::read_lines("/etc/csf/csf.uidignore");
+    my @entries = slurp("/etc/csf/csf.uidignore");
     foreach my $line (@entries) {
         if ( $line =~ /^Include\s*(.*)$/ ) {
-            my @incfile = Cpanel::Slurper::read_lines($1);
+            my @incfile = slurp($1);
             push @entries, @incfile;
         }
     }
@@ -1021,10 +1020,10 @@ if ( $config{CT_LIMIT} ) {
 
 if ( $config{PT_LIMIT} ) {
     if ( -e "/etc/csf/csf.pignore" ) {
-        my @entries = Cpanel::Slurper::read_lines("/etc/csf/csf.pignore");
+        my @entries = slurp("/etc/csf/csf.pignore");
         foreach my $line (@entries) {
             if ( $line =~ /^Include\s*(.*)$/ ) {
-                my @incfile = Cpanel::Slurper::read_lines($1);
+                my @incfile = slurp($1);
                 push @entries, @incfile;
             }
         }
@@ -1146,7 +1145,7 @@ while ( my $file = readdir(DIR) ) {
 closedir(DIR);
 
 if ( -e "/etc/ssh/sshd_config" ) {
-    foreach my $line ( Cpanel::Slurper::read_lines("/etc/ssh/sshd_config") ) {
+    foreach my $line ( slurp("/etc/ssh/sshd_config") ) {
         $line =~ s/$cleanreg//g;
         if ( $line =~ /^(\s|\#|$)/ ) { next }
         if ( $line =~ /^Port\s+(\d+)/i ) {
@@ -1530,7 +1529,7 @@ while (1) {
         my $lastrun;
 
         if ( -e "/var/lib/csf/csf.lastlogrun" ) {
-            my @data = Cpanel::Slurper::read_lines("/var/lib/csf/csf.lastlogrun");
+            my @data = slurp("/var/lib/csf/csf.lastlogrun");
             $loginterval = $lastrun = $data[0];
         }
         if ( $loginterval eq "" ) {
@@ -2271,7 +2270,7 @@ sub getlogfile {
         my $text = "*Error* Log line flooding/looping in $logfile. Reopening log file";
         logfile("$text");
         if ( $config{LOGFLOOD_ALERT} ) {
-            my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/logfloodalert.txt");
+            my @alert = slurp("/usr/local/csf/tpl/logfloodalert.txt");
             my @message;
             foreach my $line (@alert) {
                 $line =~ s/\[text\]/$text/ig;
@@ -2392,10 +2391,10 @@ sub lockhang {
 sub syslog_init {
     local $SIG{CHLD} = 'DEFAULT';
     my %syslogusers;
-    my @entries = Cpanel::Slurper::read_lines("/etc/csf/csf.syslogusers");
+    my @entries = slurp("/etc/csf/csf.syslogusers");
     foreach my $line (@entries) {
         if ( $line =~ /^Include\s*(.*)$/ ) {
-            my @incfile = Cpanel::Slurper::read_lines($1);
+            my @incfile = slurp($1);
             push @entries, @incfile;
         }
     }
@@ -2582,7 +2581,7 @@ sub block {
             if ( $config{LF_EMAIL_ALERT} and ( $perm or ( !$perm and $config{LF_TEMP_EMAIL_ALERT} ) ) ) {
                 $0 = "lfd - (child) sending alert email for $ip";
 
-                my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/alert.txt");
+                my @alert = slurp("/usr/local/csf/tpl/alert.txt");
                 my $block = "Temporary Block for $temp seconds [$active]";
                 if ($perm) { $block = "Permanent Block [$active]" }
 
@@ -2607,7 +2606,7 @@ sub block {
             if ( $config{X_ARF} ) {
                 $0 = "lfd - (child) sending X-ARF email for $ip";
 
-                my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/x-arf.txt");
+                my @alert = slurp("/usr/local/csf/tpl/x-arf.txt");
                 my @message;
                 my $rfc3339      = strftime( '%Y-%m-%dT%H:%M:%S%z', localtime );
                 my $boundary     = time;
@@ -2715,7 +2714,7 @@ sub blockaccount {
         }
 
         if ( $config{LF_EMAIL_ALERT} ) {
-            my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/alert.txt");
+            my @alert = slurp("/usr/local/csf/tpl/alert.txt");
             my $block = "Temporary Block for $temp seconds [LF_DISTATTACK]";
             if ($perm) { $block = "Permanent Block [LF_DISTATTACK]" }
 
@@ -2771,7 +2770,7 @@ sub blockdistftp {
         }
 
         if ( $config{LF_DISTFTP_ALERT} ) {
-            my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/alert.txt");
+            my @alert = slurp("/usr/local/csf/tpl/alert.txt");
             my $block = "Temporary Block for $temp seconds [LF_DISTFTP]";
             if ($perm) { $block = "Permanent Block [LF_DISTFTP]" }
 
@@ -2832,7 +2831,7 @@ sub blockdistsmtp {
         }
 
         if ( $config{LF_DISTSMTP_ALERT} ) {
-            my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/alert.txt");
+            my @alert = slurp("/usr/local/csf/tpl/alert.txt");
             my $block = "Temporary Block for $temp seconds [LF_DISTSMTP]";
             if ($perm) { $block = "Permanent Block [LF_DISTSMTP]" }
 
@@ -2886,7 +2885,7 @@ sub disable404 {
             if ( $config{LT_EMAIL_ALERT} ) {
                 $0 = "lfd - (child) sending alert email for $ip";
 
-                my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/alert.txt");
+                my @alert = slurp("/usr/local/csf/tpl/alert.txt");
                 my $block = "Temporary Block for $config{LF_APACHE_404_PERM} seconds [LF_APACHE_404]";
                 if ($perm) { $block = "Permanent Block [LF_APACHE_404]" }
                 my @message;
@@ -2935,7 +2934,7 @@ sub disable403 {
             if ( $config{LT_EMAIL_ALERT} ) {
                 $0 = "lfd - (child) sending alert email for $ip";
 
-                my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/alert.txt");
+                my @alert = slurp("/usr/local/csf/tpl/alert.txt");
                 my $block = "Temporary Block for $config{LF_APACHE_403_PERM} seconds [LF_APACHE_403]";
                 if ($perm) { $block = "Permanent Block [LF_APACHE_403]" }
                 my @message;
@@ -2984,7 +2983,7 @@ sub disable401 {
             if ( $config{LT_EMAIL_ALERT} ) {
                 $0 = "lfd - (child) sending alert email for $ip";
 
-                my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/alert.txt");
+                my @alert = slurp("/usr/local/csf/tpl/alert.txt");
                 my $block = "Temporary Block for $config{LF_APACHE_401_PERM} seconds [LF_APACHE_401]";
                 if ($perm) { $block = "Permanent Block [LF_APACHE_401]" }
                 my @message;
@@ -3040,7 +3039,7 @@ sub logindisable {
             if ( $config{LT_EMAIL_ALERT} ) {
                 $0 = "lfd - (child) sending alert email for $account";
 
-                my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/tracking.txt");
+                my @alert = slurp("/usr/local/csf/tpl/tracking.txt");
                 my @message;
                 foreach my $line (@alert) {
                     $line =~ s/\[ip\]/$tip/ig;
@@ -3090,7 +3089,7 @@ sub portscans {
             if ( $config{PS_EMAIL_ALERT} ) {
                 $0 = "lfd - (child) sending alert email for $ip";
 
-                my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/portscan.txt");
+                my @alert = slurp("/usr/local/csf/tpl/portscan.txt");
                 my $block = "Temporary Block for $config{PS_BLOCK_TIME} seconds [PS_LIMIT]";
                 if ( $config{PS_PERMANENT} ) { $block = "Permanent Block [PS_LIMIT]" }
 
@@ -3112,7 +3111,7 @@ sub portscans {
                 if ( $config{X_ARF} ) {
                     $0 = "lfd - (child) sending X-ARF email for $ip";
 
-                    my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/x-arf.txt");
+                    my @alert = slurp("/usr/local/csf/tpl/x-arf.txt");
                     my @message;
                     my $rfc3339      = strftime( '%Y-%m-%dT%H:%M:%S%z', localtime );
                     my $boundary     = time;
@@ -3191,7 +3190,7 @@ sub uidscans {
         if ( $user eq "" ) { $user = $uid }
         logfile("*UID Tracking* $count blocks for UID $uid ($user)");
 
-        my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/uidscan.txt");
+        my @alert = slurp("/usr/local/csf/tpl/uidscan.txt");
         my @message;
         foreach my $line (@alert) {
             $line =~ s/\[uid\]/$uid ($user)/ig;
@@ -3293,7 +3292,7 @@ sub csfcheck {
 
             unless ($skip) {
                 my $current;
-                foreach my $line ( Cpanel::Slurper::read_lines("/usr/local/cpanel/version") ) {
+                foreach my $line ( slurp("/usr/local/cpanel/version") ) {
                     $line =~ s/$cleanreg//g;
                     if ( $line =~ /\d/ ) { $current = $line }
                 }
@@ -3481,7 +3480,7 @@ sub loadcheck {
             my ( $status, $apache ) = $urlget->urlget($url);
             if ($status) { $apache = "Unable to retrieve Apache Server Status [$url] - $apache" }
 
-            my @alert    = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/loadalert.txt");
+            my @alert    = slurp("/usr/local/csf/tpl/loadalert.txt");
             my $boundary = "csf" . time;
             my @message;
             foreach my $line (@alert) {
@@ -3519,10 +3518,10 @@ sub denycheck {
     my $ipstring = quotemeta($ip);
     my $skip     = 0;
 
-    my @deny = Cpanel::Slurper::read_lines("/etc/csf/csf.deny");
+    my @deny = slurp("/etc/csf/csf.deny");
     foreach my $line (@deny) {
         if ( $line =~ /^Include\s*(.*)$/ ) {
-            my @incfile = Cpanel::Slurper::read_lines($1);
+            my @incfile = slurp($1);
             push @deny, @incfile;
         }
     }
@@ -3615,7 +3614,7 @@ sub queuecheck {
             print $QUEUE time;
             close($QUEUE);
 
-            my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/queuealert.txt");
+            my @alert = slurp("/usr/local/csf/tpl/queuealert.txt");
             my @message;
             foreach my $line (@alert) {
                 $line =~ s/\[text\]/$report/ig;
@@ -3677,7 +3676,7 @@ sub modsecipdbcheck {
             print $QUEUE time;
             close($QUEUE);
 
-            my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/modsecipdbalert.txt");
+            my @alert = slurp("/usr/local/csf/tpl/modsecipdbalert.txt");
             my @message;
             foreach my $line (@alert) {
                 $line =~ s/\[text\]/$report/ig;
@@ -3818,7 +3817,7 @@ sub connectiontracking {
                     if ( $config{CT_EMAIL_ALERT} ) {
                         $0 = "lfd - (child) (CT) sending alert email for $ip";
 
-                        my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/connectiontracking.txt");
+                        my @alert = slurp("/usr/local/csf/tpl/connectiontracking.txt");
                         my $block = "Temporary Block for $config{CT_BLOCK_TIME} seconds [CT_LIMIT]";
                         if ( $config{CT_PERMANENT} ) { $block = "Permanent Block [CT_LIMIT]" }
 
@@ -3839,7 +3838,7 @@ sub connectiontracking {
                         if ( $config{X_ARF} ) {
                             $0 = "lfd - (child) sending X-ARF email for $ip";
 
-                            my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/x-arf.txt");
+                            my @alert = slurp("/usr/local/csf/tpl/x-arf.txt");
                             my @message;
                             my $rfc3339      = strftime( '%Y-%m-%dT%H:%M:%S%z', localtime );
                             my $boundary     = time;
@@ -3904,7 +3903,7 @@ sub connectiontracking {
                     if ( $config{CT_EMAIL_ALERT} ) {
                         $0 = "lfd - (child) (CT) sending alert email for $subnet";
 
-                        my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/connectiontracking.txt");
+                        my @alert = slurp("/usr/local/csf/tpl/connectiontracking.txt");
                         my $block = "Temporary Block for $config{CT_BLOCK_TIME} seconds [CT_LIMIT]";
                         if ( $config{CT_PERMANENT} ) { $block = "Permanent Block [CT_LIMIT]" }
 
@@ -3999,7 +3998,7 @@ sub accounttracking {
         if ( $report ne "" ) {
             logfile("*Account Modification* Email sent");
 
-            my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/accounttracking.txt");
+            my @alert = slurp("/usr/local/csf/tpl/accounttracking.txt");
             my @message;
             foreach my $line (@alert) {
                 $line =~ s/\[report\]/$report/ig;
@@ -4037,7 +4036,7 @@ sub syslogcheck {
 
         logfile("*SYSLOG CHECK* Failed to detect check line [$syslogcheckcode] sent to SYSLOG");
 
-        my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/syslogalert.txt");
+        my @alert = slurp("/usr/local/csf/tpl/syslogalert.txt");
         my @message;
         foreach my $line (@alert) {
             $line =~ s/\[code\]/$syslogcheckcode/ig;
@@ -4304,7 +4303,7 @@ sub processtracking {
                             delete $sessions{$sid};
                             kill 9, "-$sid";
 
-                            my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/forkbombalert.txt");
+                            my @alert = slurp("/usr/local/csf/tpl/forkbombalert.txt");
                             my @message;
                             foreach my $line (@alert) {
                                 $line =~ s/\[level\]/$config{PT_FORKBOMB}/ig;
@@ -4403,7 +4402,7 @@ sub processtracking {
                         my $maps;
                         foreach my $line (@maps) { $maps .= $line . "\n" }
 
-                        my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/processtracking.txt");
+                        my @alert = slurp("/usr/local/csf/tpl/processtracking.txt");
                         my @message;
                         foreach my $line (@alert) {
                             $line =~ s/\[pid\]/$pid (Parent PID:$ppid)/ig;
@@ -4456,7 +4455,7 @@ sub processtracking {
                     logfile("*Excessive Processes* User:$user Kill:$config{PT_USERKILL} Process Count:$totproc{$user}{count}");
 
                     if ( !$config{PT_USERKILL} or ( $config{PT_USERKILL} and $config{PT_USERKILL_ALERT} ) ) {
-                        my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/usertracking.txt");
+                        my @alert = slurp("/usr/local/csf/tpl/usertracking.txt");
                         my @message;
                         foreach my $line (@alert) {
                             $line =~ s/\[user\]/$user/ig;
@@ -4520,7 +4519,7 @@ sub processtracking {
                     }
 
                     if ( !$config{PT_USERKILL} or ( $config{PT_USERKILL} and $config{PT_USERKILL_ALERT} ) ) {
-                        my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/resalert.txt");
+                        my @alert = slurp("/usr/local/csf/tpl/resalert.txt");
                         my @message;
                         foreach my $line (@alert) {
                             $line =~ s/\[user\]/$procres{$pid}{user}/ig;
@@ -4578,7 +4577,7 @@ sub sshalert {
 
         $0 = "lfd - (child) sending SSH login alert email for $ip";
 
-        my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/sshalert.txt");
+        my @alert = slurp("/usr/local/csf/tpl/sshalert.txt");
         my $tip   = iplookup($ip);
         my @message;
         foreach my $line (@alert) {
@@ -4618,7 +4617,7 @@ sub sualert {
 
         $0 = "lfd - (child) sending SU login alert email from $sufrom to $suto";
 
-        my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/sualert.txt");
+        my @alert = slurp("/usr/local/csf/tpl/sualert.txt");
         my @message;
         foreach my $line (@alert) {
             $line =~ s/\[to\]/$suto/ig;
@@ -4657,7 +4656,7 @@ sub sudoalert {
 
         $0 = "lfd - (child) sending SU login alert email from $sufrom to $suto";
 
-        my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/sudoalert.txt");
+        my @alert = slurp("/usr/local/csf/tpl/sudoalert.txt");
         my @message;
         foreach my $line (@alert) {
             $line =~ s/\[to\]/$suto/ig;
@@ -4695,7 +4694,7 @@ sub webminalert {
 
         $0 = "lfd - (child) sending Webmin login alert email for $ip";
 
-        my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/webminalert.txt");
+        my @alert = slurp("/usr/local/csf/tpl/webminalert.txt");
         my $tip   = iplookup($ip);
         my @message;
         foreach my $line (@alert) {
@@ -4731,7 +4730,7 @@ sub consolealert {
 
         $0 = "lfd - (child) sending console login alert email";
 
-        my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/consolealert.txt");
+        my @alert = slurp("/usr/local/csf/tpl/consolealert.txt");
         my @message;
         foreach my $line (@alert) {
             $line =~ s/\[line\]/$logline/ig;
@@ -4766,7 +4765,7 @@ sub cpanelalert {
 
         $0 = "lfd - (child) sending WHM/cPanel access alert email for $ip";
 
-        my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/cpanelalert.txt");
+        my @alert = slurp("/usr/local/csf/tpl/cpanelalert.txt");
         my $tip   = iplookup($ip);
         my @message;
         foreach my $line (@alert) {
@@ -4847,7 +4846,7 @@ sub scriptalert {
 
         $0 = "lfd - (child) sending script alert";
 
-        my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/scriptalert.txt");
+        my @alert = slurp("/usr/local/csf/tpl/scriptalert.txt");
         my @message;
         foreach my $line (@alert) {
             $line =~ s/\[path\]/\'$path\'/ig;
@@ -4915,7 +4914,7 @@ sub relayalert {
             }
         }
 
-        my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/relayalert.txt");
+        my @alert = slurp("/usr/local/csf/tpl/relayalert.txt");
         my $block = "No";
         if ( $config{"RT\_$check\_BLOCK"} == 1 ) { $block = "Permanent Block [RT\_$check\_LIMIT]" }
         if ( $config{"RT\_$check\_BLOCK"} > 1 )  { $block = "Temporary Block for " . $config{"RT\_$check\_BLOCK"} . " seconds [RT\_$check\_LIMIT]" }
@@ -4967,7 +4966,7 @@ sub portknocking {
 
         $0 = "lfd - (child) sending Port Knocking alert email for $ip";
 
-        my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/portknocking.txt");
+        my @alert = slurp("/usr/local/csf/tpl/portknocking.txt");
         my $tip   = iplookup($ip);
         my @message;
         foreach my $line (@alert) {
@@ -5945,10 +5944,10 @@ sub countrycode {
             print $SMTPAUTH "\"::1/128\"\n";
 
             if ( -e "/etc/csf/csf.smtpauth" ) {
-                my @entries = Cpanel::Slurper::read_lines("/etc/csf/csf.smtpauth");
+                my @entries = slurp("/etc/csf/csf.smtpauth");
                 foreach my $line (@entries) {
                     if ( $line =~ /^Include\s*(.*)$/ ) {
-                        my @incfile = Cpanel::Slurper::read_lines($1);
+                        my @incfile = slurp($1);
                         push @entries, @incfile;
                     }
                 }
@@ -5966,7 +5965,7 @@ sub countrycode {
                 $cc = lc $cc;
                 if ( -e "/var/lib/csf/zone/$cc.zone" ) {
                     print $SMTPAUTH "\n# IPv4 addresses for [" . uc($cc) . "]:\n";
-                    foreach my $line ( Cpanel::Slurper::read_lines("/var/lib/csf/zone/$cc.zone") ) {
+                    foreach my $line ( slurp("/var/lib/csf/zone/$cc.zone") ) {
                         $line =~ s/$cleanreg//g;
                         if ( $line =~ /^(\s|\#|$)/ ) { next }
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
@@ -5983,7 +5982,7 @@ sub countrycode {
                 }
                 if ( $config{CC6_LOOKUPS} and -e "/var/lib/csf/zone/$cc.zone6" ) {
                     print $SMTPAUTH "\n# IPv6 addresses for [" . uc($cc) . "]:\n";
-                    foreach my $line ( Cpanel::Slurper::read_lines("/var/lib/csf/zone/$cc.zone6") ) {
+                    foreach my $line ( slurp("/var/lib/csf/zone/$cc.zone6") ) {
                         $line =~ s/$cleanreg//g;
                         if ( $line =~ /^(\s|\#|$)/ ) { next }
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
@@ -7033,10 +7032,10 @@ sub dyndns {
         $0 = "lfd - resolving dyndns IP addresses";
 
         my @dyndns;
-        my @entries = Cpanel::Slurper::read_lines("/etc/csf/csf.dyndns");
+        my @entries = slurp("/etc/csf/csf.dyndns");
         foreach my $line (@entries) {
             if ( $line =~ /^Include\s*(.*)$/ ) {
-                my @incfile = Cpanel::Slurper::read_lines($1);
+                my @incfile = slurp($1);
                 push @entries, @incfile;
             }
         }
@@ -7348,7 +7347,7 @@ sub dirwatch {
             if (@suspicious) {
                 $0 = "lfd - reporting directory watch results";
 
-                my @alert   = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/filealert.txt");
+                my @alert   = slurp("/usr/local/csf/tpl/filealert.txt");
                 my $matches = 0;
                 foreach my $file (@suspicious) {
                     if     ( $nofiles{$file} ) { next }
@@ -7560,7 +7559,7 @@ sub dirwatchfile {
             }
         }
 
-        my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/watchalert.txt");
+        my @alert = slurp("/usr/local/csf/tpl/watchalert.txt");
         foreach my $file ( keys %dirwatchfile ) {
             unless ( -e $file ) {
                 logfile("Directory *File Watching* [$file] does not exist");
@@ -7698,7 +7697,7 @@ sub integrity {
                     logfile("*System Integrity* has detected modified file(s):$files");
                     $0 = "lfd - (child) system integrity alert";
 
-                    my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/integrityalert.txt");
+                    my @alert = slurp("/usr/local/csf/tpl/integrityalert.txt");
                     my @message;
                     foreach my $line (@alert) {
                         $line =~ s/\r//;
@@ -7804,7 +7803,7 @@ sub logscanner {
 
             if ( $text eq "" ) { $text = "...No log lines to report..." }
 
-            my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/logalert.txt");
+            my @alert = slurp("/usr/local/csf/tpl/logalert.txt");
             my @message;
             foreach my $line (@alert) {
                 $line =~ s/\r//;
@@ -7867,7 +7866,7 @@ sub exploit {
             print $TEMPEXPLOIT time;
             close($TEMPEXPLOIT);
 
-            my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/exploitalert.txt");
+            my @alert = slurp("/usr/local/csf/tpl/exploitalert.txt");
             my @message;
             foreach my $line (@alert) {
                 $line =~ s/\[text\]/$report/ig;
@@ -8731,7 +8730,7 @@ sub ipblock {
                 if ( $config{LF_NETBLOCK_ALERT} ) {
                     $0 = "lfd - (child) sending alert email for $ipblock";
 
-                    my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/netblock.txt");
+                    my @alert = slurp("/usr/local/csf/tpl/netblock.txt");
                     my @message;
                     my $tip = iplookup($ipblock);
                     foreach my $line (@alert) {
@@ -8773,7 +8772,7 @@ sub ipblock {
                 if ( $config{LF_PERMBLOCK_ALERT} ) {
                     $0 = "lfd - (child) sending alert email for $ip";
 
-                    my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/permblock.txt");
+                    my @alert = slurp("/usr/local/csf/tpl/permblock.txt");
                     my $tip   = iplookup($ip);
                     my @message;
                     foreach my $line (@alert) {
@@ -9468,7 +9467,7 @@ sub messengerrecaptcha {
         $SIG{__DIE__} = sub { &childcleanup(@_); };
 
         if ( -f "$homedir/unblock.txt" ) {
-            my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/recaptcha.txt");
+            my @alert = slurp("/usr/local/csf/tpl/recaptcha.txt");
             sysopen( my $UNBLOCK, "$homedir/unblock.txt", O_RDWR | O_CREAT );
             flock( $UNBLOCK, LOCK_EX );
             while ( my $line = <$UNBLOCK> ) {
@@ -9528,7 +9527,7 @@ sub messengerstop {
             }
         }
         elsif ( -f $config{MESSENGERV3LOCATION} ) {
-            my @conf = Cpanel::Slurper::read_lines( $config{MESSENGERV3LOCATION} );
+            my @conf = slurp( $config{MESSENGERV3LOCATION} );
             if ( grep { $_ =~ m[^Include /var/lib/csf/csf.conf]i } @conf ) {
                 sysopen( my $FILE, $config{MESSENGERV3LOCATION}, O_WRONLY | O_CREAT | O_TRUNC );
                 flock( $FILE, LOCK_EX );
@@ -9756,7 +9755,7 @@ sub ui {
         $SIG{__DIE__} = sub { &childcleanup(@_); };
         $childproc    = "UI";
 
-        my @alert = Cpanel::Slurper::read_lines("/usr/local/csf/tpl/uialert.txt");
+        my @alert = slurp("/usr/local/csf/tpl/uialert.txt");
         my $server;
         if ( $config{IPV6} ) {
             $server = IO::Socket::SSL->new(
@@ -10734,10 +10733,10 @@ sub lfdserver {
                             }
                             elsif ( $command eq "I" and checkip( \$ip ) ) {
                                 my $ignorematches;
-                                my @ignore = Cpanel::Slurper::read_lines("/etc/csf/csf.ignore");
+                                my @ignore = slurp("/etc/csf/csf.ignore");
                                 foreach my $line (@ignore) {
                                     if ( $line =~ /^Include\s*(.*)$/ ) {
-                                        my @incfile = Cpanel::Slurper::read_lines($1);
+                                        my @incfile = slurp($1);
                                         push @ignore, @incfile;
                                     }
                                 }
@@ -11383,10 +11382,10 @@ sub systemstats {
 sub allowip {
     my $ipmatch = shift;
 
-    my @allow = Cpanel::Slurper::read_lines("/etc/csf/csf.allow");
+    my @allow = slurp("/etc/csf/csf.allow");
     foreach my $line (@allow) {
         if ( $line =~ /^Include\s*(.*)$/ ) {
-            my @incfile = Cpanel::Slurper::read_lines($1);
+            my @incfile = slurp($1);
             push @allow, @incfile;
         }
     }

@@ -25,8 +25,7 @@ use lib '/usr/local/csf/lib';
 use Fcntl qw(:DEFAULT :flock);
 use ConfigServer::Config;
 use ConfigServer::CheckIP   qw(checkip);
-use Cpanel::Slurper ();
-use ConfigServer::Slurp ();
+use ConfigServer::Slurp     qw(slurp);
 use ConfigServer::GetIPs    qw(getips);
 use ConfigServer::RBLLookup qw(rbllookup);
 use IPC::Open3;
@@ -64,13 +63,13 @@ sub report {
 
     &getethdev;
 
-    my @RBLS = Cpanel::Slurper::read_lines("/usr/local/csf/lib/csf.rbls");
+    my @RBLS = slurp("/usr/local/csf/lib/csf.rbls");
 
     if ( -e "/etc/csf/csf.rblconf" ) {
-        my @entries = Cpanel::Slurper::read_lines("/etc/csf/csf.rblconf");
+        my @entries = slurp("/etc/csf/csf.rblconf");
         foreach my $line (@entries) {
             if ( $line =~ /^Include\s*(.*)$/ ) {
-                my @incfile = Cpanel::Slurper::read_lines($1);
+                my @incfile = slurp($1);
                 push @entries, @incfile;
             }
         }
@@ -109,7 +108,7 @@ sub report {
             }
 
             if ( -e "/var/lib/csf/${ip}.rbls" ) {
-                my $text = join( "\n", Cpanel::Slurper::read_lines("/var/lib/csf/${ip}.rbls") );
+                my $text = join( "\n", slurp("/var/lib/csf/${ip}.rbls") );
                 if   ($ui) { print $text }
                 else       { $output .= $text }
             }

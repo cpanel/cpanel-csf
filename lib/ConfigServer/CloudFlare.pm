@@ -28,8 +28,7 @@ use JSON::Tiny();
 use LWP::UserAgent;
 use Time::Local();
 use ConfigServer::Config;
-use Cpanel::Slurper ();
-use ConfigServer::Slurp ();
+use ConfigServer::Slurp  qw(slurp);
 use ConfigServer::Logger qw(logfile);
 use YAML::Tiny;
 use Data::Dumper;
@@ -443,10 +442,10 @@ sub getscope {
     my %scope;
     my %disabled;
     my %any;
-    my @entries = Cpanel::Slurper::read_lines("/etc/csf/csf.cloudflare");
+    my @entries = slurp("/etc/csf/csf.cloudflare");
     foreach my $line (@entries) {
         if ( $line =~ /^Include\s*(.*)$/ ) {
-            my @incfile = Cpanel::Slurper::read_lines($1);
+            my @incfile = slurp($1);
             push @entries, @incfile;
         }
     }

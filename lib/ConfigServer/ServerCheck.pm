@@ -25,8 +25,7 @@ use lib '/usr/local/csf/lib';
 use Fcntl qw(:DEFAULT :flock);
 use File::Basename;
 use IPC::Open3;
-use Cpanel::Slurper ();
-use ConfigServer::Slurp ();
+use ConfigServer::Slurp  qw(slurp);
 use ConfigServer::Sanity qw(sanity);
 use ConfigServer::Config;
 use ConfigServer::GetIPs  qw(getips);
@@ -1347,7 +1346,7 @@ sub apachecheck {
     my %ea4;
 
     if ( -e "/usr/local/cpanel/version" and -e "/etc/cpanel/ea4/is_ea4" and -e "/etc/cpanel/ea4/paths.conf" ) {
-        my @file = Cpanel::Slurper::read_lines("/etc/cpanel/ea4/paths.conf");
+        my @file = slurp("/etc/cpanel/ea4/paths.conf");
         $ea4{enabled} = 1;
         foreach my $line (@file) {
             $line =~ s/$cleanreg//g;

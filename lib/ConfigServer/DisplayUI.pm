@@ -37,8 +37,7 @@ use ConfigServer::ServerStats;
 use ConfigServer::Service;
 use ConfigServer::RBLCheck;
 use ConfigServer::GetEthDev;
-use Cpanel::Slurper ();
-use ConfigServer::Slurp ();
+use ConfigServer::Slurp qw(slurp);
 
 use Exporter qw(import);
 our $VERSION   = 1.01;
@@ -364,10 +363,10 @@ sub main {
         my $script_safe  = $script;
         my $CSFfrombot   = 120;
         my $CSFfromright = 10;
-        my @data         = Cpanel::Slurper::read_lines("/etc/csf/csf.syslogs");
+        my @data         = slurp("/etc/csf/csf.syslogs");
         foreach my $line (@data) {
             if ( $line =~ /^Include\s*(.*)$/ ) {
-                my @incfile = Cpanel::Slurper::read_lines($1);
+                my @incfile = slurp($1);
                 push @data, @incfile;
             }
         }
@@ -435,10 +434,10 @@ EOF
         $FORM{lines} =~ s/\D//g;
         if ( $FORM{lines} eq "" or $FORM{lines} == 0 ) { $FORM{lines} = 30 }
 
-        my @data = Cpanel::Slurper::read_lines("/etc/csf/csf.syslogs");
+        my @data = slurp("/etc/csf/csf.syslogs");
         foreach my $line (@data) {
             if ( $line =~ /^Include\s*(.*)$/ ) {
-                my @incfile = Cpanel::Slurper::read_lines($1);
+                my @incfile = slurp($1);
                 push @data, @incfile;
             }
         }
@@ -504,10 +503,10 @@ EOF
         my $script_safe  = $script;
         my $CSFfrombot   = 120;
         my $CSFfromright = 10;
-        my @data         = Cpanel::Slurper::read_lines("/etc/csf/csf.syslogs");
+        my @data         = slurp("/etc/csf/csf.syslogs");
         foreach my $line (@data) {
             if ( $line =~ /^Include\s*(.*)$/ ) {
-                my @incfile = Cpanel::Slurper::read_lines($1);
+                my @incfile = slurp($1);
                 push @data, @incfile;
             }
         }
@@ -586,10 +585,10 @@ EOF
         &printreturn;
     }
     elsif ( $FORM{action} eq "loggrepcmd" ) {
-        my @data = Cpanel::Slurper::read_lines("/etc/csf/csf.syslogs");
+        my @data = slurp("/etc/csf/csf.syslogs");
         foreach my $line (@data) {
             if ( $line =~ /^Include\s*(.*)$/ ) {
-                my @incfile = Cpanel::Slurper::read_lines($1);
+                my @incfile = slurp($1);
                 push @data, @incfile;
             }
         }
@@ -2058,7 +2057,7 @@ EOF
     }
     else {
         if ( defined $ENV{WEBMIN_VAR} and defined $ENV{WEBMIN_CONFIG} and -e "module.info" ) {
-            my @data = Cpanel::Slurper::read_lines("module.info");
+            my @data = slurp("module.info");
             foreach my $line (@data) {
                 if ( $line =~ /^name=csf$/ ) {
                     unless ( -l "index.cgi" ) {
