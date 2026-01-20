@@ -28,6 +28,7 @@ description: "Perl development standards, module patterns, and Perl conventions"
 - Always use fully qualified names when referencing functions or variables from another package.
 - Use `unless` sparingly; prefer when it reads more naturally than `if (!$cond)`.
 - When refactoring modules, remove `use Exporter` and related variables (`@EXPORT`, `@EXPORT_OK`) if the module is not exporting anything. You should also remove `@ISA` if it's only there for `Exporter`.
+- **Never use Perl 4 style subroutine calls**: Use `function()` instead of `&function;` and `function($arg)` instead of `&function($arg)`. The ampersand (`&`) is only needed for special cases like passing `@_` implicitly or taking references to subroutines.
 
 ## Preferred Modules
 
