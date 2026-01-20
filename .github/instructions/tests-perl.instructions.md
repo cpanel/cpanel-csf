@@ -77,6 +77,27 @@ require_ok('ConfigServer::CloudFlare');  # NEVER DO THIS
 use_ok('ConfigServer::CloudFlare');      # NEVER DO THIS
 ```
 
+### Mocking Cpanel::Config
+
+When testing modules that use `Cpanel::Config::loadcpconf()`, use the memory-only configuration guard:
+
+```perl
+use YourModule;  # Load the module first (which loads Cpanel::Config as a dependency)
+
+# Set memory_only AFTER Cpanel::Config is loaded
+$Cpanel::Config::CpConfGuard::memory_only = {
+    alwaysredirecttossl => 1,
+    skipboxtrapper      => 1,
+    maxemailsperhour    => 500,
+    nativessl           => 1,
+    ftpserver           => 'pure-ftpd',
+};
+
+# Now tests can run with the mocked configuration
+```
+
+**Important:** Set `$Cpanel::Config::CpConfGuard::memory_only` AFTER loading modules that depend on Cpanel::Config, as the variable must be set after the Cpanel::Config module is loaded into memory.
+
 ### Mocking ConfigServer::Config
 
 When testing modules that depend on `ConfigServer::Config`, **ALWAYS use MockConfig** to isolate tests from distribution configuration files and behavior.
@@ -940,11 +961,12 @@ use Test2::V0;
 
 # Test that functions are exported
 imported_ok("function_name", "Function was imported");
-not_imported_ok("private_function", "Private function not imported");
 
 # Test multiple exports
 imported_ok(["func1", "func2"], "Multiple functions imported");
 ```
+
+**Important:** Do not write tests to validate that private subroutines (prefixed with `_`) exist. If they are needed and missing, the code will fail during normal test execution. Testing for their existence adds no value and creates maintenance overhead.
 
 ### Best Practices
 
