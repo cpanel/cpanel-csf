@@ -1987,7 +1987,6 @@ sub _servicescheck {
 
     my @enabled;
     foreach my $service (@services) {
-        if ( $service eq "xinetd" and $config{PLESK} ) { next }
         if ( $sysinit eq "init" ) {
             if ( my @ls = grep { $_ =~ /^$service\b/ } @chkconfig ) {
                 if ( $ls[0] =~ /\:on/ ) { push @enabled, $service }
