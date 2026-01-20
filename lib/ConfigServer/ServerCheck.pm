@@ -81,6 +81,7 @@ use ConfigServer::GetIPs  qw(getips);
 use ConfigServer::CheckIP qw(checkip);
 use ConfigServer::Service;
 use ConfigServer::GetEthDev;
+use ConfigServer::Messenger ();
 
 use Cpanel::Config ();
 
@@ -195,10 +196,10 @@ sub report {
     _firewallcheck();
     _servercheck();
     _sshtelnetcheck();
-    _mailcheck() unless $config{DNSONLY};
+    _mailcheck()   unless $config{DNSONLY};
     _apachecheck() unless $config{DNSONLY};
-    _phpcheck() unless $config{DNSONLY};
-    _whmcheck() unless $config{DNSONLY};
+    _phpcheck()    unless $config{DNSONLY};
+    _whmcheck()    unless $config{DNSONLY};
     _servicescheck();
 
     _endoutput();
@@ -253,9 +254,10 @@ sub _endoutput {
     }
     $output .= "<br>\n";
 
-    my $gap   = int( ( $total - 3 ) / 4 );
+    my $gap   = $total > 3 ? int( ( $total - 3 ) / 4 ) : 0;
     my $score = ( $total - $failures );
-    my $width = int( ( 400 / $total ) * $score ) - 4;
+    my $width = $total > 0 ? int( ( 400 / $total ) * $score ) - 4 : 0;
+    $width = 0 if $width < 0;
     $output .= "<br>\n<table align='center'>\n<tr><td><div style='border:1px solid #DDDDDD;padding:8px;border-radius:5px'>\n";
     $output .= "<h4 style='text-align:center'>Server Score: $score/$total*</h4>\n";
     $output .= "<div style='text-align:center;border:1px solid #DDDDDD;width:500px'>\n";
@@ -332,7 +334,7 @@ sub _firewallcheck {
             $value = $1;
         }
         else {
-            error( __LINE__, "Invalid configuration line" );
+            ConfigServer::Messenger::error( __LINE__, "Invalid configuration line" );
         }
         $config{$name} = $value;
     }
@@ -367,7 +369,7 @@ sub _firewallcheck {
 
     $status = 0;
     unless ( $config{LF_DAEMON} ) { $status = 1 }
-    _addline( $status, "lfd enabled check", "lfd is disabled in the csf configuration which limits the affectiveness of this application" );
+    _addline( $status, "lfd enabled check", "lfd is disabled in the csf configuration which limits the effectiveness of this application" );
 
     $status = 0;
     if ( $config{TCP_IN} =~ /\b3306\b/ ) { $status = 1 }
@@ -423,7 +425,7 @@ sub _firewallcheck {
 
     $status = 0;
     if ( !$config{LF_IPSET} and !$config{VPS} and ( $config{CC_DENY} or $config{CC_ALLOW} or $config{CC_ALLOW_FILTER} or $config{CC_ALLOW_PORTS} or $config{CC_DENY_PORTS} ) ) { $status = 1 }
-    _addline( $status, "LF_IPSET option check", "If support by your OS, you should install ipset and enable LF_IPSET when using Country Code (CC_*) filters" );
+    _addline( $status, "LF_IPSET option check", "If supported by your OS, you should install ipset and enable LF_IPSET when using Country Code (CC_*) filters" );
 
     unless ( $config{DNSONLY} ) {
         $status = 0;
