@@ -353,11 +353,14 @@ sub load_config {
 ###############################################################################
 # start process_input
 sub process_input {
-    $input{command} = lc $ARGV[0];
-    for ( my $x = 1; $x < @ARGV; $x++ ) {
-        $input{argument} .= $ARGV[$x] . " ";
-    }
-    $input{argument} =~ s/\s$//;
+
+    # Make a copy of @ARGV to avoid modifying it as it is used elsewhere in the script
+    my @arguments = @ARGV;
+    $input{command}  = lc shift @arguments;
+    $input{argument} = \@arguments;
+
+    # Some functions use the rest of the arguments as a comment
+    $input{comment} = join( " ", @arguments[ 1 .. $#arguments ] );
     return;
 }
 
@@ -434,7 +437,7 @@ sub doversion {
 ###############################################################################
 # start dolfd
 sub dolfd {
-    my $lfd = $input{argument};
+    my $lfd = $input{argument}[0];
     if    ( $lfd eq "start" )   { ConfigServer::Service::startlfd() }
     elsif ( $lfd eq "stop" )    { ConfigServer::Service::stoplfd() }
     elsif ( $lfd eq "restart" ) { ConfigServer::Service::restartlfd() }
@@ -597,7 +600,8 @@ sub doinitdown {
 ###############################################################################
 # start doclusterdeny
 sub doclusterdeny {
-    my ( $ip, $comment ) = split( /\s/, $input{argument}, 2 );
+    my $ip      = $input{argument}[0];
+    my $comment = $input{comment};
 
     if ( !checkip( \$ip ) ) {
         print "[$ip] is not a valid PUBLIC IP/CIDR\n";
@@ -612,7 +616,7 @@ sub doclusterdeny {
 ###############################################################################
 # start doclustertempdeny
 sub doclustertempdeny {
-    my ( $ip, $timeout, $portdir ) = split( /\s/, $input{argument}, 3 );
+    my ( $ip, $timeout, $portdir ) = @{ $input{argument} }[ 0 .. 2 ];
     my $inout = "in";
     my $ports = "";
     my $perm  = 0;
@@ -666,7 +670,8 @@ sub doclustertempdeny {
 ###############################################################################
 # start doclusterrm
 sub doclusterrm {
-    my ( $ip, $comment ) = split( /\s/, $input{argument}, 2 );
+    my $ip      = $input{argument}[0];
+    my $comment = $input{comment};
 
     if ( !checkip( \$ip ) ) {
         print "[$ip] is not a valid PUBLIC IP/CIDR\n";
@@ -681,7 +686,8 @@ sub doclusterrm {
 ###############################################################################
 # start doclusterarm
 sub doclusterarm {
-    my ( $ip, $comment ) = split( /\s/, $input{argument}, 2 );
+    my $ip      = $input{argument}[0];
+    my $comment = $input{comment};
 
     if ( !checkip( \$ip ) ) {
         print "[$ip] is not a valid PUBLIC IP/CIDR\n";
@@ -696,7 +702,8 @@ sub doclusterarm {
 ###############################################################################
 # start doclusterallow
 sub doclusterallow {
-    my ( $ip, $comment ) = split( /\s/, $input{argument}, 2 );
+    my $ip      = $input{argument}[0];
+    my $comment = $input{comment};
 
     if ( !checkip( \$ip ) ) {
         print "[$ip] is not a valid PUBLIC IP/CIDR\n";
@@ -711,7 +718,7 @@ sub doclusterallow {
 ###############################################################################
 # start doclustertempallow
 sub doclustertempallow {
-    my ( $ip, $timeout, $portdir ) = split( /\s/, $input{argument}, 3 );
+    my ( $ip, $timeout, $portdir ) = @{ $input{argument} }[ 0 .. 2 ];
     my $inout = "in";
     my $ports = "";
     my $perm  = 0;
@@ -765,7 +772,8 @@ sub doclustertempallow {
 ###############################################################################
 # start doclusterignore
 sub doclusterignore {
-    my ( $ip, $comment ) = split( /\s/, $input{argument}, 2 );
+    my $ip      = $input{argument}[0];
+    my $comment = $input{comment};
 
     if ( !checkip( \$ip ) ) {
         print "[$ip] is not a valid PUBLIC IP/CIDR\n";
@@ -780,7 +788,8 @@ sub doclusterignore {
 ###############################################################################
 # start doclusterirm
 sub doclusterirm {
-    my ( $ip, $comment ) = split( /\s/, $input{argument}, 2 );
+    my $ip      = $input{argument}[0];
+    my $comment = $input{comment};
 
     if ( !checkip( \$ip ) ) {
         print "[$ip] is not a valid PUBLIC IP/CIDR\n";
@@ -795,7 +804,7 @@ sub doclusterirm {
 ###############################################################################
 # start docconfig
 sub docconfig {
-    my ( $name, $value ) = split( /\s/, $input{argument}, 2 );
+    my ( $name, $value ) = @{ $input{argument} }[ 0, 1 ];
     unless ( $config{CLUSTER_CONFIG} ) { print "No configuration setting requests allowed\n"; return }
     unless ($name)                     { print "No configuration setting entered\n";          return }
 
@@ -807,7 +816,7 @@ sub docconfig {
 ###############################################################################
 # start doclustergrep
 sub doclustergrep {
-    my $ip = $input{argument};
+    my $ip = $input{argument}[0];
     if ( !checkip( \$ip ) ) {
         print "[$ip] is not a valid PUBLIC IP/CIDR\n";
         return;
@@ -821,7 +830,7 @@ sub doclustergrep {
 ###############################################################################
 # start docfile
 sub docfile {
-    my $name = $input{argument};
+    my $name = $input{argument}[0];
     unless ( $config{CLUSTER_CONFIG} ) { print "No configuration setting requests allowed\n"; return }
     unless ($name)                     { print "No file entered\n";                           return }
 
@@ -829,7 +838,7 @@ sub docfile {
         open( my $FH, "<", $name );
         flock( $FH, LOCK_SH );
         my @data = <$FH>;
-        close @data;
+        close $FH;
 
         my ( $file, $filedir ) = fileparse($name);
         my $send = "FILE $file\n";
@@ -1498,7 +1507,9 @@ sub dostart {
 ###############################################################################
 # start doadd
 sub doadd {
-    my ( $ip, $comment ) = split( /\s/, $input{argument}, 2 );
+    my $ip      = $input{argument}[0];
+    my $comment = $input{comment};
+
     my $checkip = checkip( \$ip );
 
     &getethdev;
@@ -1533,7 +1544,7 @@ sub doadd {
     }
     if ($hit) {
         print "Removing $ip from csf.deny...\n";
-        $input{argument} = $ip;
+        $input{argument}[0] = $ip;
         &dokill;
     }
 
@@ -1585,7 +1596,9 @@ sub doadd {
 ###############################################################################
 # start dodeny
 sub dodeny {
-    my ( $ip, $comment ) = split( /\s/, $input{argument}, 2 );
+    my $ip      = $input{argument}[0];
+    my $comment = $input{comment};
+
     my $checkip = checkip( \$ip );
 
     &getethdev;
@@ -1759,7 +1772,7 @@ sub dodeny {
 ###############################################################################
 # start dokill
 sub dokill {
-    my $ip    = $input{argument};
+    my $ip    = $input{argument}[0];
     my $is_ip = 0;
     if ( checkip( \$ip ) ) { $is_ip = 1 }
 
@@ -1864,7 +1877,7 @@ sub dokillall {
 ###############################################################################
 # start doakill
 sub doakill {
-    my $ip = $input{argument};
+    my $ip = $input{argument}[0];
 
     if ( !checkip( \$ip ) and !( ( $ip =~ /:|\|/ ) and ( $ip =~ /=/ ) ) ) {
         print "[$ip] is not a valid PUBLIC IP/CIDR\n";
@@ -3940,12 +3953,16 @@ sub docheck {
 ###############################################################################
 # start doiplookup
 sub doiplookup {
-    if ( checkip( \$input{argument} ) ) {
-        print iplookup( $input{argument} ) . "\n";
+    my $ip = $input{argument}[0];
+
+    if ( checkip( \$ip ) ) {
+        print iplookup($ip) . "\n";
     }
     else {
-        print "lookup failed: [$input{argument}] is not a valid PUBLIC IP\n";
+        print "lookup failed: [$ip] is not a valid PUBLIC IP\n";
     }
+    $input{argument}[0] = $ip;
+
     return;
 }
 
@@ -3953,7 +3970,7 @@ sub doiplookup {
 ###############################################################################
 # start dogrep
 sub dogrep {
-    my $ipmatch = $input{argument};
+    my $ipmatch = $input{argument}[0];
     checkip( \$ipmatch );
     my $ipstring = quotemeta($ipmatch);
     my $mhit     = 0;
@@ -4354,7 +4371,7 @@ $deny, $ip,                                   $ports,  $inout,$time,$message
 # start dotempdeny
 sub dotempdeny {
     my $cftemp = shift;
-    my ( $ip, $timeout, $portdir ) = split( /\s/, $input{argument}, 3 );
+    my ( $ip, $timeout, $portdir ) = @{ $input{argument} }[ 0 .. 2 ];
     my $inout = "in";
     my $port  = "";
     if ( $timeout =~ /^(\d*)(m|h|d)/i ) {
@@ -4499,7 +4516,7 @@ sub dotempdeny {
 # start dotempallow
 sub dotempallow {
     my $cftemp = shift;
-    my ( $ip, $timeout, $portdir ) = split( /\s/, $input{argument}, 3 );
+    my ( $ip, $timeout, $portdir ) = @{ $input{argument} }[ 0 .. 2 ];
     my $inout = "inout";
     my $port  = "";
     if ( $timeout =~ /^(\d*)(m|h|d)/i ) {
@@ -4629,7 +4646,7 @@ sub dotempallow {
 ###############################################################################
 # start dotemprm
 sub dotemprm {
-    my $ip = $input{argument};
+    my $ip = $input{argument}[0];
 
     if ( $ip eq "" ) {
         print "csf: No IP specified\n";
@@ -4814,7 +4831,7 @@ sub dotemprm {
 ###############################################################################
 # start dotemprmd
 sub dotemprmd {
-    my $ip = $input{argument};
+    my $ip = $input{argument}[0];
 
     if ( $ip eq "" ) {
         print "csf: No IP specified\n";
@@ -4924,7 +4941,7 @@ sub dotemprmd {
 ###############################################################################
 # start dotemprma
 sub dotemprma {
-    my $ip = $input{argument};
+    my $ip = $input{argument}[0];
 
     if ( $ip eq "" ) {
         print "csf: No IP specified\n";
@@ -5369,7 +5386,7 @@ sub domessenger {
 sub domail {
     my $output = ConfigServer::ServerCheck::report();
 
-    if ( $input{argument} ) {
+    if ( $input{argument}[0] ) {
         my $message = "From: root\n";
         $message .= "To: root\n";
         $message .= "Subject: Server Check on [hostname]\n";
@@ -5378,7 +5395,7 @@ sub domail {
         $message .= "\n";
         $message .= $output;
         my @message = split( /\n/, $message );
-        ConfigServer::Sendmail::relay( $input{argument}, "", @message );
+        ConfigServer::Sendmail::relay( $input{argument}[0], "", @message );
     }
     else {
         print $output;
@@ -5395,7 +5412,7 @@ sub dorbls {
     my $failure_s = "failure";
     if ( $failures ne 1 )  { $failure_s .= "s" }
     if ( $failures eq "" ) { $failures = 0 }
-    if ( $input{argument} ) {
+    if ( $input{argument}[0] ) {
         my $message = "From: root\n";
         $message .= "To: root\n";
         $message .= "Subject: RBL Check on [hostname]: [$failures] $failure_s\n";
@@ -5404,7 +5421,7 @@ sub dorbls {
         $message .= "\n";
         $message .= $output;
         my @message = split( /\n/, $message );
-        ConfigServer::Sendmail::relay( $input{argument}, "", @message );
+        ConfigServer::Sendmail::relay( $input{argument}[0], "", @message );
     }
     else {
         print $output;
@@ -5707,7 +5724,7 @@ $ip,             $domain,             $mode,     $date,                    $comm
             print "Invalid tempadd type, must be: [deny], or [allow]\n";
             exit 1;
         }
-        $input{argument} = "$value $config{CF_TEMP}";
+        $input{argument} = [ $value, $config{CF_TEMP} ];
         if ( $setting eq "deny" ) {
             my $status = ConfigServer::CloudFlare::action( "deny", $value, $mode, "", $valuemorelist, 1 );
             &dotempdeny("cf");
@@ -5729,7 +5746,7 @@ $ip,             $domain,             $mode,     $date,                    $comm
 ###############################################################################
 # start dographs
 sub dographs {
-    my ( $type, $dir ) = split( /\s/, $input{argument} );
+    my ( $type, $dir ) = @{ $input{argument} }[ 0, 1 ];
     my %types = (
         "load"             => 1,
         "cpu"              => 1,
