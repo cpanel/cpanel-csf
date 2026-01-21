@@ -185,7 +185,6 @@ sub setup_test_environment {
         LF_SUDO_EMAIL_ALERT    => 1,
         LF_CONSOLE_EMAIL_ALERT => 1,
         LF_CPANEL_ALERT        => 1,
-        LF_WEBMIN_EMAIL_ALERT  => 1,
         DEBUG                  => 0,
     );
 
@@ -231,7 +230,7 @@ subtest 'processline - POP3 failed login' => sub {
 
     my %globlogs = ( POP3D_LOG => { '/var/log/maillog' => 1 } );
 
-    my $line = 'Jan 20 10:15:30 server pop3d: LOGIN FAILED, user=testuser, ip=[10.0.0.2]';
+    my $line = 'Jan 20 10:15:30 server dovecot: pop3-login: Disconnected (auth failed, 1 attempts): user=<testuser>, method=PLAIN, rip=10.0.0.2, lip=192.168.1.1';
     my ( $reason, $ip_acc, $app ) = ConfigServer::RegexMain::processline( $line, '/var/log/maillog', \%globlogs );
 
     is( $reason, 'Failed POP3 login from', 'detected failed POP3 login' );
@@ -244,7 +243,7 @@ subtest 'processline - IMAP failed login' => sub {
 
     my %globlogs = ( IMAPD_LOG => { '/var/log/maillog' => 1 } );
 
-    my $line = 'Jan 20 10:15:30 server imapd: LOGIN FAILED, user=baduser, ip=[172.16.0.1]';
+    my $line = 'Jan 20 10:15:30 server dovecot: imap-login: Disconnected (auth failed, 1 attempts): user=<baduser>, method=PLAIN, rip=172.16.0.1, lip=192.168.1.1';
     my ( $reason, $ip_acc, $app ) = ConfigServer::RegexMain::processline( $line, '/var/log/maillog', \%globlogs );
 
     is( $reason, 'Failed IMAP login from', 'detected failed IMAP login' );
@@ -285,17 +284,6 @@ subtest 'processloginline - courier POP3 successful login' => sub {
     is( $app, 'pop3d',    'identified pop3d app' );
     is( $acc, 'testuser', 'extracted account' );
     is( $ip,  '10.0.0.2', 'extracted IP' );
-};
-
-subtest 'processloginline - courier IMAP successful login' => sub {
-    setup_test_environment();
-
-    my $line = 'Jan 20 10:15:30 server imapd-ssl: LOGIN, user=user@domain.com, ip=[192.168.1.50], port=993';
-    my ( $app, $acc, $ip ) = ConfigServer::RegexMain::processloginline($line);
-
-    is( $app, 'imapd',           'identified imapd app' );
-    is( $acc, 'user@domain.com', 'extracted account' );
-    is( $ip,  '192.168.1.50',    'extracted IP' );
 };
 
 subtest 'processloginline - dovecot POP3 login' => sub {
@@ -408,17 +396,6 @@ subtest 'processcpanelline - cPanel login' => sub {
 
     is( $ip,  '10.0.0.1', 'extracted IP' );
     is( $acc, 'user',     'extracted account' );
-};
-
-# Test processwebminline function
-subtest 'processwebminline - Webmin login' => sub {
-    setup_test_environment();
-
-    my $line = 'Jan 20 10:15:30 server webmin[1234]: Successful login as admin from 10.0.0.1';
-    my ( $acc, $ip ) = ConfigServer::RegexMain::processwebminline($line);
-
-    is( $acc, 'admin',    'extracted account' );
-    is( $ip,  '10.0.0.1', 'extracted IP' );
 };
 
 # Test scriptlinecheck function

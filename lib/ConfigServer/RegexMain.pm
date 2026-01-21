@@ -261,47 +261,6 @@ sub processline {
         else                   { return }
     }
 
-    #Gentoo
-    if ( ( $config{LF_SSHD} ) and ( ( $lgfile eq "/var/log/messages" ) or ( $lgfile eq "/var/log/secure" ) or ( $globlogs{SSHD_LOG}{$lgfile} ) ) and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) (\S+ )?sshd\[\d+\]: error: PAM: Authentication failure for (\S*) from (\S+)/ ) ) {
-        my $ip  = $4;
-        my $acc = $3;
-        $ip =~ s/^::ffff://;
-        if ( checkip( \$ip ) ) { return ( "Failed SSH login from", "$ip|$acc", "sshd" ) }
-        else                   { return }
-    }
-
-    #courier-imap
-    if ( ( $config{LF_POP3D} ) and ( $globlogs{POP3D_LOG}{$lgfile} ) and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) \S+ pop3d(-ssl)?: LOGIN FAILED, user=(\S*), ip=\[(\S+)\]\s*$/ ) ) {
-        my $ip  = $4;
-        my $acc = $3;
-        $ip =~ s/^::ffff://;
-        if ( checkip( \$ip ) ) { return ( "Failed POP3 login from", "$ip|$acc", "pop3d" ) }
-        else                   { return }
-    }
-    if ( ( $config{LF_IMAPD} ) and ( $globlogs{IMAPD_LOG}{$lgfile} ) and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) \S+ imapd(-ssl)?: LOGIN FAILED, user=(\S*), ip=\[(\S+)\]\s*$/ ) ) {
-        my $ip  = $4;
-        my $acc = $3;
-        $ip =~ s/^::ffff://;
-        if ( checkip( \$ip ) ) { return ( "Failed IMAP login from", "$ip|$acc", "imapd" ) }
-        else                   { return }
-    }
-
-    #uw-imap
-    if ( ( $config{LF_POP3D} ) and ( $globlogs{POP3D_LOG}{$lgfile} ) and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) \S+ ipop3d\[\d+\]: Login failed user=(\S*) auth=\S+ host=\S+ \[(\S+)\]\s*$/ ) ) {
-        my $ip  = $3;
-        my $acc = $2;
-        $ip =~ s/^::ffff://;
-        if ( checkip( \$ip ) ) { return ( "Failed POP3 login from", "$ip|$acc", "pop3d" ) }
-        else                   { return }
-    }
-    if ( ( $config{LF_IMAPD} ) and ( $globlogs{IMAPD_LOG}{$lgfile} ) and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) \S+ imapd\[\d+\]: Login failed user=(\S*) auth=\S+ host=\S+ \[(\S+)\]\s*$/ ) ) {
-        my $ip  = $3;
-        my $acc = $2;
-        $ip =~ s/^::ffff://;
-        if ( checkip( \$ip ) ) { return ( "Failed IMAP login from", "$ip|$acc", "imapd" ) }
-        else                   { return }
-    }
-
     #dovecot
     if ( ( $config{LF_POP3D} ) and ( $globlogs{POP3D_LOG}{$lgfile} ) and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) \S+ dovecot(\[\d+\])?: pop3-login: (Disconnected: )?(Aborted login( by logging out)?|Connection closed|Disconnected|Disconnected: Inactivity)(:\s*\S+\sfailed: Connection reset by peer)?(\s*\(auth failed, \d+ attempts( in \d+ secs)?\))?: (user=(<\S*>)?, )?(method=\S+, )?rip=(\S+), lip=/ ) ) {
         my $ip  = $12;
@@ -332,43 +291,6 @@ sub processline {
         my $acc = $8;
         $ip  =~ s/^::ffff://;
         $acc =~ s/^<|>$//g;
-        if ( checkip( \$ip ) ) { return ( "Failed IMAP login from", "$ip|$acc", "imapd" ) }
-        else                   { return }
-    }
-
-    #Kerio Mailserver
-    if ( ( $config{LF_POP3D} ) and ( $globlogs{POP3D_LOG}{$lgfile} ) and ( $line =~ /^\S+ \S+ POP3(\[\d+\])?: User (\S*) doesn\'t exist\. Attempt from IP address (\S+)\s*$/ ) ) {
-        my $ip  = $3;
-        my $acc = $2;
-        $ip =~ s/^::ffff://;
-        if ( checkip( \$ip ) ) { return ( "Failed POP3 login from", "$ip|$acc", "pop3d" ) }
-        else                   { return }
-    }
-    if ( ( $config{LF_POP3D} ) and ( $globlogs{POP3D_LOG}{$lgfile} ) and ( $line =~ /^\S+ \S+ POP3(\[\d+\])?: Invalid password for user (\S*)\. Attempt from IP address (\S+)\s*$/ ) ) {
-        my $ip  = $3;
-        my $acc = $2;
-        $ip =~ s/^::ffff://;
-        if ( checkip( \$ip ) ) { return ( "Failed POP3 login from", "$ip|$acc", "pop3d" ) }
-        else                   { return }
-    }
-    if ( ( $config{LF_IMAPD} ) and ( $globlogs{IMAPD_LOG}{$lgfile} ) and ( $line =~ /^\S+ \S+ IMAP(\[\d+\])?: User (\S*) doesn\'t exist\. Attempt from IP address (\S+)\s*$/ ) ) {
-        my $ip  = $3;
-        my $acc = $2;
-        $ip =~ s/^::ffff://;
-        if ( checkip( \$ip ) ) { return ( "Failed IMAP login from", "$ip|$acc", "imapd" ) }
-        else                   { return }
-    }
-    if ( ( $config{LF_IMAPD} ) and ( $globlogs{IMAPD_LOG}{$lgfile} ) and ( $line =~ /^\S+ \S+ IMAP(\[\d+\])?: Invalid password for user (\S*)\. Attempt from IP address (\S+)\s*$/ ) ) {
-        my $ip  = $3;
-        my $acc = $2;
-        $ip =~ s/^::ffff://;
-        if ( checkip( \$ip ) ) { return ( "Failed IMAP login from", "$ip|$acc", "imapd" ) }
-        else                   { return }
-    }
-    if ( ( $config{LF_SMTPAUTH} ) and ( $globlogs{SMTPAUTH_LOG}{$lgfile} ) and ( $line =~ /^\S+ \S+ smtp(\[\d+\])?: User (\S*) doesn\'t exist\. Attempt from IP address (\S+)\s*$/ ) ) {
-        my $ip  = $3;
-        my $acc = $2;
-        $ip =~ s/^::ffff://;
         if ( checkip( \$ip ) ) { return ( "Failed IMAP login from", "$ip|$acc", "imapd" ) }
         else                   { return }
     }
@@ -572,15 +494,6 @@ sub processline {
         else                   { return }
     }
 
-    #webmin
-    if ( ( $config{LF_WEBMIN} ) and ( $globlogs{WEBMIN_LOG}{$lgfile} ) and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) \S+ webmin\[\d+\]: Invalid login as (\S+) from (\S+)/ ) ) {
-        my $ip  = $3;
-        my $acc = $2;
-        $ip =~ s/^::ffff://;
-        if ( checkip( \$ip ) ) { return ( "Failed Webmin login from", "$ip|$acc", "webmin" ) }
-        else                   { return }
-    }
-
     #Exim SMTP AUTH
     if ( ( $config{LF_SMTPAUTH} ) and ( $globlogs{SMTPAUTH_LOG}{$lgfile} ) and ( $line =~ /^\S+\s+\S+\s+(\[\d+\] )?(\S+) authenticator failed for \S+ (\S+ )?\[(\S+)\](:\S*:?)?( I=\S+| \d+\:)? 535 Incorrect authentication data( \(set_id=(\S+)\))?/ ) ) {
         my $ip  = $4;
@@ -627,40 +540,6 @@ sub processline {
             else                   { return }
         }
     }
-
-    #courier-imap (Plesk)
-    if ( ( $config{LF_POP3D} ) and ( $globlogs{POP3D_LOG}{$lgfile} ) and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) \S+ (courier-)?pop3(?:d|s)(-ssl)?(\[\d+\])?: LOGIN FAILED, user=(\S*), ip=\[(\S+)\]\s*$/ ) ) {
-        my $ip  = $6;
-        my $acc = $5;
-        $ip =~ s/^::ffff://;
-        if ( checkip( \$ip ) ) { return ( "Failed POP3 login from", "$ip|$acc", "pop3d" ) }
-        else                   { return }
-    }
-    if ( ( $config{LF_IMAPD} ) and ( $globlogs{IMAPD_LOG}{$lgfile} ) and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) \S+ (courier-)?imap(?:d|s)(-ssl)?(\[\d+\])?: LOGIN FAILED, user=(\S*), ip=\[(\S+)\]\s*$/ ) ) {
-        my $ip  = $6;
-        my $acc = $5;
-        $ip =~ s/^::ffff://;
-        if ( checkip( \$ip ) ) { return ( "Failed IMAP login from", "$ip|$acc", "imapd" ) }
-        else                   { return }
-    }
-
-    #Qmail SMTP AUTH (Plesk)
-    if ( ( $config{LF_SMTPAUTH} ) and ( $globlogs{SMTPAUTH_LOG}{$lgfile} ) and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) \S+ smtp_auth(?:\[\d+\])?: FAILED: (\S*) - password incorrect from \S+ \[(\S+)\]\s*$/ ) ) {
-        my $ip  = $3;
-        my $acc = $2;
-        $ip =~ s/^::ffff://;
-        if ( checkip( \$ip ) ) { return ( "Failed SMTP AUTH login from", "$ip|$acc", "smtpauth" ) }
-        else                   { return }
-    }
-
-    #Postfix SMTP AUTH (Plesk)
-    if ( ( $config{LF_SMTPAUTH} ) and ( $globlogs{SMTPAUTH_LOG}{$lgfile} ) and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) \S+ postfix\/(submission\/)?smtpd(?:\[\d+\])?: warning: \S+\[(\S+)\]: SASL (?:(?i)LOGIN|PLAIN|(?:CRAM|DIGEST)-MD5) authentication failed/ ) ) {
-        my $ip = $3;
-        $ip =~ s/^::ffff://;
-        if ( checkip( \$ip ) ) { return ( "Failed SMTP AUTH login from", "$ip", "smtpauth" ) }
-        else                   { return }
-    }
-
 }
 
 =head2 processloginline
