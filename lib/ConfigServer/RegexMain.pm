@@ -16,92 +16,175 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, see <https://www.gnu.org/licenses>.
 ###############################################################################
-## no critic (RequireUseWarnings, ProhibitExplicitReturnUndef, ProhibitMixedBooleanOperators, RequireBriefOpen)
-# start main
+
 package ConfigServer::RegexMain;
 
-use strict;
-use lib '/usr/local/csf/lib';
-use IPC::Open3;
-use ConfigServer::Config;
-use ConfigServer::CheckIP qw(checkip);
-use ConfigServer::Slurp   qw(slurp);
-use ConfigServer::Logger  qw(logfile);
-use ConfigServer::GetEthDev;
+=head1 NAME
 
-use Exporter qw(import);
-our $VERSION   = 1.03;
-our @ISA       = qw(Exporter);
-our @EXPORT_OK = qw();
+ConfigServer::RegexMain - Log file pattern matching and processing for CSF
 
-our ( %config, %cpconfig, $slurpreg, $cleanreg, %globlogs, %brd, %ips );
+=head1 SYNOPSIS
 
-my $config = ConfigServer::Config->loadconfig();
-%config = $config->config;
-
-$slurpreg = ConfigServer::Slurp->slurpreg;
-$cleanreg = ConfigServer::Slurp->cleanreg;
-
-if ( -e "/etc/wwwacct.conf" ) {
-    foreach my $line ( slurp("/etc/wwwacct.conf") ) {
-        $line =~ s/$cleanreg//g;
-        if ( $line =~ /^(\s|\#|$)/ ) { next }
-        my ( $name, $value ) = split( / /, $line, 2 );
-        $cpconfig{$name} = $value;
+    use ConfigServer::RegexMain ();
+    
+    my %globlogs = (
+        SSHD_LOG  => { '/var/log/secure' => 1 },
+        IMAPD_LOG => { '/var/log/maillog' => 1 },
+    );
+    
+    my ($reason, $ip, $app) = ConfigServer::RegexMain::processline(
+        $log_line,
+        $logfile_path,
+        \%globlogs
+    );
+    
+    if ($reason) {
+        print "Detected: $reason from $ip (app: $app)\n";
     }
-}
-if ( -e "/usr/local/cpanel/version" ) {
-    foreach my $line ( slurp("/usr/local/cpanel/version") ) {
-        $line =~ s/$cleanreg//g;
-        if ( $line =~ /\d/ ) { $cpconfig{version} = $line }
+
+=head1 DESCRIPTION
+
+ConfigServer::RegexMain provides log file pattern matching and processing
+functionality for ConfigServer Security & Firewall (CSF). It analyzes log
+lines from various services (SSH, FTP, SMTP, HTTP, etc.) and extracts
+security-relevant information such as failed login attempts, successful
+logins, and suspicious activities.
+
+This module is primarily used by the Login Failure Daemon (lfd.pl) to
+monitor system logs and trigger appropriate security responses.
+
+=head1 FUNCTIONS
+
+=cut
+
+use cPstrict;
+
+use IPC::Open3 ();
+
+use ConfigServer::Config    ();
+use ConfigServer::Logger    ();
+use ConfigServer::GetEthDev ();
+use ConfigServer::CheckIP   qw(checkip);
+
+use Cpanel::Config::LoadWwwAcctConf ();
+
+our $VERSION = 1.03;
+
+our ( %config, %globlogs, %brd, %ips );
+
+sub _config {
+    return if %config;
+
+    my $config = ConfigServer::Config->loadconfig();
+    %config = $config->config;
+
+    if ( $config{LF_APACHE_ERRPORT} == 0 ) {
+        my $apachebin = "";
+        if    ( -e "/usr/local/apache/bin/httpd" ) { $apachebin = "/usr/local/apache/bin/httpd" }
+        elsif ( -e "/usr/sbin/httpd" )             { $apachebin = "/usr/sbin/httpd" }
+        elsif ( -e "/usr/sbin/apache2" )           { $apachebin = "/usr/sbin/apache2" }
+        elsif ( -e "/usr/sbin/httpd2" )            { $apachebin = "/usr/sbin/httpd2" }
+        if    ( -e $apachebin ) {
+            my ( $childin, $childout );
+            my $mypid   = IPC::Open3::open3( $childin, $childout, $childout, $apachebin, "-v" );
+            my @version = <$childout>;
+            waitpid( $mypid, 0 );
+            chomp @version;
+            $version[0] =~ /Apache\/(\d+)\.(\d+)\.(\d+)/;
+            my $mas = $1;
+            my $maj = $2;
+            my $min = $3;
+            if ( "$mas.$maj" < 2.4 ) { $config{LF_APACHE_ERRPORT} = 1 }
+        }
     }
-}
-
-if ( $config{LF_APACHE_ERRPORT} == 0 ) {
-    my $apachebin = "";
-    if    ( -e "/usr/local/apache/bin/httpd" ) { $apachebin = "/usr/local/apache/bin/httpd" }
-    elsif ( -e "/usr/sbin/httpd" )             { $apachebin = "/usr/sbin/httpd" }
-    elsif ( -e "/usr/sbin/apache2" )           { $apachebin = "/usr/sbin/apache2" }
-    elsif ( -e "/usr/sbin/httpd2" )            { $apachebin = "/usr/sbin/httpd2" }
-    if    ( -e $apachebin ) {
-        my ( $childin, $childout );
-        my $mypid   = open3( $childin, $childout, $childout, $apachebin, "-v" );
-        my @version = <$childout>;
-        waitpid( $mypid, 0 );
-        chomp @version;
-        $version[0] =~ /Apache\/(\d+)\.(\d+)\.(\d+)/;
-        my $mas = $1;
-        my $maj = $2;
-        my $min = $3;
-        if ( "$mas.$maj" < 2.4 ) { $config{LF_APACHE_ERRPORT} = 1 }
+    unless ( $config{LF_APACHE_ERRPORT} == 1 ) {
+        $config{LF_APACHE_ERRPORT} = 2;
     }
+
+    ConfigServer::Logger::logfile("LF_APACHE_ERRPORT: Set to [$config{LF_APACHE_ERRPORT}]");
+
+    return;
 }
-unless ( $config{LF_APACHE_ERRPORT} == 1 ) { $config{LF_APACHE_ERRPORT} = 2 }
-ConfigServer::Logger::logfile("LF_APACHE_ERRPORT: Set to [$config{LF_APACHE_ERRPORT}]");
 
-my $ethdev = ConfigServer::GetEthDev->new();
-%brd = $ethdev->brd;
-%ips = $ethdev->ipv4;
+sub _eth_info {
+    return if %brd or %ips;    # Loaded already.
 
-if ( -e "/usr/local/csf/bin/regex.custom.pm" ) { require "/usr/local/csf/bin/regex.custom.pm" }    ##no critic
+    my $ethdev = ConfigServer::GetEthDev->new();
+    %brd = $ethdev->brd;
+    %ips = $ethdev->ipv4;
+}
 
-# end main
-###############################################################################
-# start processline
+if ( -e "/usr/local/csf/bin/regex.custom.pm" ) {
+
+    # Pre-load these in the event something was manipulating it.
+    _config();
+    _eth_info();
+
+    require "/usr/local/csf/bin/regex.custom.pm";
+}
+
+=head2 processline
+
+Processes a single log line to detect failed authentication attempts and
+security events.
+
+    my ($reason, $ip, $app, $trigger, $ports, $temp, $cf) = 
+        ConfigServer::RegexMain::processline($line, $logfile, \%globlogs);
+
+Arguments:
+
+=over 4
+
+=item * C<$line> - The log line to process
+
+=item * C<$logfile> - Path to the log file being processed
+
+=item * C<\%globlogs> - Hash reference mapping log types to file paths
+
+=back
+
+Returns a list of values when a match is found:
+
+=over 4
+
+=item * C<$reason> - Description of the event (e.g., "Failed SSH login from")
+
+=item * C<$ip> - IP address involved (may include account name as "ip|account")
+
+=item * C<$app> - Application/service name (e.g., "sshd", "pop3d")
+
+=item * C<$trigger> - Custom trigger (from regex.custom.pm)
+
+=item * C<$ports> - Port numbers (from custom rules)
+
+=item * C<$temp> - Temporary block flag (from custom rules)
+
+=item * C<$cf> - CloudFlare flag (from custom rules)
+
+=back
+
+Returns empty list if no match found.
+
+=cut
+
 sub processline {
     my $line         = shift;
     my $lgfile       = shift;
     my $globlogs_ref = shift;
     %globlogs = %{$globlogs_ref};
+
     $line =~ s/\n//g;
     $line =~ s/\r//g;
 
     if ( -e "/usr/local/csf/bin/regex.custom.pm" ) {
-        my ( $text, $ip, $app, $trigger, $ports, $temp, $cf ) = &custom_line( $line, $lgfile );
+        my ( $text, $ip, $app, $trigger, $ports, $temp, $cf ) = custom_line( $line, $lgfile );
         if ($text) {
             return ( $text, $ip, $app, $trigger, $ports, $temp, $cf );
         }
     }
+
+    # Be sure %config is loaded.
+    _config();
 
     #openSSH
     #RH
@@ -178,47 +261,6 @@ sub processline {
         else                   { return }
     }
 
-    #Gentoo
-    if ( ( $config{LF_SSHD} ) and ( ( $lgfile eq "/var/log/messages" ) or ( $lgfile eq "/var/log/secure" ) or ( $globlogs{SSHD_LOG}{$lgfile} ) ) and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) (\S+ )?sshd\[\d+\]: error: PAM: Authentication failure for (\S*) from (\S+)/ ) ) {
-        my $ip  = $4;
-        my $acc = $3;
-        $ip =~ s/^::ffff://;
-        if ( checkip( \$ip ) ) { return ( "Failed SSH login from", "$ip|$acc", "sshd" ) }
-        else                   { return }
-    }
-
-    #courier-imap
-    if ( ( $config{LF_POP3D} ) and ( $globlogs{POP3D_LOG}{$lgfile} ) and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) \S+ pop3d(-ssl)?: LOGIN FAILED, user=(\S*), ip=\[(\S+)\]\s*$/ ) ) {
-        my $ip  = $4;
-        my $acc = $3;
-        $ip =~ s/^::ffff://;
-        if ( checkip( \$ip ) ) { return ( "Failed POP3 login from", "$ip|$acc", "pop3d" ) }
-        else                   { return }
-    }
-    if ( ( $config{LF_IMAPD} ) and ( $globlogs{IMAPD_LOG}{$lgfile} ) and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) \S+ imapd(-ssl)?: LOGIN FAILED, user=(\S*), ip=\[(\S+)\]\s*$/ ) ) {
-        my $ip  = $4;
-        my $acc = $3;
-        $ip =~ s/^::ffff://;
-        if ( checkip( \$ip ) ) { return ( "Failed IMAP login from", "$ip|$acc", "imapd" ) }
-        else                   { return }
-    }
-
-    #uw-imap
-    if ( ( $config{LF_POP3D} ) and ( $globlogs{POP3D_LOG}{$lgfile} ) and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) \S+ ipop3d\[\d+\]: Login failed user=(\S*) auth=\S+ host=\S+ \[(\S+)\]\s*$/ ) ) {
-        my $ip  = $3;
-        my $acc = $2;
-        $ip =~ s/^::ffff://;
-        if ( checkip( \$ip ) ) { return ( "Failed POP3 login from", "$ip|$acc", "pop3d" ) }
-        else                   { return }
-    }
-    if ( ( $config{LF_IMAPD} ) and ( $globlogs{IMAPD_LOG}{$lgfile} ) and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) \S+ imapd\[\d+\]: Login failed user=(\S*) auth=\S+ host=\S+ \[(\S+)\]\s*$/ ) ) {
-        my $ip  = $3;
-        my $acc = $2;
-        $ip =~ s/^::ffff://;
-        if ( checkip( \$ip ) ) { return ( "Failed IMAP login from", "$ip|$acc", "imapd" ) }
-        else                   { return }
-    }
-
     #dovecot
     if ( ( $config{LF_POP3D} ) and ( $globlogs{POP3D_LOG}{$lgfile} ) and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) \S+ dovecot(\[\d+\])?: pop3-login: (Disconnected: )?(Aborted login( by logging out)?|Connection closed|Disconnected|Disconnected: Inactivity)(:\s*\S+\sfailed: Connection reset by peer)?(\s*\(auth failed, \d+ attempts( in \d+ secs)?\))?: (user=(<\S*>)?, )?(method=\S+, )?rip=(\S+), lip=/ ) ) {
         my $ip  = $12;
@@ -249,43 +291,6 @@ sub processline {
         my $acc = $8;
         $ip  =~ s/^::ffff://;
         $acc =~ s/^<|>$//g;
-        if ( checkip( \$ip ) ) { return ( "Failed IMAP login from", "$ip|$acc", "imapd" ) }
-        else                   { return }
-    }
-
-    #Kerio Mailserver
-    if ( ( $config{LF_POP3D} ) and ( $globlogs{POP3D_LOG}{$lgfile} ) and ( $line =~ /^\S+ \S+ POP3(\[\d+\])?: User (\S*) doesn\'t exist\. Attempt from IP address (\S+)\s*$/ ) ) {
-        my $ip  = $3;
-        my $acc = $2;
-        $ip =~ s/^::ffff://;
-        if ( checkip( \$ip ) ) { return ( "Failed POP3 login from", "$ip|$acc", "pop3d" ) }
-        else                   { return }
-    }
-    if ( ( $config{LF_POP3D} ) and ( $globlogs{POP3D_LOG}{$lgfile} ) and ( $line =~ /^\S+ \S+ POP3(\[\d+\])?: Invalid password for user (\S*)\. Attempt from IP address (\S+)\s*$/ ) ) {
-        my $ip  = $3;
-        my $acc = $2;
-        $ip =~ s/^::ffff://;
-        if ( checkip( \$ip ) ) { return ( "Failed POP3 login from", "$ip|$acc", "pop3d" ) }
-        else                   { return }
-    }
-    if ( ( $config{LF_IMAPD} ) and ( $globlogs{IMAPD_LOG}{$lgfile} ) and ( $line =~ /^\S+ \S+ IMAP(\[\d+\])?: User (\S*) doesn\'t exist\. Attempt from IP address (\S+)\s*$/ ) ) {
-        my $ip  = $3;
-        my $acc = $2;
-        $ip =~ s/^::ffff://;
-        if ( checkip( \$ip ) ) { return ( "Failed IMAP login from", "$ip|$acc", "imapd" ) }
-        else                   { return }
-    }
-    if ( ( $config{LF_IMAPD} ) and ( $globlogs{IMAPD_LOG}{$lgfile} ) and ( $line =~ /^\S+ \S+ IMAP(\[\d+\])?: Invalid password for user (\S*)\. Attempt from IP address (\S+)\s*$/ ) ) {
-        my $ip  = $3;
-        my $acc = $2;
-        $ip =~ s/^::ffff://;
-        if ( checkip( \$ip ) ) { return ( "Failed IMAP login from", "$ip|$acc", "imapd" ) }
-        else                   { return }
-    }
-    if ( ( $config{LF_SMTPAUTH} ) and ( $globlogs{SMTPAUTH_LOG}{$lgfile} ) and ( $line =~ /^\S+ \S+ smtp(\[\d+\])?: User (\S*) doesn\'t exist\. Attempt from IP address (\S+)\s*$/ ) ) {
-        my $ip  = $3;
-        my $acc = $2;
-        $ip =~ s/^::ffff://;
         if ( checkip( \$ip ) ) { return ( "Failed IMAP login from", "$ip|$acc", "imapd" ) }
         else                   { return }
     }
@@ -489,15 +494,6 @@ sub processline {
         else                   { return }
     }
 
-    #webmin
-    if ( ( $config{LF_WEBMIN} ) and ( $globlogs{WEBMIN_LOG}{$lgfile} ) and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) \S+ webmin\[\d+\]: Invalid login as (\S+) from (\S+)/ ) ) {
-        my $ip  = $3;
-        my $acc = $2;
-        $ip =~ s/^::ffff://;
-        if ( checkip( \$ip ) ) { return ( "Failed Webmin login from", "$ip|$acc", "webmin" ) }
-        else                   { return }
-    }
-
     #Exim SMTP AUTH
     if ( ( $config{LF_SMTPAUTH} ) and ( $globlogs{SMTPAUTH_LOG}{$lgfile} ) and ( $line =~ /^\S+\s+\S+\s+(\[\d+\] )?(\S+) authenticator failed for \S+ (\S+ )?\[(\S+)\](:\S*:?)?( I=\S+| \d+\:)? 535 Incorrect authentication data( \(set_id=(\S+)\))?/ ) ) {
         my $ip  = $4;
@@ -544,47 +540,40 @@ sub processline {
             else                   { return }
         }
     }
-
-    #courier-imap (Plesk)
-    if ( ( $config{LF_POP3D} ) and ( $globlogs{POP3D_LOG}{$lgfile} ) and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) \S+ (courier-)?pop3(?:d|s)(-ssl)?(\[\d+\])?: LOGIN FAILED, user=(\S*), ip=\[(\S+)\]\s*$/ ) ) {
-        my $ip  = $6;
-        my $acc = $5;
-        $ip =~ s/^::ffff://;
-        if ( checkip( \$ip ) ) { return ( "Failed POP3 login from", "$ip|$acc", "pop3d" ) }
-        else                   { return }
-    }
-    if ( ( $config{LF_IMAPD} ) and ( $globlogs{IMAPD_LOG}{$lgfile} ) and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) \S+ (courier-)?imap(?:d|s)(-ssl)?(\[\d+\])?: LOGIN FAILED, user=(\S*), ip=\[(\S+)\]\s*$/ ) ) {
-        my $ip  = $6;
-        my $acc = $5;
-        $ip =~ s/^::ffff://;
-        if ( checkip( \$ip ) ) { return ( "Failed IMAP login from", "$ip|$acc", "imapd" ) }
-        else                   { return }
-    }
-
-    #Qmail SMTP AUTH (Plesk)
-    if ( ( $config{LF_SMTPAUTH} ) and ( $globlogs{SMTPAUTH_LOG}{$lgfile} ) and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) \S+ smtp_auth(?:\[\d+\])?: FAILED: (\S*) - password incorrect from \S+ \[(\S+)\]\s*$/ ) ) {
-        my $ip  = $3;
-        my $acc = $2;
-        $ip =~ s/^::ffff://;
-        if ( checkip( \$ip ) ) { return ( "Failed SMTP AUTH login from", "$ip|$acc", "smtpauth" ) }
-        else                   { return }
-    }
-
-    #Postfix SMTP AUTH (Plesk)
-    if ( ( $config{LF_SMTPAUTH} ) and ( $globlogs{SMTPAUTH_LOG}{$lgfile} ) and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) \S+ postfix\/(submission\/)?smtpd(?:\[\d+\])?: warning: \S+\[(\S+)\]: SASL (?:(?i)LOGIN|PLAIN|(?:CRAM|DIGEST)-MD5) authentication failed/ ) ) {
-        my $ip = $3;
-        $ip =~ s/^::ffff://;
-        if ( checkip( \$ip ) ) { return ( "Failed SMTP AUTH login from", "$ip", "smtpauth" ) }
-        else                   { return }
-    }
-
 }
 
-# end processline
-###############################################################################
-# start processloginline
+=head2 processloginline
+
+Processes successful login attempts for tracking purposes.
+
+    my ($app, $account, $ip) = ConfigServer::RegexMain::processloginline($line);
+
+Arguments:
+
+=over 4
+
+=item * C<$line> - The log line to process
+
+=back
+
+Returns a list when a successful login is detected:
+
+=over 4
+
+=item * C<$app> - Application name ("pop3d" or "imapd")
+
+=item * C<$account> - User account name
+
+=item * C<$ip> - IP address of the connection
+
+=back
+
+=cut
+
 sub processloginline {
     my $line = shift;
+
+    _config();    # Make sure config is loaded.
 
     #courier-imap
     if ( ( $config{LT_POP3D} ) and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) \S+ pop3d(-ssl)?: LOGIN, user=(\S*), ip=\[(\S+)\], port=\S+/ ) ) {
@@ -619,11 +608,38 @@ sub processloginline {
     }
 }
 
-# end processloginline
-###############################################################################
-# start processsshline
+=head2 processsshline
+
+Processes successful SSH login attempts for alert purposes.
+
+    my ($account, $ip, $method) = ConfigServer::RegexMain::processsshline($line);
+
+Arguments:
+
+=over 4
+
+=item * C<$line> - The log line to process
+
+=back
+
+Returns a list when a successful SSH login is detected:
+
+=over 4
+
+=item * C<$account> - User account name
+
+=item * C<$ip> - IP address of the connection
+
+=item * C<$method> - Authentication method used (e.g., "password", "publickey")
+
+=back
+
+=cut
+
 sub processsshline {
     my $line = shift;
+
+    _config();    # Make sure config is loaded.
 
     if ( ( $config{LF_SSH_EMAIL_ALERT} ) and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) (\S+ )?sshd\[\d+\]: Accepted (\S+) for (\S+) from (\S+) port \S+/ ) ) {
         my $ip  = $5;
@@ -635,11 +651,38 @@ sub processsshline {
     }
 }
 
-# end processsshline
-###############################################################################
-# start processsuline
+=head2 processsuline
+
+Processes su (switch user) login attempts.
+
+    my ($to_user, $from_user, $status) = ConfigServer::RegexMain::processsuline($line);
+
+Arguments:
+
+=over 4
+
+=item * C<$line> - The log line to process
+
+=back
+
+Returns a list when an su attempt is detected:
+
+=over 4
+
+=item * C<$to_user> - Target user account
+
+=item * C<$from_user> - Source user account
+
+=item * C<$status> - "Successful login" or "Failed login"
+
+=back
+
+=cut
+
 sub processsuline {
     my $line = shift;
+
+    _config();    # Make sure config is loaded.
 
     #RH + Debian/Ubuntu
     if ( ( $config{LF_SU_EMAIL_ALERT} ) and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) (\S+ )?su(\[\d+\])?: pam_unix\(su(-l)?:session\): session opened for user\s+(\S+)\s+by\s+(\S+)\s*$/ ) ) {
@@ -665,11 +708,38 @@ sub processsuline {
     return;
 }
 
-# end processsuline
-###############################################################################
-# start processsudoline
+=head2 processsudoline
+
+Processes sudo command execution attempts.
+
+    my ($to_user, $from_user, $status) = ConfigServer::RegexMain::processsudoline($line);
+
+Arguments:
+
+=over 4
+
+=item * C<$line> - The log line to process
+
+=back
+
+Returns a list when a sudo attempt is detected:
+
+=over 4
+
+=item * C<$to_user> - Target user account
+
+=item * C<$from_user> - Source user account
+
+=item * C<$status> - "Successful login" or "Failed login"
+
+=back
+
+=cut
+
 sub processsudoline {
     my $line = shift;
+
+    _config();    # Make sure config is loaded.
 
     if ( ( $config{LF_SUDO_EMAIL_ALERT} ) and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) (\S+ )?sudo(\[\d+\])?: pam_unix\(sudo(-l)?:auth\): authentication failure; logname=\S*\s+\S+\s+\S+\s+\S+\s+ruser=(\S+)+\s+\S+\s+user=(\S+)\s*$/ ) ) {
         return ( $6, $5, "Failed login" );
@@ -695,22 +765,64 @@ sub processsudoline {
     return;
 }
 
-# end processsudoline
-###############################################################################
-# start processconsoleline
+=head2 processconsoleline
+
+Detects root console logins.
+
+    my $status = ConfigServer::RegexMain::processconsoleline($line);
+
+Arguments:
+
+=over 4
+
+=item * C<$line> - The log line to process
+
+=back
+
+Returns 1 if a root console login is detected, undef otherwise.
+
+=cut
+
 sub processconsoleline {
     my $line = shift;
+
+    _config();    # Make sure config is loaded.
 
     if ( ( $config{LF_CONSOLE_EMAIL_ALERT} ) and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) \S+ login(\[\d+\])?: ROOT LOGIN/ ) ) {
         return 1;
     }
 }
 
-# end processconsoleline
-###############################################################################
-# start processcpanelline
+=head2 processcpanelline
+
+Processes successful cPanel login attempts.
+
+    my ($ip, $account) = ConfigServer::RegexMain::processcpanelline($line);
+
+Arguments:
+
+=over 4
+
+=item * C<$line> - The log line to process
+
+=back
+
+Returns a list when a cPanel login is detected:
+
+=over 4
+
+=item * C<$ip> - IP address of the connection
+
+=item * C<$account> - User account name
+
+=back
+
+=cut
+
 sub processcpanelline {
     my $line = shift;
+
+    _config();    # Make sure config is loaded.
 
     if ( $config{LF_CPANEL_ALERT} and ( $line =~ /^(\S+)\s+\-\s+(\w+)\s+\[[^\]]+\]\s\"[^\"]+\"\s200\s/ ) ) {
         my $ip  = $1;
@@ -721,11 +833,36 @@ sub processcpanelline {
     }
 }
 
-# end processcpanelline
-###############################################################################
-# start processwebminline
+=head2 processwebminline
+
+Processes successful Webmin login attempts.
+
+    my ($account, $ip) = ConfigServer::RegexMain::processwebminline($line);
+
+Arguments:
+
+=over 4
+
+=item * C<$line> - The log line to process
+
+=back
+
+Returns a list when a Webmin login is detected:
+
+=over 4
+
+=item * C<$account> - User account name
+
+=item * C<$ip> - IP address of the connection
+
+=back
+
+=cut
+
 sub processwebminline {
     my $line = shift;
+
+    _config();    # Make sure config is loaded.
 
     if ( $config{LF_WEBMIN_EMAIL_ALERT} and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) \S+ webmin\[\d+\]: Successful login as (\S+) from (\S+)/ ) ) {
         my $ip  = $3;
@@ -736,11 +873,31 @@ sub processwebminline {
     }
 }
 
-# end processwebminline
-###############################################################################
-# start scriptlinecheck
+our $_cpconfig;
+
+=head2 scriptlinecheck
+
+Checks log lines for script execution in user home directories.
+
+    my \$path = ConfigServer::RegexMain::scriptlinecheck(\$line);
+
+Arguments:
+
+=over 4
+
+=item * C<\$line> - The log line to process
+
+=back
+
+Returns the full directory path if script execution is detected in /home
+or other configured directories, undef otherwise.
+
+=cut
+
 sub scriptlinecheck {
     my $line = shift;
+
+    _config();    # Make sure config is loaded.
 
     if ( $config{LF_SCRIPT_ALERT} ) {
         my $fulldir;
@@ -748,16 +905,45 @@ sub scriptlinecheck {
         elsif ( $line =~ /^\S+\s+\S+\s+(\[\d+\]\s)?\S+ H=localhost (.*)PWD=(.*)  REMOTE_ADDR=\S+$/ ) { $fulldir = $3 }
         if    ( $fulldir ne "" ) {
             my ( undef, $dir, undef ) = split( /\//, $fulldir );
-            if ( $dir eq "home" )                                               { return $fulldir }
-            if ( $cpconfig{HOMEDIR} and ( $fulldir =~ /^$cpconfig{HOMEDIR}/ ) ) { return $fulldir }
-            if ( $cpconfig{HOMEMATCH} and ( $dir =~ /$cpconfig{HOMEMATCH}/ ) )  { return $fulldir }
+            return $fulldir if $dir eq "home";
+
+            $_cpconfig //= Cpanel::Config::LoadWwwAcctConf::loadwwwacctconf();
+
+            my $homedir = $_cpconfig->{HOMEDIR};
+            return $fulldir if ( length $homedir and $fulldir =~ /^$homedir/ );
+
+            my $homematch = $_cpconfig->{HOMEMATCH};
+            return $fulldir if ( length $homematch and $dir =~ /$homematch/ );
         }
     }
 }
 
-# end scriptlinecheck
-###############################################################################
-# start relaycheck
+=head2 relaycheck
+
+Detects email relay attempts in mail server logs.
+
+    my ($ip, $check) = ConfigServer::RegexMain::relaycheck($line);
+
+Arguments:
+
+=over 4
+
+=item * C<$line> - The log line to process
+
+=back
+
+Returns a list when a relay attempt is detected:
+
+=over 4
+
+=item * C<$ip> - IP address attempting the relay or username for local relay
+
+=item * C<$check> - Type of relay check triggered ("LOCALRELAY", "AUTHRELAY", "RELAY")
+
+=back
+
+=cut
+
 sub relaycheck {
     my $line  = shift;
     my $tline = $line;
@@ -790,11 +976,37 @@ sub relaycheck {
 
 }
 
-# end relaycheck
-###############################################################################
-# start pslinecheck
+=head2 pslinecheck
+
+Processes port scan detection from iptables logs.
+
+    my ($ip, $port) = ConfigServer::RegexMain::pslinecheck($line);
+
+Arguments:
+
+=over 4
+
+=item * C<$line> - The log line to process
+
+=back
+
+Returns a list when a port scan is detected:
+
+=over 4
+
+=item * C<$ip> - IP address performing the scan
+
+=item * C<$port> - Port number or protocol (e.g., "ICMP", "ICMPv6")
+
+=back
+
+=cut
+
 sub pslinecheck {
     my $line = shift;
+
+    _config();    # Make sure config is loaded.
+
     if ( $line !~ /^(\S+|\S+\s+\d+\s+\S+) \S+ kernel:\s(\[[^\]]+\]\s)?Firewall:/ ) { return }
     if ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) \S+ kernel:\s(\[[^\]]+\]\s)?Firewall: \*INVALID\*/ and $config{PS_PORTS} !~ /INVALID/ ) { return }
 
@@ -804,6 +1016,8 @@ sub pslinecheck {
         my $proto = $3;
         my $port  = $4;
         $ip =~ s/^::ffff://;
+
+        _eth_info();
         if ( $config{PS_PORTS} !~ /BRD/ and $proto eq "UDP" and $brd{$dst} and !$ips{$dst} ) { return }
         if ( $config{PS_PORTS} !~ /OPEN/ ) {
             my $hit = 0;
@@ -855,18 +1069,64 @@ sub pslinecheck {
     }
 }
 
-# end pslinecheck
-###############################################################################
-# start uidlinecheck
+=head2 uidlinecheck
+
+Detects outbound firewall blocks by UID from kernel logs.
+
+    my (\$port, \$uid) = ConfigServer::RegexMain::uidlinecheck(\$line);
+
+Arguments:
+
+=over 4
+
+=item * C<\$line> - The log line to process
+
+=back
+
+Returns a list when a UID-based firewall event is detected:
+
+=over 4
+
+=item * C<\$port> - Destination port
+
+=item * C<\$uid> - User ID that triggered the event
+
+=back
+
+=cut
+
 sub uidlinecheck {
     my $line = shift;
     if ( $line !~ /^(\S+|\S+\s+\d+\s+\S+) \S+ kernel(\[\d+\])?:\s(\[[^\]]+\]\s)?Firewall:/ ) { return }
     if ( $line =~ /OUT=\S+.*DPT=(\S+).*UID=(\d+)/ )                                          { return ( $1, $2 ) }
 }
 
-# end uidlinecheck
-###############################################################################
-# start portknockingcheck
+=head2 portknockingcheck
+
+Detects port knocking attempts from kernel logs.
+
+    my (\$ip, \$port) = ConfigServer::RegexMain::portknockingcheck(\$line);
+
+Arguments:
+
+=over 4
+
+=item * C<\$line> - The log line to process
+
+=back
+
+Returns a list when a port knock is detected:
+
+=over 4
+
+=item * C<\$ip> - IP address performing the knock
+
+=item * C<\$port> - Port number knocked
+
+=back
+
+=cut
+
 sub portknockingcheck {
     my $line = shift;
     if ( $line !~ /^(\S+|\S+\s+\d+\s+\S+) \S+ kernel(\[\d+\])?:\s(\[[^\]]+\]\s)?Knock: \*\d+_IN\*/ ) { return }
@@ -880,9 +1140,34 @@ sub portknockingcheck {
     }
 }
 
-# end portknockingcheck
-###############################################################################
-# start processdistftpline
+=head2 processdistftpline
+
+Processes successful FTP login attempts for distributed tracking.
+
+    my (\$ip, \$account) = ConfigServer::RegexMain::processdistftpline(\$line);
+
+Arguments:
+
+=over 4
+
+=item * C<\$line> - The log line to process
+
+=back
+
+Returns a list when an FTP login is detected:
+
+=over 4
+
+=item * C<\$ip> - IP address of the connection
+
+=item * C<\$account> - User account name
+
+=back
+
+Supports pure-ftpd and proftpd log formats.
+
+=cut
+
 sub processdistftpline {
     my $line = shift;
 
@@ -905,9 +1190,6 @@ sub processdistftpline {
     }
 }
 
-# end processdistftpline
-###############################################################################
-# start processdistsmtpline
 sub processdistsmtpline {
     my $line  = shift;
     my $tline = $line;
@@ -943,11 +1225,29 @@ sub processdistsmtpline {
     }
 }
 
-# end processdistsmtpline
-###############################################################################
-# start loginline404
+=head2 loginline404
+
+Detects Apache 404 errors from error logs.
+
+    my $ip = ConfigServer::RegexMain::loginline404($line);
+
+Arguments:
+
+=over 4
+
+=item * C<$line> - The log line to process
+
+=back
+
+Returns the IP address if a 404 error is detected, undef otherwise.
+
+=cut
+
 sub loginline404 {
     my $line = shift;
+
+    _config();    # Make sure config is loaded.
+
     if ( $line =~ /^\[\S+\s+\S+\s+\S+\s+\S+\s+\S+\] \[(\S*:)?(error|info)\] (\[pid \d+(:tid \d+)?\] )?\[(client|remote) (\S+)\] (\w+: )?File does not exist\:/ ) {
         my $ip = $6;
         $ip =~ s/^::ffff://;
@@ -957,11 +1257,29 @@ sub loginline404 {
     }
 }
 
-# end loginline404
-###############################################################################
-# start loginline403
+=head2 loginline403
+
+Detects Apache 403 Forbidden errors from error logs.
+
+    my \$ip = ConfigServer::RegexMain::loginline403(\$line);
+
+Arguments:
+
+=over 4
+
+=item * C<\$line> - The log line to process
+
+=back
+
+Returns the IP address if a 403 error is detected, undef otherwise.
+
+=cut
+
 sub loginline403 {
     my $line = shift;
+
+    _config();    # Make sure config is loaded.
+
     if ( $line =~ /^\[\S+\s+\S+\s+\S+\s+\S+\s+\S+\] \[(\S*:)?error\] (\[pid \d+(:tid \d+)?\] )?\[(client|remote) (\S+)\] (\w+: )?client denied by server configuration\:/ ) {
         my $ip = $5;
         $ip =~ s/^::ffff://;
@@ -971,11 +1289,30 @@ sub loginline403 {
     }
 }
 
-# end loginline403
-###############################################################################
-# start loginline401
+=head2 loginline401
+
+Detects Apache 401 Unauthorized authentication failures from error logs.
+
+    my \$ip = ConfigServer::RegexMain::loginline401(\$line);
+
+Arguments:
+
+=over 4
+
+=item * C<\$line> - The log line to process
+
+=back
+
+Returns the IP address if a 401 authentication failure is detected,
+undef otherwise.
+
+=cut
+
 sub loginline401 {
     my $line = shift;
+
+    _config();    # Make sure config is loaded.
+
     if ( $line =~ /^\[\S+\s+\S+\s+\S+\s+\S+\s+\S+\] \[(\S*:)?error\] (\[pid \d+(:tid \d+)?\] )?\[(client|remote) (\S+)\] (\w+: )?(user  not found|user \w+ not found|user \w+: authentication failure for "\/\w+\/")\:/ ) {
         my $ip = $5;
         $ip =~ s/^::ffff://;
@@ -985,17 +1322,49 @@ sub loginline401 {
     }
 }
 
-# end loginline401
-###############################################################################
-# start statscheck
+=head2 statscheck
+
+Checks if a log line is a firewall or port knocking statistics line.
+
+    my \$is_stats = ConfigServer::RegexMain::statscheck(\$line);
+
+Arguments:
+
+=over 4
+
+=item * C<\$line> - The log line to process
+
+=back
+
+Returns 1 if the line is a statistics line, undef otherwise.
+
+=cut
+
 sub statscheck {
     my $line = shift;
     if ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) \S+ kernel:\s(\[[^\]]+\]\s)?(Firewall|Knock):/ ) { return 1 }
 }
 
-# end statscheck
-###############################################################################
-# start syslogcheckline
+=head2 syslogcheckline
+
+Verifies syslog check codes from lfd log entries.
+
+    my \$matched = ConfigServer::RegexMain::syslogcheckline(\$line, \$code);
+
+Arguments:
+
+=over 4
+
+=item * C<\$line> - The log line to process
+
+=item * C<\$syslogcheckcode> - The expected syslog check code
+
+=back
+
+Returns 1 if the check code matches, undef otherwise.
+
+=cut
+
 sub syslogcheckline {
     my $line            = shift;
     my $syslogcheckcode = shift;
@@ -1005,7 +1374,35 @@ sub syslogcheckline {
     }
 }
 
-# end syslogcheckline
-###############################################################################
-
 1;
+
+=head1 SEE ALSO
+
+L<ConfigServer::Config>, L<ConfigServer::CheckIP>, L<ConfigServer::Logger>
+
+=head1 VERSION
+
+1.03
+
+=head1 AUTHOR
+
+Jonathan Michaelson
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (C) 2006-2025 Jonathan Michaelson
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the Free
+Software Foundation; either version 3 of the License, or (at your option)
+any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+more details.
+
+You should have received a copy of the GNU General Public License along
+with this program; if not, see L<https://www.gnu.org/licenses>.
+
+=cut

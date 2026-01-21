@@ -186,6 +186,186 @@ subtest 'test with specific config' => sub {
 done_testing;
 ```
 
+### Mocking Modules with Test2::Mock
+
+**CRITICAL: Never mock modules using BEGIN blocks and `$INC` manipulation**. Always use `Test2::Mock` which is automatically included in `Test2::V0` (no need to load it separately).
+
+#### Module Loading Order
+
+**CRITICAL: Always load the module under test FIRST, then create mocks for its dependencies.**
+
+The correct pattern is:
+1. Load test framework modules (`Test2::V0`, `Test2::Plugin::NoWarnings`) - **do NOT** load `Test2::Mock` separately
+2. **Load the module being tested** (e.g., `use ConfigServer::RegexMain;`)
+3. Create mocks for the dependencies using the `mock()` function from Test2::V0
+
+**Why this order matters:**
+- When you load the module under test, Perl automatically loads all its dependencies
+- All required modules are already in memory and can be mocked
+- You don't need to manually load each dependency module
+- This ensures mocks apply to the already-loaded modules
+
+**CORRECT pattern:**
+
+```perl
+use Test2::V0;
+use Test2::Plugin::NoWarnings;
+
+use lib 't/lib';
+use MockConfig;  # If needed
+
+# Load the module under test FIRST
+use ConfigServer::RegexMain;
+
+# NOW create mocks for its dependencies
+my $logger_mock = mock 'ConfigServer::Logger' => (
+    override => [
+        logfile => sub { return; },
+    ],
+);
+
+my $checkip_mock = mock 'ConfigServer::CheckIP' => (
+    override => [
+        checkip => sub { return 1; },
+    ],
+);
+
+# Run tests...
+done_testing;
+```
+
+**WRONG - Do NOT manually load dependencies:**
+
+```perl
+# WRONG - Don't do this
+use ConfigServer::CheckIP ();    # Don't manually load dependencies
+use ConfigServer::Logger ();     # Don't manually load dependencies
+use ConfigServer::GetEthDev ();  # Don't manually load dependencies
+
+# Create mocks...
+
+use ConfigServer::RegexMain;     # Module under test loaded LAST - WRONG!
+```
+
+#### How to Mock Modules
+
+Test2::Mock is automatically loaded when you use `Test2::V0`. It allows you to override or add methods to existing modules.
+
+**Basic mocking pattern:**
+
+```perl
+use Test2::V0;
+use Test2::Plugin::NoWarnings;
+
+# Load the module under test (which loads its dependencies)
+use ModuleUnderTest;
+
+# Create a mock that overrides specific methods in a dependency
+my $mock = mock 'Some::Module' => (
+    override => [
+        method_name => sub {
+            my ($self, @args) = @_;
+            return 'mocked_value';
+        },
+    ],
+);
+
+# Run tests...
+done_testing;
+```
+
+**Mocking strategies:**
+
+1. **Override existing methods** - Use `override => [...]` to replace methods that already exist
+2. **Add new methods** - Use `add => [...]` to add methods that don't exist yet
+3. **Track calls** - Use `track => 1` to record method calls for verification
+
+**Note:** `Test2::Mock` and the `mock()` function are automatically available when you load `Test2::V0` - do not load `Test2::Mock` explicitly.
+
+**Example with multiple mocks:**
+
+```perl
+use Test2::V0;  # This automatically provides Test2::Mock functionality
+use Test2::Plugin::NoWarnings;
+
+use lib 't/lib';
+use MockConfig;
+
+# Load the module under test FIRST
+use ConfigServer::RegexMain;
+
+# Storage for tracking
+our @logged_messages;
+
+# NOW mock its dependencies
+my $logger_mock = mock 'ConfigServer::Logger' => (
+    override => [
+        logfile => sub {
+            my $msg = shift;
+            push @logged_messages, $msg;
+            return;
+        },
+    ],
+);
+
+my $checkip_mock = mock 'ConfigServer::CheckIP' => (
+    override => [
+        checkip => sub {
+            my $ip_ref = shift;
+            my $ip = ref $ip_ref ? $$ip_ref : $ip_ref;
+            return 1 if $ip =~ /^\d+\.\d+\.\d+\.\d+$/;
+            return 0;
+        },
+    ],
+);
+
+# Tests can verify logged messages
+subtest 'verify logging' => sub {
+    @logged_messages = ();
+    
+    some_function_that_logs();
+    
+    ok(scalar @logged_messages > 0, 'messages were logged');
+    like($logged_messages[0], qr/expected pattern/, 'log message matches');
+};
+
+done_testing;
+```
+
+**WRONG - Never do this:**
+
+```perl
+# WRONG - Do not mock in BEGIN blocks
+BEGIN {
+    $INC{'Some/Module.pm'} = __FILE__;
+    package Some::Module;
+    sub method { return 'mocked'; }
+    package main;
+}
+
+# WRONG - Do not create stub packages manually
+package ConfigServer::Logger;
+sub logfile { }
+package main;
+```
+
+**RIGHT - Use Test2::Mock:**
+
+```perl
+use Test2::V0;
+use ConfigServer::Logger ();
+
+my $mock = mock 'ConfigServer::Logger' => (
+    override => [
+        logfile => sub { return; },
+    ],
+);
+```
+
+#### When Mocking is Not Supported
+
+If a module cannot be properly mocked with Test2::Mock (e.g., due to XS code, complex initialization, or compile-time dependencies), **stop and request assistance** rather than attempting workarounds with BEGIN blocks or `$INC` manipulation.
+
 ## Example header code.
 This is what the header for most tests should look like, depending on the year you modified the file.
 
