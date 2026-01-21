@@ -34,7 +34,18 @@ Also make sure that `PERL5LIB=''` environment variable is set to avoid loading a
 PERL5LIB='' prove -wlvm t/ConfigServer-AbuseIP.t
 ```
 
-**Note:** The `-l` flag in `prove -wlvm` automatically adds the `lib/` directory to `@INC`, so there is no need to include `use lib` statements in test files. Test files should not contain `use lib` directives.
+**Note:** The `-l` flag in `prove -wlvm` automatically adds the `lib/` directory to `@INC`, so test files should not use `use lib 'lib';`. However, test files SHOULD use `use lib 't/lib';` to load test utility modules (like MockConfig) from the `t/lib/` directory.
+
+**Correct:**
+```perl
+use lib 't/lib';  # OK - loads test utilities
+use MockConfig;
+```
+
+**Incorrect:**
+```perl
+use lib 'lib';  # WRONG - prove already adds this
+```
 
 ### Regression Testing
 

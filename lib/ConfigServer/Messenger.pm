@@ -19,15 +19,81 @@
 
 package ConfigServer::Messenger;
 
+=head1 NAME
+
+ConfigServer::Messenger - HTML/HTTPS messenger service for CSF firewall
+
+=head1 SYNOPSIS
+
+    use ConfigServer::Messenger ();
+
+    # Initialize messenger service
+    my $messenger = ConfigServer::Messenger->init(1);
+
+    # Start the messenger service
+    my ($status, $reason) = $messenger->start($port, $user, $type);
+
+    # Send messengerv2 notification
+    ConfigServer::Messenger::messengerv2();
+
+    # Report an error
+    ConfigServer::Messenger::error(__LINE__, "Invalid configuration line");
+
+=head1 DESCRIPTION
+
+ConfigServer::Messenger provides HTML and HTTPS messenger services for the
+ConfigServer Security & Firewall (CSF). This module manages three types of
+messenger services:
+
+=over 4
+
+=item * Version 1: HTML messenger with reCAPTCHA support for IP unblocking
+
+=item * Version 2: HTTPS messenger service
+
+=item * Version 3: Enhanced HTTPS messenger with SSL/TLS support
+
+=back
+
+The messenger service allows end users to request temporary IP unblocks through
+a web interface protected by reCAPTCHA verification. It handles SSL certificate
+management, IP validation, and integrates with various web servers including
+Apache and LiteSpeed.
+
+=head1 METHODS
+
+=head2 init
+
+    my $messenger = ConfigServer::Messenger->init($version);
+
+Initializes a new messenger service instance.
+
+B<Parameters:>
+
+=over 4
+
+=item * C<$version> - Messenger version (1, 2, or 3)
+
+=back
+
+B<Returns:> Blessed object reference
+
+Version 1 configures the HTML messenger with reCAPTCHA and NAT IP handling.
+Version 2 and 3 configure HTTPS messenger services with SSL support.
+
+=cut
+
 use cPstrict;
 
-use Fcntl            ();
-use File::Copy       ();
-use JSON::Tiny       ();
-use IO::Socket::INET ();
-use Net::CIDR::Lite  ();
-use Net::IP          ();
-use IPC::Open3       ();
+use Fcntl             ();
+use File::Copy        ();
+use JSON::Tiny        ();
+use IO::Socket::INET  ();
+use Net::CIDR::Lite   ();
+use Net::IP           ();
+use IPC::Open3        ();
+use Socket            ();
+use IO::Socket::INET6 ();
 
 use ConfigServer::Config    ();
 use ConfigServer::URLGet    ();
@@ -83,12 +149,8 @@ sub init {
         $hostname = "unknown";
     }
     if ( $version == 1 ) {
-        if ( ConfigServer::Config->get_config('MESSENGER6') ) {
-            eval('use IO::Socket::INET6;');    ##no critic
-            if ($@) { $config{MESSENGER6} = "0" }
-        }
         $ipscidr6 = Net::CIDR::Lite->new;
-        _getethdev;
+        _getethdev();
         foreach my $ip ( split( /,/, ConfigServer::Config->get_config('RECAPTCHA_NAT') ) ) {
             $ip =~ s/\s*//g;
             $ips{$ip} = 1;
@@ -126,6 +188,39 @@ sub start {
     return ( $status, $reason );
 }
 
+=head2 start
+
+    my ($status, $reason) = $messenger->start($port, $user, $type);
+
+Starts the messenger service on the specified port.
+
+B<Parameters:>
+
+=over 4
+
+=item * C<$port> - Port number to bind the messenger service (version 1 only)
+
+=item * C<$user> - User account to run the service under (version 1 only)
+
+=item * C<$type> - Service type configuration (version 1 only)
+
+=back
+
+B<Returns:> List of two elements:
+
+=over 4
+
+=item * C<$status> - Exit status (0 for success, non-zero for failure)
+
+=item * C<$reason> - Error message if status is non-zero
+
+=back
+
+Version 1 starts an HTML messenger with reCAPTCHA support. Versions 2 and 3
+start HTTPS messenger services with SSL/TLS certificate handling.
+
+=cut
+
 sub _messenger {
     my $port    = shift;
     my $user    = shift;
@@ -143,7 +238,7 @@ sub _messenger {
     $0            = "lfd $type messenger";
     $childproc    = "Messenger ($type)";
 
-    %config ||= ConfigServer::Config->get_config;    # Local cache.
+    %config = ConfigServer::Config->get_config unless (%config);    # Local cache.
 
     if ( $type eq "HTTPS" ) {
         eval {
@@ -221,9 +316,9 @@ sub _messenger {
             local $SIG{__DIE__} = undef;
             if ( $config{MESSENGER6} ) {
                 $server = IO::Socket::SSL->new(
-                    Domain        => AF_INET6,
+                    Domain        => Socket::AF_INET6,
                     LocalPort     => $port,
-                    Type          => SOCK_STREAM,
+                    Type          => Socket::SOCK_STREAM,
                     ReuseAddr     => 1,
                     Listen        => $config{MESSENGER_CHILDREN},
                     SSL_server    => 1,
@@ -234,9 +329,9 @@ sub _messenger {
             }
             else {
                 $server = IO::Socket::SSL->new(
-                    Domain        => AF_INET,
+                    Domain        => Socket::AF_INET,
                     LocalPort     => $port,
-                    Type          => SOCK_STREAM,
+                    Type          => Socket::SOCK_STREAM,
                     ReuseAddr     => 1,
                     Listen        => $config{MESSENGER_CHILDREN},
                     SSL_server    => 1,
@@ -255,7 +350,7 @@ sub _messenger {
     elsif ( $config{MESSENGER6} ) {
         $server = IO::Socket::INET6->new(
             LocalPort => $port,
-            Type      => SOCK_STREAM,
+            Type      => Socket::SOCK_STREAM,
             ReuseAddr => 1,
             Listen    => $config{MESSENGER_CHILDREN}
         ) or _childcleanup( __LINE__, "*Error* cannot open server on port $port: $!" );
@@ -263,7 +358,7 @@ sub _messenger {
     else {
         $server = IO::Socket::INET->new(
             LocalPort => $port,
-            Type      => SOCK_STREAM,
+            Type      => Socket::SOCK_STREAM,
             ReuseAddr => 1,
             Listen    => $config{MESSENGER_CHILDREN}
         ) or _childcleanup( __LINE__, "*Error* cannot open server on port $port: $!" );
@@ -495,7 +590,7 @@ sub _messenger {
 }
 
 sub messengerv2 {
-    %config ||= ConfigServer::Config->get_config;    # Local cache.
+    %config = ConfigServer::Config->get_config unless (%config);    # Local cache.
 
     my ( undef, undef, $uid, $gid, undef, undef, undef, $homedir ) = getpwnam( $config{MESSENGER_USER} );
     if ( $homedir eq "" or $homedir eq "/" or $homedir =~ m[/etc/csf] ) {
@@ -749,7 +844,7 @@ sub messengerv2 {
 }
 
 sub _messengerv3 {
-    %config ||= ConfigServer::Config->get_config;    # Local cache.
+    %config = ConfigServer::Config->get_config unless (%config);    # Local cache.
 
     my ( undef, undef, $uid, $gid, undef, undef, undef, $homedir ) = getpwnam( $config{MESSENGER_USER} );
     if ( $homedir eq "" or $homedir eq "/" or $homedir =~ m[/etc/csf] ) {
@@ -1129,6 +1224,58 @@ sub error {
     exit;
 }
 
+=head2 messengerv2
+
+    ConfigServer::Messenger::messengerv2();
+
+Sets up messenger version 2 service by creating necessary directory structure
+and configuration files for the messenger user account.
+
+B<Returns:> List of two elements:
+
+=over 4
+
+=item * C<$status> - Exit status (0 for success, 1 for failure)
+
+=item * C<$reason> - Error message describing the failure
+
+=back
+
+This method:
+
+=over 4
+
+=item * Validates the messenger user's home directory
+
+=item * Creates public_html directory with proper permissions
+
+=item * Sets up .htaccess and messenger files
+
+=item * Configures file permissions for web server access
+
+=back
+
+=cut
+
+=head2 error
+
+    ConfigServer::Messenger::error($line_number, $message);
+
+Logs an error message and terminates the program.
+
+B<Parameters:>
+
+=over 4
+
+=item * C<$error> - Error message or line number to log
+
+=back
+
+This function logs the error using L<ConfigServer::Logger> and exits the
+program immediately.
+
+=cut
+
 sub _conftree {
     my $fileglob = shift;
 
@@ -1302,3 +1449,30 @@ sub _conftree {
 }
 
 1;
+
+=head1 VERSION
+
+3.00
+
+=head1 AUTHOR
+
+Jonathan Michaelson
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (C) 2006-2025 Jonathan Michaelson
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation; either version 3 of the License, or (at your option) any later
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+details.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, see L<https://www.gnu.org/licenses>.
+
+=cut
