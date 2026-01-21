@@ -300,8 +300,7 @@ if ( $config{RESTRICT_SYSLOG} == 1 ) {
         qw{LF_SSHD LF_FTPD LF_IMAPD LF_POP3D LF_BIND LF_SUHOSIN
         LF_SSH_EMAIL_ALERT LF_SU_EMAIL_ALERT LF_CONSOLE_EMAIL_ALERT
         LF_DISTATTACK LF_DISTFTP LT_POP3D LT_IMAPD PS_INTERVAL
-        UID_INTERVAL WEBMIN_LOG LF_WEBMIN_EMAIL_ALERT
-        PORTKNOCKING_ALERT LF_SUDO_EMAIL_ALERT}
+        UID_INTERVAL PORTKNOCKING_ALERT LF_SUDO_EMAIL_ALERT}
     ) {
         if ( $config{$_} != 0 ) {
             $config{$_} = 0;
@@ -451,7 +450,6 @@ if ( $config{LF_SMTPAUTH} or $config{LF_EXIMSYNTAX} )                           
 if ( $config{LF_POP3D} or $config{LT_POP3D} )                                                                                                       { &globlog("POP3D_LOG") }
 if ( $config{LF_IMAPD} or $config{LT_IMAPD} )                                                                                                       { &globlog("IMAPD_LOG") }
 if ( $config{LF_CPANEL} )                                                                                                                           { &globlog("CPANEL_LOG") }
-if ( $config{LF_WEBMIN} or $config{LF_WEBMIN_EMAIL_ALERT} )                                                                                         { &globlog("WEBMIN_LOG") }
 if ( $config{LF_SSHD} or $config{LF_SSH_EMAIL_ALERT} or $config{LF_CONSOLE_EMAIL_ALERT} )                                                           { &globlog("SSHD_LOG") }
 if ( $config{LF_FTPD} )                                                                                                                             { &globlog("FTPD_LOG") }
 if ( $config{LF_BIND} )                                                                                                                             { &globlog("BIND_LOG") }
@@ -586,9 +584,6 @@ if ( $config{CF_ENABLE} and -e "/etc/csf/csf.cloudflare" ) {
     logfile("CloudFlare Firewall...");
     $cfblocks{LF_MODSEC} = 1;
     $cfblocks{LF_CXS}    = 1;
-
-    #	$cfblocks{LF_CPANEL} = 1;
-    #	$cfblocks{LF_WEBMIN} = 1;
 }
 
 if ( $config{MESSENGER} ) {
@@ -1094,9 +1089,6 @@ if ( $config{AT_ALERT} ) {
 if ( $config{LF_SSH_EMAIL_ALERT} ) {
     logfile("SSH Tracking...");
 }
-if ( $config{LF_WEBMIN_EMAIL_ALERT} ) {
-    logfile("Webmin Tracking...");
-}
 if ( $config{LF_SU_EMAIL_ALERT} ) {
     logfile("SU Tracking...");
 }
@@ -1133,7 +1125,6 @@ $ports{cpanel}       = $config{PORTS_cpanel};
 $ports{ftpd}         = $config{PORTS_ftpd};
 $ports{smtpauth}     = $config{PORTS_smtpauth};
 $ports{eximsyntax}   = $config{PORTS_eximsyntax};
-$ports{webmin}       = $config{PORTS_webmin};
 
 opendir( DIR, "/etc/chkserv.d" );
 while ( my $file = readdir(DIR) ) {
@@ -1773,7 +1764,6 @@ sub dochecks {
                     elsif ( $app eq "bind" )         { $trigger = "LF_BIND" }
                     elsif ( $app eq "suhosin" )      { $trigger = "LF_SUHOSIN" }
                     elsif ( $app eq "cpanel" )       { $trigger = "LF_CPANEL" }
-                    elsif ( $app eq "webmin" )       { $trigger = "LF_WEBMIN" }
                     elsif ( $app eq "whm" )          { $trigger = "LF_CPANEL" }
                     elsif ( $app eq "webmail" )      { $trigger = "LF_CPANEL" }
                     elsif ( $app eq "mod_qos" )      { $trigger = "LF_QOS" }
@@ -2018,13 +2008,6 @@ sub dochecks {
                 $cpanelalert{$ip}{$user} = time;
                 &cpanelalert( $ip, $user, $line );
             }
-        }
-    }
-
-    if ( $config{LF_WEBMIN_EMAIL_ALERT} and ( $globlogs{WEBMIN_LOG}{$lgfile} ) ) {
-        my ( $account, $ip ) = ConfigServer::RegexMain::processwebminline($line);
-        if ($account) {
-            &webminalert( $account, $ip, $line );
         }
     }
 
@@ -4675,44 +4658,6 @@ sub sudoalert {
 }
 
 # end sudoalert
-###############################################################################
-# start webminalert
-sub webminalert {
-    my $account = shift;
-    my $ip      = shift;
-    my $text    = shift;
-
-    $SIG{CHLD} = 'IGNORE';
-    unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
-    }
-    $forks{$childpid} = 1;
-    unless ($childpid) {
-        my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "webminalert", $timer ) }
-        logfile("*Webmin login* from $ip into the $account account");
-
-        $0 = "lfd - (child) sending Webmin login alert email for $ip";
-
-        my @alert = slurp("/usr/local/csf/tpl/webminalert.txt");
-        my $tip   = iplookup($ip);
-        my @message;
-        foreach my $line (@alert) {
-            $line =~ s/\[ip\]/$tip/ig;
-            $line =~ s/\[account\]/$account/ig;
-            $line =~ s/\[text\]/$text/ig;
-            push @message, $line;
-        }
-        ConfigServer::Sendmail::relay( "", "", @message );
-
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "webminalert", $timer ) }
-        $0 = "lfd - child closing";
-        exit;
-    }
-    return;
-}
-
-# end webminalert
 ###############################################################################
 # start consolealert
 sub consolealert {

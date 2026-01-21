@@ -104,7 +104,7 @@ flexible to configure and secure with extra checks to ensure smooth operation.
 csf can be used on any (supported - see the website) generic Linux OS.
 
 The csf installation includes preconfigured configurations and control panel
-UI's for cPanel and Webmin
+UI's for cPanel
 
 Directory structure:
 
@@ -139,7 +139,7 @@ Control Panel Interface
 =======================
 
 To help with the ease and flexibility of the suite we have developed a
-front-end to both csf and lfd for cPanel and Webmin. From there
+front-end to both csf and lfd for cPanel. From there
 you can modify the configuration files and stop, start and restart the
 applications and check their status. This makes configuring and managing the
 firewall very simple indeed.
@@ -368,7 +368,6 @@ modify that file to maintain the correct format:
 /usr/local/csf/tpl/uialert.txt - for UI alert emails
 /usr/local/csf/tpl/usertracking.txt - for user process tracking alert emails
 /usr/local/csf/tpl/watchalert.txt - for watched file and directory change alert emails
-/usr/local/csf/tpl/webminalert.txt - for Webmin login emails
 
 6. Login Tracking
 #################
@@ -631,9 +630,6 @@ changes to the features available:
 
 2. The Process Tracking ignore file may need expanding in /etc/csf/csf.pignore
    to suit the server environment
-
-3. A standard Webmin Module to configure csf is included - see the install.txt
-   for more information
 
 The codebase is the same for a all installations, the csf.conf file simply has
 the cPanel specific options removed and the GENERIC option added
@@ -1366,8 +1362,8 @@ monitor these logs, such as lfd does for the following options:
 
 LF_SSHD LF_FTPD LF_IMAPD LF_POP3D LF_BIND LF_SUHOSIN LF_SSH_EMAIL_ALERT
 LF_SU_EMAIL_ALERT LF_CONSOLE_EMAIL_ALERT LF_DISTATTACK LF_DISTFTP
-LT_POP3D LT_IMAPD PS_INTERVAL UID_INTERVAL WEBMIN_LOG LF_WEBMIN_EMAIL_ALERT
-PORTKNOCKING_ALERT ST_ENABLE SYSLOG_CHECK LOGSCANNER CUSTOM*_LOG
+LT_POP3D LT_IMAPD PS_INTERVAL UID_INTERVAL PORTKNOCKING_ALERT ST_ENABLE
+SYSLOG_CHECK LOGSCANNER CUSTOM*_LOG
 
 A malicious user could use this issue to trigger confusing emails regarding
 both successful and failed login attempts, kernel log lines (including iptables
@@ -1514,7 +1510,7 @@ auth_advertise_hosts = ${if match_ip{$sender_host_address}{iplsearch;/etc/exim.s
 26. UI Skinning and Mobile View
 ###############################
 
-The csf UI provided through cPanel, Webmin and the integrated UI
+The csf UI provided through cPanel and the integrated UI
 via lfd, all user the Bootstrap and jQuery frameworks. Additional styling is
 added to complement the frameworks and the UI flow.
 
@@ -1524,24 +1520,11 @@ can create:
 1. A text file /etc/csf/csf.header which will be included in each of
 the UI pages before the closing </head> tag
 
-2. A text file /etc/csf/csf.body which will be included in each of the UI
-pages after the opening <body> tag[*]
-
-3. A text file /etc/csf/csf.footer which will be included in each of the UI
+2. A text file /etc/csf/csf.footer which will be included in each of the UI
 pages before the closing </body> tag
 
 The html tag will also have a data-post field containing the internal action
 being performed by the UI.
-
-You can also make additions to the <html> and <body> tags by creating
-/etc/csf/csf.htmltag and /etc/csf/csf.bodytag respectively[*]. Additions made
-in these files MUST all be on a single line at the top of the file, anything
-else will be ignored. The text will then be placed within the respective tag,
-e.g. if you want <body data-name='result'> you would put the following on a
-single line in /etc/csf/csf.bodytag:
-data-name='result'
-
-[*] This functionality is ONLY available on webmin servers
 
 The Mobile View feature has a breakpoint of 600px which will initiate the full
 browser subset of UI features. This may mean breaking out of framesets in some

@@ -58,7 +58,6 @@ mkdir -v -m 0600 /var/lib/csf/Geo
 mkdir -v -m 0600 /var/lib/csf/ui
 mkdir -v -m 0600 /var/lib/csf/stats
 mkdir -v -m 0600 /var/lib/csf/lock
-mkdir -v -m 0600 /var/lib/csf/webmin
 mkdir -v -m 0600 /var/lib/csf/zone
 mkdir -v -m 0600 /usr/local/csf
 mkdir -v -m 0600 /usr/local/csf/bin
@@ -189,9 +188,6 @@ if [ ! -e "/usr/local/csf/tpl/usertracking.txt" ]; then
 fi
 if [ ! -e "/usr/local/csf/tpl/sshalert.txt" ]; then
 	cp -avf sshalert.txt /usr/local/csf/tpl/.
-fi
-if [ ! -e "/usr/local/csf/tpl/webminalert.txt" ]; then
-	cp -avf webminalert.txt /usr/local/csf/tpl/.
 fi
 if [ ! -e "/usr/local/csf/tpl/sualert.txt" ]; then
 	cp -avf sualert.txt /usr/local/csf/tpl/.
@@ -339,18 +335,15 @@ ln -svf /usr/local/csf/bin/pt_deleted_action.pl /etc/csf/
 ln -svf /usr/local/csf/bin/remove_apf_bfd.sh /etc/csf/
 ln -svf /usr/local/csf/bin/uninstall.sh /etc/csf/
 ln -svf /usr/local/csf/bin/regex.custom.pm /etc/csf/
-ln -svf /usr/local/csf/lib/webmin /etc/csf/
 if [ ! -e "/etc/csf/alerts" ]; then
     ln -svf /usr/local/csf/tpl /etc/csf/alerts
 fi
 chcon -h system_u:object_r:bin_t:s0 /usr/sbin/lfd
 chcon -h system_u:object_r:bin_t:s0 /usr/sbin/csf
 
-mkdir webmin/csf/images
 mkdir ui/images
 mkdir da/images
 
-cp -avf csf/* webmin/csf/images/
 cp -avf csf/* ui/images/
 cp -avf csf/* da/images/
 
@@ -368,7 +361,6 @@ cp -avf downloadservers /etc/csf/
 cp -avf install.txt /etc/csf/
 cp -avf version.txt /etc/csf/
 cp -avf license.txt /etc/csf/
-cp -avf webmin /usr/local/csf/lib/
 cp -avf ConfigServer /usr/local/csf/lib/
 cp -avf Net /usr/local/csf/lib/
 cp -avf Geo /usr/local/csf/lib/
@@ -408,7 +400,6 @@ chmod 600 /var/log/lfd.log*
 
 chmod -v 700 /usr/local/csf/bin/*.pl /usr/local/csf/bin/*.sh /usr/local/csf/bin/*.pm
 chmod -v 700 /etc/csf/*.pl /etc/csf/*.cgi /etc/csf/*.sh /etc/csf/*.php /etc/csf/*.py
-chmod -v 700 /etc/csf/webmin/csf/index.cgi
 chmod -v 644 /etc/cron.d/lfd-cron
 chmod -v 644 /etc/cron.d/csf-cron
 
@@ -543,9 +534,6 @@ fi
 
 chown -Rf root:root /etc/csf /var/lib/csf /usr/local/csf
 chown -f root:root /usr/sbin/csf /usr/sbin/lfd /etc/logrotate.d/lfd /etc/cron.d/csf-cron /etc/cron.d/lfd-cron /usr/local/man/man1/csf.1 /usr/lib/systemd/system/lfd.service /usr/lib/systemd/system/csf.service /etc/init.d/lfd /etc/init.d/csf
-
-cd webmin ; tar -czf /usr/local/csf/csfwebmin.tgz ./*
-ln -svf /usr/local/csf/csfwebmin.tgz /etc/csf/
 
 echo
 echo "Installation Completed"

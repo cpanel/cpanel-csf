@@ -57,7 +57,7 @@ else {
     close(IN);
 }
 
-foreach my $alertfile ( "sshalert.txt", "sualert.txt", "sudoalert.txt", "webminalert.txt", "cpanelalert.txt" ) {
+foreach my $alertfile ( "sshalert.txt", "sualert.txt", "sudoalert.txt", "cpanelalert.txt" ) {
     if ( -e "/usr/local/csf/tpl/" . $alertfile ) {
         sysopen( my $IN, "/usr/local/csf/tpl/" . $alertfile, O_RDWR | O_CREAT );
         flock( $IN, LOCK_EX );
@@ -867,7 +867,6 @@ if ( $config{TESTING} ) {
             flock( OUT, LOCK_EX )                 or die $!;
             foreach my $line (@config) {
                 if ( $line =~ /^SSHD_LOG/ )     { $line = 'SSHD_LOG = "/var/log/auth.log"' }
-                if ( $line =~ /^WEBMIN_LOG/ )   { $line = 'WEBMIN_LOG = "/var/log/auth.log"' }
                 if ( $line =~ /^SU_LOG/ )       { $line = 'SU_LOG = "/var/log/auth.log"' }
                 if ( $line =~ /^SUDO_LOG/ )     { $line = 'SUDO_LOG = "/var/log/auth.log"' }
                 if ( $line =~ /^POP3D_LOG/ )    { $line = 'POP3D_LOG = "/var/log/mail.log"' }

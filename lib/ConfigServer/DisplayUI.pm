@@ -2056,27 +2056,6 @@ EOF
         &printreturn;
     }
     else {
-        if ( defined $ENV{WEBMIN_VAR} and defined $ENV{WEBMIN_CONFIG} and -e "module.info" ) {
-            my @data = slurp("module.info");
-            foreach my $line (@data) {
-                if ( $line =~ /^name=csf$/ ) {
-                    unless ( -l "index.cgi" ) {
-                        unlink "index.cgi";
-                        my $status = symlink( "/usr/local/csf/lib/webmin/csf/index.cgi", "index.cgi" );
-                        if ( $status and -l "index.cgi" ) {
-                            symlink( "/usr/local/csf/lib/webmin/csf/images", "csfimages" );
-                            print "<p><b>csf updated to symlink webmin module to /usr/local/csf/lib/webmin/csf/. Click <a href='index.cgi'>here</a> to continue<p></b>\n";
-                            exit;
-                        }
-                        else {
-                            print "<p>Failed to symlink to /usr/local/csf/lib/webmin/csf/<p>\n";
-                        }
-                    }
-                    last;
-                }
-            }
-        }
-
         &getethdev;
         my ( $childin, $childout );
         my $pid       = open3( $childin, $childout, $childout, "$config{IPTABLES} $config{IPTABLESWAIT} -L LOCALINPUT -n" );
@@ -2286,7 +2265,7 @@ EOF
         print "<tr><td><form action='$script' method='post'><select name='template'>\n";
 
         foreach my $tmp (
-            "alert.txt",    "tracking.txt", "connectiontracking.txt", "processtracking.txt", "accounttracking.txt", "usertracking.txt",  "sshalert.txt", "webminalert.txt", "sualert.txt", "sudoalert.txt", "uialert.txt", "cpanelalert.txt", "scriptalert.txt", "filealert.txt", "watchalert.txt", "loadalert.txt", "resalert.txt", "integrityalert.txt", "exploitalert.txt", "relayalert.txt",
+            "alert.txt",    "tracking.txt", "connectiontracking.txt", "processtracking.txt", "accounttracking.txt", "usertracking.txt",  "sshalert.txt", "sualert.txt", "sudoalert.txt", "uialert.txt", "cpanelalert.txt", "scriptalert.txt", "filealert.txt", "watchalert.txt", "loadalert.txt", "resalert.txt", "integrityalert.txt", "exploitalert.txt", "relayalert.txt",
             "portscan.txt", "uidscan.txt",  "permblock.txt",          "netblock.txt",        "queuealert.txt",      "logfloodalert.txt", "logalert.txt", "modsecipdbcheck.txt"
         ) {
             print "<option>$tmp</option>\n";
@@ -2383,9 +2362,6 @@ EOF
                     print "<a id='cpframetr2' href='$ENV{cp_security_token}' class='btn btn-success' data-spy='affix' data-offset-bottom='0' style='bottom: 0; left:45%'><span class='glyphicon glyphicon-home'></span> cPanel Main Page</a>\n";
                 }
             }
-            if ( defined $ENV{WEBMIN_VAR} and defined $ENV{WEBMIN_CONFIG} and !$config{THIS_UI} ) {
-                print "<a id='webmintr2' href='/' class='btn btn-success' data-spy='affix' data-offset-bottom='0' style='bottom: 0; left:45%'><span class='glyphicon glyphicon-home'></span> Webmin Main Page</a>\n";
-            }
             print "<div class='panel panel-default'><div class='panel-heading panel-heading-cxs'>Shows a subset of functions suitable for viewing on mobile devices</div>\n";
             print "<div class='panel-body text-center'><a class='btn btn-primary btn-block' style='margin:10px;padding: 18px 28px;font-size: 22px; line-height: normal;border-radius: 8px;' id='MobileView'>Mobile View</a></div></div>\n";
 
@@ -2413,9 +2389,6 @@ EOF
                 if ( $Cpanel::Version::Tiny::major_version < 65 ) {
                     print "<br><p><a href='$ENV{cp_security_token}' class='btn btn-info btn-lg btn-block'><span class='glyphicon glyphicon-home'></span> cPanel Main Page</a></p>\n";
                 }
-            }
-            if ( defined $ENV{WEBMIN_VAR} and defined $ENV{WEBMIN_CONFIG} and !$config{THIS_UI} ) {
-                print "<br><p><a href='/' class='btn btn-info btn-lg btn-block'><span class='glyphicon glyphicon-home'></span> Webmin Main Page</a></p>\n";
             }
 
             print "<br><p><button class='btn btn-info btn-lg btn-block' id='NormalView'>Desktop View</button></p>\n";
@@ -2574,10 +2547,6 @@ sub systemstats {
     if ( $config{THIS_UI} ) {
         $imgdir   = "$images/";
         $imghddir = "/etc/csf/ui/images/";
-    }
-    if ( defined $ENV{WEBMIN_VAR} and defined $ENV{WEBMIN_CONFIG} ) {
-        $imgdir   = "/csf/";
-        $imghddir = "";
     }
 
     sysopen( my $STATS, "/var/lib/csf/stats/system", O_RDWR | O_CREAT );

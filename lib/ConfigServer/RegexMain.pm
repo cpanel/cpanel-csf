@@ -833,46 +833,6 @@ sub processcpanelline {
     }
 }
 
-=head2 processwebminline
-
-Processes successful Webmin login attempts.
-
-    my ($account, $ip) = ConfigServer::RegexMain::processwebminline($line);
-
-Arguments:
-
-=over 4
-
-=item * C<$line> - The log line to process
-
-=back
-
-Returns a list when a Webmin login is detected:
-
-=over 4
-
-=item * C<$account> - User account name
-
-=item * C<$ip> - IP address of the connection
-
-=back
-
-=cut
-
-sub processwebminline {
-    my $line = shift;
-
-    _config();    # Make sure config is loaded.
-
-    if ( $config{LF_WEBMIN_EMAIL_ALERT} and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) \S+ webmin\[\d+\]: Successful login as (\S+) from (\S+)/ ) ) {
-        my $ip  = $3;
-        my $acc = $2;
-        $ip =~ s/^::ffff://;
-        if ( checkip( \$ip ) ) { return ( $acc, $ip ) }
-        else                   { return }
-    }
-}
-
 our $_cpconfig;
 
 =head2 scriptlinecheck
