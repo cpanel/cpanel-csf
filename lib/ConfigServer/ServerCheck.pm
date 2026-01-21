@@ -69,6 +69,7 @@ The report includes checks for:
 =cut
 
 use cPstrict;
+use Carp  ();
 use Fcntl qw(:DEFAULT :flock);
 use File::Basename;
 use IPC::Open3;
@@ -334,7 +335,7 @@ sub _firewallcheck {
             $value = $1;
         }
         else {
-            ConfigServer::Messenger::error( __LINE__, "Invalid configuration line" );
+            Carp::croak("Invalid configuration line: $line");
         }
         $config{$name} = $value;
     }

@@ -75,6 +75,9 @@ sub import {
             },
             get_config => sub {
                 my ( $class, $key ) = @_;
+
+                # If no key provided, return entire hash
+                return %config unless defined $key;
                 return $config{$key};
             },
             config => sub {
