@@ -36,9 +36,6 @@ ConfigServer::Messenger - HTML/HTTPS messenger service for CSF firewall
     # Send messengerv2 notification
     ConfigServer::Messenger::messengerv2();
 
-    # Report an error
-    ConfigServer::Messenger::error(__LINE__, "Invalid configuration line");
-
 =head1 DESCRIPTION
 
 ConfigServer::Messenger provides HTML and HTTPS messenger services for the
@@ -325,7 +322,7 @@ sub _messenger {
                     SSL_use_cert  => 1,
                     SSL_cert_file => \%sslcerts,
                     SSL_key_file  => \%sslkeys,
-                ) or error( "MESSENGER: *Error* cannot open server on port $port: " . IO::Socket::SSL->errstr );
+                ) or _error( "MESSENGER: *Error* cannot open server on port $port: " . IO::Socket::SSL->errstr );
             }
             else {
                 $server = IO::Socket::SSL->new(
@@ -338,7 +335,7 @@ sub _messenger {
                     SSL_use_cert  => 1,
                     SSL_cert_file => \%sslcerts,
                     SSL_key_file  => \%sslkeys,
-                ) or error( "MESSENGER: *Error* cannot open server on port $port: " . IO::Socket::SSL->errstr );
+                ) or _error( "MESSENGER: *Error* cannot open server on port $port: " . IO::Socket::SSL->errstr );
             }
             logfile( "Messenger HTTPS Service started for " . scalar( keys %sslcerts ) . " domains" );
             $type = "HTML";
@@ -1218,7 +1215,7 @@ sub _getethdev {
     return;
 }
 
-sub error {
+sub _error {
     my $error = shift;
     logfile($error);
     exit;
@@ -1254,25 +1251,6 @@ This method:
 =item * Configures file permissions for web server access
 
 =back
-
-=cut
-
-=head2 error
-
-    ConfigServer::Messenger::error($line_number, $message);
-
-Logs an error message and terminates the program.
-
-B<Parameters:>
-
-=over 4
-
-=item * C<$error> - Error message or line number to log
-
-=back
-
-This function logs the error using L<ConfigServer::Logger> and exits the
-program immediately.
 
 =cut
 

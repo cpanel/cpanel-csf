@@ -54,7 +54,6 @@ subtest 'Module basics' => sub {
     ok( ConfigServer::Messenger->can('init'),        'init method exists' );
     ok( ConfigServer::Messenger->can('start'),       'start method exists' );
     ok( ConfigServer::Messenger->can('messengerv2'), 'messengerv2 method exists' );
-    ok( ConfigServer::Messenger->can('error'),       'error method exists' );
     ok( defined $ConfigServer::Messenger::VERSION,   'VERSION is defined' );
     is( $ConfigServer::Messenger::VERSION, 3.00, 'VERSION is 3.00' );
 };
