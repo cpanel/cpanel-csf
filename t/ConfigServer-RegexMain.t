@@ -91,7 +91,6 @@ subtest 'private _config subroutine populates %config' => sub {
         LF_SUDO_EMAIL_ALERT    => 1,
         LF_CONSOLE_EMAIL_ALERT => 1,
         LF_CPANEL_ALERT        => 1,
-        LF_WEBMIN_EMAIL_ALERT  => 1,
     );
 
     # Call the private _config function

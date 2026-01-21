@@ -45,11 +45,6 @@
 # Nginx:
 /var/log/nginx/error_log
 
-# Webmin:
-/var/webmin/miniserv.error
-/var/webmin/miniserv.log
-/var/webmin/webmin.log
-
 # Exim:
 /var/log/exim/mainlog
 /var/log/exim/paniclog

@@ -80,7 +80,6 @@ cp -avf /etc/csf/sanity.txt /usr/local/csf/lib/
 cp -avf /etc/csf/stats/ /var/lib/csf/
 cp -avf /etc/csf/suspicious.tar /var/lib/csf/
 cp -avf /etc/csf/ui/ui.session /var/lib/csf/ui/
-cp -avf /etc/csf/webmin/ /usr/local/csf/lib/
 cp -avf /etc/csf/zone/ /var/lib/csf/
 
 rm -fv /etc/csf/csf.4.saved
@@ -138,7 +137,6 @@ rm -fv /etc/csf/sanity.txt
 rm -Rfv /etc/csf/stats/
 rm -fv /etc/csf/suspicious.tar
 rm -fv /etc/csf/ui/ui.session
-rm -Rfv /etc/csf/webmin/
 rm -Rfv /etc/csf/zone/
 
 # email alert templates:
@@ -173,7 +171,6 @@ cp -avf /etc/csf/uialert.txt /usr/local/csf/tpl/
 cp -avf /etc/csf/uidscan.txt /usr/local/csf/tpl/
 cp -avf /etc/csf/usertracking.txt /usr/local/csf/tpl/
 cp -avf /etc/csf/watchalert.txt /usr/local/csf/tpl/
-cp -avf /etc/csf/webminalert.txt /usr/local/csf/tpl/
 cp -avf /etc/csf/x-arf.txt /usr/local/csf/tpl/
 
 rm -fv /etc/csf/accounttracking.txt
@@ -206,7 +203,6 @@ rm -fv /etc/csf/uialert.txt
 rm -fv /etc/csf/uidscan.txt
 rm -fv /etc/csf/usertracking.txt
 rm -fv /etc/csf/watchalert.txt
-rm -fv /etc/csf/webminalert.txt
 rm -fv /etc/csf/x-arf.txt
 
 # perl modules:
@@ -246,7 +242,6 @@ rm -fv /etc/csf/uninstall.sh
 
 rm -fv /etc/csf/*.new
 rm -fv /etc/csf/dd_test
-rm -fv /etc/csf/csfwebmin.tgz
 rm -fv /etc/csf/csf.spamhaus /etc/csf/csf.dshield /etc/csf/csf.tor /etc/csf/csf.bogon
 rm -Rfv /etc/csf/File
 rm -Rfv /etc/csf/Geography
