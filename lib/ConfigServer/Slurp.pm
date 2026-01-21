@@ -47,12 +47,14 @@ detection and cleanup.
 
 use cPstrict;
 
+use Carp;
+
 use Cpanel::Slurper;
 
 use Exporter qw(import);
 our $VERSION   = 1.02;
 our @ISA       = qw(Exporter);
-our @EXPORT_OK = qw(slurp);
+our @EXPORT_OK = qw(slurp slurpee);
 
 my $slurpreg = qr/(?>\x0D\x0A?|[\x0A-\x0C\x85\x{2028}\x{2029}])/;
 my $cleanreg = qr/(\r)|(\n)|(^\s+)|(\s+$)/;
@@ -128,13 +130,58 @@ Recognizes and splits on:
 =cut
 
 sub slurp ($file) {
-    my $text = Cpanel::Slurper::read($file);
+    return slurpee($file);
+}
+
+my %defaults = (
+    'warn'      => 1,
+    'wantarray' => 1,
+    'fatal'     => 0,
+);
+
+=head2 slurpee
+
+Same as slurp, but accepts option hash for whether you `wantarray` or desire
+warnings, etc..
+
+The 'ee' stands for 'Extended Edition'.
+
+=head3 Arguments
+
+=over 4
+
+=item * $file - File to slurp
+
+=item * %opts - Options hash. Possible opts:
+
+=over 4
+
+=item - wantarray => Whether you want to return LIST or SCALAR.
+
+=item - warn => Whether you want to warn on file slurp failing.
+
+=item - fatal => Whether you want to die on file slurp failing.
+
+=back
+
+=back
+
+=cut
+
+sub slurpee ($file, %opts) {
+    %opts = ( %defaults, %opts );
+    local $@;
+    my $text = eval { Cpanel::Slurper::read($file) };
     if ( !defined $text ) {
-        require Carp;
-        Carp::carp( "*Error* File does not exist: [$file]" );
+        my $err = "*Error* File does not exist: [$file]";
+        Carp::croak($err) if $opts{'fatal'};
+        Carp::carp($err)  if $opts{'warn'};
         return;
     }
-    return split( /$slurpreg/, $text ) if length $text;
+    if(length $text ) {
+        return split( /$slurpreg/, $text ) if $opts{'wantarray'};
+        return $text;
+    }
     return;
 }
 

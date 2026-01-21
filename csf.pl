@@ -28,7 +28,7 @@ use IPC::Open3;
 use Net::CIDR::Lite;
 use Socket;
 use ConfigServer::Config;
-use ConfigServer::Slurp   qw(slurp);
+use ConfigServer::Slurp   qw(slurp slurpee);
 use ConfigServer::CheckIP qw(checkip cccheckip);
 use ConfigServer::Ports;
 use ConfigServer::URLGet;
@@ -106,10 +106,7 @@ unless ( -e $config{IPTABLES} )                         { &error( __LINE__, "$co
 if     ( $config{IPV6} and !( -e $config{IP6TABLES} ) ) { &error( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} (ip6tables binary location) does not exist!" ) }
 
 if ( ( -e "/etc/csf/csf.error" ) and ( $input{command} ne "--startf" ) and ( $input{command} ne "-sf" ) and ( $input{command} ne "-q" ) and ( $input{command} ne "--startq" ) and ( $input{command} ne "--start" ) and ( $input{command} ne "-s" ) and ( $input{command} ne "--restart" ) and ( $input{command} ne "-r" ) and ( $input{command} ne "--enable" ) and ( $input{command} ne "-e" ) ) {
-    open( my $IN, "<", "/etc/csf/csf.error" );
-    flock( $IN, LOCK_SH );
-    my $error = <$IN>;
-    close($IN);
+    my ($error) = slurpee( "/etc/csf/csf.error", 'fatal' => 1 );
     chomp $error;
     print "You have an unresolved error when starting csf:\n$error\n\nYou need to restart csf successfully to remove this warning, or delete /etc/csf/csf.error\n";
     exit 1;
@@ -201,7 +198,7 @@ exit 0;
 # start csflock
 sub csflock {
     my $lock = shift;
-    state $csflockfile_fh;
+    my $csflockfile_fh;
     if ( $lock eq "lock" ) {
         sysopen( $csflockfile_fh, "/var/lib/csf/csf.lock", O_RDWR | O_CREAT ) or die("Error: Unable to open csf lock file: $!");
         flock( $csflockfile_fh, LOCK_EX | LOCK_NB )                           or die "Error: csf is being restarted, try again in a moment: $!";
@@ -469,10 +466,7 @@ sub doinitup {
                 if ( -x $config{IPSET} ) {
                     print "(restoring ipsets) ";
 
-                    open( my $IN, "<", "/var/lib/csf/csf.4.ipsets" );
-                    flock( $IN, LOCK_SH );
-                    my @data = <$IN>;
-                    close($IN);
+                    my @data = slurpee( "/var/lib/csf/csf.4.ipsets", 'fatal' => 1 );
                     chomp @data;
                     my ( $childin, $childout );
                     my $cmdpid = open3( $childin, $childout, $childout, $config{IPSET}, "restore" );
@@ -487,10 +481,7 @@ sub doinitup {
             }
             print "(restoring iptables) ";
 
-            open( my $IN, "<", "/var/lib/csf/csf.4.saved" );
-            flock( $IN, LOCK_SH );
-            my @data = <$IN>;
-            close($IN);
+            my @data = slurpee( "/var/lib/csf/csf.4.saved", 'fatal' => 1 );
             chomp @data;
             my ( $childin, $childout );
             my $cmdpid = open3( $childin, $childout, $childout, $config{IPTABLES_RESTORE} );
@@ -511,10 +502,7 @@ sub doinitup {
             if ( -e "/var/lib/csf/csf.6.saved" ) {
                 print "(restoring ip6tables) ";
 
-                open( my $IN, "<", "/var/lib/csf/csf.6.saved" );
-                flock( $IN, LOCK_SH );
-                my @data = <$IN>;
-                close($IN);
+                my @data = slurpee( "/var/lib/csf/csf.6.saved", 'fatal' => 1 );
                 chomp @data;
                 my ( $childin, $childout );
                 my $cmdpid = open3( $childin, $childout, $childout, $config{IP6TABLES_RESTORE} );
@@ -834,10 +822,7 @@ sub docfile {
     unless ($name)                     { print "No file entered\n";                           return }
 
     if ( -e $name ) {
-        open( my $FH, "<", $name );
-        flock( $FH, LOCK_SH );
-        my @data = <$FH>;
-        close $FH;
+        my @data = slurpee( $name, 'fatal' => 1 );
 
         my ( $file, $filedir ) = fileparse($name);
         my $send = "FILE $file\n";
@@ -1463,10 +1448,7 @@ sub dostart {
     }
 
     if ( $config{VPS} ) {
-        open( my $FH, "<", "/proc/sys/kernel/osrelease" );
-        flock( $FH, LOCK_SH );
-        my @data = <$FH>;
-        close($FH);
+        my @data = slurpee( "/proc/sys/kernel/osrelease", 'fatal' => 1 );
         chomp @data;
         if ( $data[0] =~ /^(\d+)\.(\d+)\.(\d+)/ ) {
             my $maj = $1;
@@ -1918,10 +1900,7 @@ sub doakill {
 # start help
 sub dohelp {
     print "csf: v$version (cPanel)\n";
-    open( my $IN, "<", "/usr/local/csf/lib/csf.help" );
-    flock( $IN, LOCK_SH );
-    print <$IN>;
-    close($IN);
+    print slurpee( "/usr/local/csf/lib/csf.help", 'fatal' => 1, 'wantarray' => 0 );
     return;
 }
 
@@ -3553,10 +3532,7 @@ sub error {
 ###############################################################################
 # start version
 sub version {
-    open( my $IN, "<", "/etc/csf/version.txt" ) or die "Unable to open version.txt: $!";
-    flock( $IN, LOCK_SH );
-    my $myv = <$IN>;
-    close($IN);
+    my ($myv) = slurpee( "/etc/csf/version.txt", 'fatal' => 1 );
     chomp $myv;
     return $myv;
 }
@@ -4185,10 +4161,7 @@ $table, $chain, $rest
         }
     }
 
-    open( my $IN, "<", "/var/lib/csf/csf.tempallow" );
-    flock( $IN, LOCK_SH );
-    my @tempallow = <$IN>;
-    close($IN);
+    my @tempallow = slurpee( "/var/lib/csf/csf.tempallow", 'fatal' => 1 );
     chomp @tempallow;
     foreach my $line (@tempallow) {
         my ( $time, $ipd, $port, $inout, $timeout, $message ) = split( /\|/, $line );
@@ -4234,10 +4207,7 @@ $table, $chain, $rest
             }
         }
     }
-    open( my $TEMPBAN, "<", "/var/lib/csf/csf.tempban" );
-    flock( $TEMPBAN, LOCK_SH );
-    my @tempdeny = <$TEMPBAN>;
-    close($TEMPBAN);
+    my @tempdeny = slurpee( "/var/lib/csf/csf.tempban", 'fatal' => 1 );
     chomp @tempdeny;
     foreach my $line (@tempdeny) {
         my ( $time, $ipd, $port, $inout, $timeout, $message ) = split( /\|/, $line );
@@ -4427,10 +4397,7 @@ sub dotempdeny {
         print "csf: $ip is already permanently blocked\n";
         exit 0;
     }
-    open( my $IN, "<", "/var/lib/csf/csf.tempban" );
-    flock( $IN, LOCK_SH );
-    @deny = <$IN>;
-    close($IN);
+    @deny = slurpee( "/var/lib/csf/csf.tempban", 'fatal' => 1 );
     chomp @deny;
     if ( grep { $_ =~ /\b$ip\|$port\|\b/ } @deny ) {
         print "csf: $ip is already temporarily blocked\n";
@@ -4564,10 +4531,7 @@ sub dotempallow {
         print "csf: $ip is already permanently allowed\n";
         exit 0;
     }
-    open( my $IN, "<", "/var/lib/csf/csf.tempallow" );
-    flock( $IN, LOCK_SH );
-    @allow = <$IN>;
-    close($IN);
+    @allow = slurpee( "/var/lib/csf/csf.tempallow", 'fatal' => 1 );
     chomp @allow;
     if ( grep { $_ =~ /\b$ip\|$port\|\b/ } @allow ) {
         print "csf: $ip is already temporarily allowed\n";
@@ -5484,10 +5448,7 @@ sub doprofile {
             print "Creating backup...\n";
             system( "/bin/cp", "-avf", "/etc/csf/csf.conf", "/var/lib/csf/backup/${stamp}_pre_${profile1}" );
             print "Applying profile...\n";
-            open( my $IN, "<", "/usr/local/csf/profiles/${profile1}.conf" ) or die $!;
-            flock( $IN, LOCK_SH )                                           or die $!;
-            my @applyconfig = <$IN>;
-            close($IN);
+            my @applyconfig = slurpee( "/usr/local/csf/profiles/${profile1}.conf", 'fatal' => 1 );
             chomp @applyconfig;
 
             foreach my $line (@applyconfig) {
@@ -5552,10 +5513,7 @@ sub doprofile {
         if ( -e $firstfile ) {
             if ( -e $secondfile or $profile2 eq "" or $profile2 eq "current" ) {
                 my %config1;
-                open( my $IN, "<", $firstfile ) or die $!;
-                flock( $IN, LOCK_SH )           or die $!;
-                my @configdata = <$IN>;
-                close($IN);
+                my @configdata = slurpee( $firstfile, 'fatal' => 1 );
                 chomp @configdata;
                 foreach my $line (@configdata) {
                     if ( $line =~ /^\#/ ) { next }
@@ -5566,17 +5524,14 @@ sub doprofile {
                     $config1{$name} = $value;
                 }
 
-                my $profile_fh;
                 if ( $profile2 eq "" or $profile2 eq "current" ) {
                     $profile2 = "current";
-                    open( $profile_fh, "<", "/etc/csf/csf.conf" ) or die $!;
+                    @configdata = slurpee( "/etc/csf/csf.conf", 'fatal' => 1 );
                 }
                 else {
-                    open( $profile_fh, "<", $secondfile ) or die $!;
+                    @configdata = slurpee( $secondfile, 'fatal' => 1 );
                 }
-                flock( $profile_fh, LOCK_SH ) or die $!;
-                @configdata = sort <$profile_fh>;
-                close($profile_fh);
+                @configdata = sort @configdata;
                 chomp @configdata;
 
                 print "[SETTING]\t[$profile1]\t[$profile2]\n\n";
@@ -5968,7 +5923,7 @@ sub syscommand {
 sub iptableslock {
     my $lock      = shift;
     my $iptablesx = shift;
-    state $iptableslock_fh;
+    my $iptableslock_fh;
     if ( $lock eq "lock" ) {
         sysopen( $iptableslock_fh, "/var/lib/csf/lock/command.lock", O_RDWR | O_CREAT );
         flock( $iptableslock_fh, LOCK_EX );
@@ -5988,10 +5943,7 @@ sub iptableslock {
 # start checkvps
 sub checkvps {
     if ( -e "/proc/user_beancounters" and !( -e "/proc/vz/version" ) ) {
-        open( my $INVPS, "<", "/proc/user_beancounters" );
-        flock( $INVPS, LOCK_SH );
-        my @data = <$INVPS>;
-        close($INVPS);
+        my @data = slurp("/proc/user_beancounters");
         chomp @data;
 
         foreach my $line (@data) {
@@ -6156,10 +6108,7 @@ sub faststart {
 sub fastvps {
     my $size = shift;
     if ( -e "/proc/user_beancounters" and !( -e "/proc/vz/version" ) ) {
-        open( my $INVPS, "<", "/proc/user_beancounters" );
-        flock( $INVPS, LOCK_SH );
-        my @data = <$INVPS>;
-        close($INVPS);
+        my @data = slurp("/proc/user_beancounters");
         chomp @data;
 
         foreach my $line (@data) {

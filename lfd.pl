@@ -28,7 +28,7 @@ use Net::CIDR::Lite;
 use POSIX qw(:sys_wait_h sysconf strftime setsid);
 use Socket;
 use ConfigServer::Config;
-use ConfigServer::Slurp   qw(slurp);
+use ConfigServer::Slurp   qw(slurp slurpee);
 use ConfigServer::CheckIP qw(checkip cccheckip);
 use ConfigServer::URLGet;
 use ConfigServer::GetIPs qw(getips);
@@ -267,11 +267,7 @@ if ( -e "/var/lib/csf/csf.dnscache" ) { unlink "/var/lib/csf/csf.dnscache" }
 if ( -e "/var/lib/csf/csf.gignore" )  { unlink "/var/lib/csf/csf.gignore" }
 
 &getethdev;
-
-open( my $IN, "<", "/etc/csf/version.txt" ) or &cleanup( __LINE__, "Unable to open version.txt: $!" );
-flock( $IN, LOCK_SH );
-$version = <$IN>;
-close($IN);
+($version) = slurpee( "/etc/csf/version.txt", 'warn' => 0 ) or cleanup( __LINE__, "Unable to open version.txt" );
 chomp $version;
 logfile("daemon started on $hostname - csf v$version (cPanel)");
 if ( $config{DEBUG} >= 1 ) { logfile("Clock Ticks: $clock_ticks") }
@@ -10217,10 +10213,7 @@ sub ui {
                         if ( $file eq "/" ) {
                             print "HTTP/1.0 200 OK\r\n";
                             if ( $application eq "csf" ) {
-                                open( my $IN, "<", "/etc/csf/version.txt" ) or die $!;
-                                flock( $IN, LOCK_SH );
-                                $myv = <$IN>;
-                                close($IN);
+                                ($myv) = slurpee( "/etc/csf/version.txt", 'fatal' => 1 );
                                 chomp $myv;
                                 $script          = "/$session/";
                                 $images          = "/$session/images";

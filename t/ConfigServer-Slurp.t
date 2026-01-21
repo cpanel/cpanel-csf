@@ -18,6 +18,7 @@ use ConfigServer::Slurp;
 # Test module basics
 subtest 'Module basics' => sub {
     ok( ConfigServer::Slurp->can('slurp'),    'slurp function exists' );
+    ok( ConfigServer::Slurp->can('slurpee'),  'slurpee function exists' );
     ok( ConfigServer::Slurp->can('slurpreg'), 'slurpreg function exists' );
     ok( ConfigServer::Slurp->can('cleanreg'), 'cleanreg function exists' );
 };
@@ -132,13 +133,14 @@ subtest 'slurp() handles empty lines between content' => sub {
 
 # Test slurp with non-existent file
 subtest 'slurp() handles non-existent file' => sub {
-    my @lines;
-    my $exception = dies {
-        @lines = ConfigServer::Slurp::slurp('/nonexistent/path/to/file.txt');
+    my $warning;
+    local $SIG{__WARN__} = sub {
+        $warning = $_[0];
+        return;
     };
-
-    ok( $exception, 'Throws exception for non-existent file' );
-    like( $exception, qr/FileNotFound/, 'Exception indicates file not found' );
+    my @lines = ConfigServer::Slurp::slurp('/nonexistent/path/to/file.txt');
+    is( \@lines, [], 'File not found does not die' );
+    ok( $warning, "Got a warning" );
 };
 
 # Test slurp with special characters
@@ -177,6 +179,174 @@ subtest 'slurp can be imported' => sub {
 
     my $result = system( $^X, '-Ilib', '-e', $test_code );
     is( $result, 0, 'slurp can be imported without errors' );
+};
+
+# Test slurpee can be imported
+subtest 'slurpee can be imported' => sub {
+
+    # Test by attempting to compile code that imports slurpee
+    my $test_code = 'use ConfigServer::Slurp qw(slurpee); 1;';
+
+    my $result = system( $^X, '-Ilib', '-e', $test_code );
+    is( $result, 0, 'slurpee can be imported without errors' );
+};
+
+# Test slurpee() with default options (wantarray => 1)
+subtest 'slurpee() with default options returns array' => sub {
+    my ( $fh, $filename ) = tempfile( UNLINK => 1 );
+    print $fh "line1\nline2\nline3\n";
+    close $fh;
+
+    my @lines = ConfigServer::Slurp::slurpee($filename);
+    is( scalar @lines, 3,       'Returns correct number of lines' );
+    is( $lines[0],     'line1', 'First line correct' );
+    is( $lines[1],     'line2', 'Second line correct' );
+    is( $lines[2],     'line3', 'Third line correct' );
+};
+
+# Test slurpee() with wantarray => 0 returns scalar
+subtest 'slurpee() with wantarray => 0 returns scalar' => sub {
+    my ( $fh, $filename ) = tempfile( UNLINK => 1 );
+    print $fh "line1\nline2\nline3\n";
+    close $fh;
+
+    my $content = ConfigServer::Slurp::slurpee( $filename, wantarray => 0 );
+    is( ref \$content, 'SCALAR',           'Returns scalar value' );
+    like( $content,    qr/line1/,          'Contains first line' );
+    like( $content,    qr/line2/,          'Contains second line' );
+    like( $content,    qr/line3/,          'Contains third line' );
+    like( $content,    qr/line1\nline2\n/, 'Preserves line endings' );
+};
+
+# Test slurpee() with wantarray => 1 (explicit)
+subtest 'slurpee() with wantarray => 1 returns array' => sub {
+    my ( $fh, $filename ) = tempfile( UNLINK => 1 );
+    print $fh "line1\nline2\n";
+    close $fh;
+
+    my @lines = ConfigServer::Slurp::slurpee( $filename, wantarray => 1 );
+    is( scalar @lines, 2,       'Returns array with correct number of lines' );
+    is( $lines[0],     'line1', 'First line correct' );
+    is( $lines[1],     'line2', 'Second line correct' );
+};
+
+# Test slurpee() with warn => 0 suppresses warnings
+subtest 'slurpee() with warn => 0 suppresses warnings' => sub {
+    my $warning;
+    local $SIG{__WARN__} = sub {
+        $warning = $_[0];
+        return;
+    };
+
+    my @lines = ConfigServer::Slurp::slurpee( '/nonexistent/file.txt', warn => 0 );
+    is( \@lines,  [], 'Returns empty array for non-existent file' );
+    is( $warning, U(), 'No warning emitted when warn => 0' );
+};
+
+# Test slurpee() with warn => 1 (default) emits warnings
+subtest 'slurpee() with warn => 1 emits warnings' => sub {
+    my $warning;
+    local $SIG{__WARN__} = sub {
+        $warning = $_[0];
+        return;
+    };
+
+    my @lines = ConfigServer::Slurp::slurpee( '/nonexistent/file.txt', warn => 1 );
+    is( \@lines, [], 'Returns empty array for non-existent file' );
+    like( $warning, qr/\*Error\* File does not exist:/, 'Warning emitted when warn => 1' );
+};
+
+# Test slurpee() with fatal => 1 croaks on error
+subtest 'slurpee() with fatal => 1 croaks on error' => sub {
+    like(
+        dies { ConfigServer::Slurp::slurpee( '/nonexistent/file.txt', fatal => 1 ) },
+        qr/\*Error\* File does not exist:/,
+        'Croaks when fatal => 1 and file does not exist'
+    );
+};
+
+# Test slurpee() with fatal => 0 (default) does not croak
+subtest 'slurpee() with fatal => 0 does not croak' => sub {
+    my $warning;
+    local $SIG{__WARN__} = sub {
+        $warning = $_[0];
+        return;
+    };
+
+    my $result = lives { ConfigServer::Slurp::slurpee( '/nonexistent/file.txt', fatal => 0 ) };
+    ok( $result, 'Does not croak when fatal => 0' );
+    ok( length $warning, "Also emits warning" );
+};
+
+# Test slurpee() with empty file and wantarray => 0
+subtest 'slurpee() with empty file and wantarray => 0' => sub {
+    my ( $fh, $filename ) = tempfile( UNLINK => 1 );
+    close $fh;
+
+    my $content = ConfigServer::Slurp::slurpee( $filename, wantarray => 0 );
+    is( $content, U(), 'Returns undef for empty file when wantarray => 0' );
+};
+
+# Test slurpee() with empty file and wantarray => 1
+subtest 'slurpee() with empty file and wantarray => 1' => sub {
+    my ( $fh, $filename ) = tempfile( UNLINK => 1 );
+    close $fh;
+
+    my @lines = ConfigServer::Slurp::slurpee( $filename, wantarray => 1 );
+    is( scalar @lines, 0, 'Returns empty array for empty file when wantarray => 1' );
+};
+
+# Test slurpee() with mixed line endings and wantarray => 0
+subtest 'slurpee() with mixed line endings and wantarray => 0' => sub {
+    my ( $fh, $filename ) = tempfile( UNLINK => 1 );
+    print $fh "line1\nline2\r\nline3\r";
+    close $fh;
+
+    my $content = ConfigServer::Slurp::slurpee( $filename, wantarray => 0 );
+    like( $content, qr/line1\nline2\r\nline3\r/, 'Preserves all line endings in scalar mode' );
+};
+
+# Test slurpee() with multiple options combined
+subtest 'slurpee() with multiple options combined' => sub {
+    my ( $fh, $filename ) = tempfile( UNLINK => 1 );
+    print $fh "test content\n";
+    close $fh;
+
+    my $content = ConfigServer::Slurp::slurpee( $filename, wantarray => 0, warn => 0 );
+    like( $content, qr/test content/, 'Combines wantarray => 0 and warn => 0 correctly' );
+};
+
+# Test slurpee() preserves Unicode in scalar mode
+subtest 'slurpee() preserves Unicode in scalar mode' => sub {
+    my ( $fh, $filename ) = tempfile( UNLINK => 1 );
+    binmode $fh, ':utf8';
+    print $fh "Unicode: \x{2028} line separator\n";
+    close $fh;
+
+    my $content = ConfigServer::Slurp::slurpee( $filename, wantarray => 0 );
+    like( $content, qr/Unicode:/, 'Contains Unicode content in scalar mode' );
+};
+
+# Test slurpee() with Windows line endings in scalar mode
+subtest 'slurpee() with Windows line endings in scalar mode' => sub {
+    my ( $fh, $filename ) = tempfile( UNLINK => 1 );
+    print $fh "line1\r\nline2\r\n";
+    close $fh;
+
+    my $content = ConfigServer::Slurp::slurpee( $filename, wantarray => 0 );
+    like( $content, qr/line1\r\nline2\r\n/, 'Preserves CRLF in scalar mode' );
+};
+
+# Test that slurp() delegates to slurpee() correctly
+subtest 'slurp() delegates to slurpee() with defaults' => sub {
+    my ( $fh, $filename ) = tempfile( UNLINK => 1 );
+    print $fh "line1\nline2\n";
+    close $fh;
+
+    my @lines_slurp   = ConfigServer::Slurp::slurp($filename);
+    my @lines_slurpee = ConfigServer::Slurp::slurpee($filename);
+
+    is( \@lines_slurp, \@lines_slurpee, 'slurp() returns same result as slurpee() with defaults' );
 };
 
 done_testing;

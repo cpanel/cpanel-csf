@@ -321,9 +321,7 @@ Checks include:
 sub _firewallcheck {
     _addtitle("Firewall Check");
     my $status = 0;
-    open( my $IN, "<", "/etc/csf/csf.conf" );
-    flock( $IN, LOCK_SH );
-    my @config = <$IN>;
+    my @config = slurp("/etc/csf/csf.conf");
     chomp @config;
 
     foreach my $line (@config) {
@@ -543,10 +541,7 @@ sub _servercheck {
         foreach my $file (@files) {
             if ( -e $file ) {
                 $hit = 1;
-                open( my $IN, "<", "$file" );
-                flock( $IN, LOCK_SH );
-                my @conf = <$IN>;
-                close($IN);
+                my @conf = slurp($file);
                 chomp @conf;
                 if ( my @ls = grep { $_ =~ /^\s*include\s+(.*)\;\s*$/i } @conf ) {
                     foreach my $more (@ls) {
@@ -558,12 +553,9 @@ sub _servercheck {
         }
         foreach my $file (@morefiles) {
             if ( -e $file ) {
-                open( my $IN, "<", "$file" );
-                flock( $IN, LOCK_SH );
-                my @conf = <$IN>;
-                close($IN);
+                my @conf = slurp($file);
                 chomp @conf;
-                @namedconf = ( @namedconf, @conf );
+                @namedconf = ( @namedconf, @conf);
             }
         }
 
@@ -598,18 +590,12 @@ sub _servercheck {
     $status = 0;
     my ( $isfedora, $isrh, $version, $conf ) = 0;
     if ( -e "/etc/fedora-release" ) {
-        open( my $IN, "<", "/etc/fedora-release" );
-        flock( $IN, LOCK_SH );
-        $conf = <$IN>;
-        close($IN);
+        ($conf) = slurp("/etc/fedora-release");
         $isfedora = 1;
         if ( $conf =~ /release (\d+)/i ) { $version = $1 }
     }
     elsif ( -e "/etc/redhat-release" ) {
-        open( my $IN, "<", "/etc/redhat-release" );
-        flock( $IN, LOCK_SH );
-        $conf = <$IN>;
-        close($IN);
+        ($conf) = slurp("/etc/redhat-release");
         $isrh = 1;
         if ( $conf =~ /release (\d+)/i ) { $version = $1 }
     }

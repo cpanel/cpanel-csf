@@ -136,11 +136,8 @@ sub init {
     bless $self, $class;
 
     if ( -e "/proc/sys/kernel/hostname" ) {
-        open( my $IN, "<", "/proc/sys/kernel/hostname" );
-        flock( $IN, Fcntl::LOCK_SH );
-        $hostname = <$IN>;
+        ($hostname) = slurp("/proc/sys/kernel/hostname");
         chomp $hostname;
-        close($IN);
     }
     else {
         $hostname = "unknown";
@@ -365,10 +362,7 @@ sub _messenger {
     if    ( $type eq "HTML" and $config{RECAPTCHA_SITEKEY} ne "" ) { $index = "/etc/csf/messenger/index.recaptcha.html" }
     elsif ( $type eq "HTML" )                                      { $index = "/etc/csf/messenger/index.html" }
     else                                                           { $index = "/etc/csf/messenger/index.text" }
-    open( my $IN, "<", $index );
-    flock( $IN, Fcntl::LOCK_SH );
-    my @message = <$IN>;
-    close($IN);
+    my @message = slurp($index);
     chomp @message;
 
     my %images;
@@ -376,10 +370,7 @@ sub _messenger {
         opendir( DIR, "/etc/csf/messenger" );
         foreach my $file ( readdir(DIR) ) {
             if ( $file =~ /\.(gif|png|jpg)$/ ) {
-                open( my $IN, "<", "/etc/csf/messenger/$file" );
-                flock( $IN, Fcntl::LOCK_SH );
-                my @data = <$IN>;
-                close($IN);
+                my @data = slurp("/etc/csf/messenger/$file");
                 chomp @data;
                 foreach my $line (@data) {
                     $images{$file} .= "$line\n";

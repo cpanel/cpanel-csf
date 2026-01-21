@@ -37,7 +37,7 @@ use ConfigServer::ServerStats;
 use ConfigServer::Service;
 use ConfigServer::RBLCheck;
 use ConfigServer::GetEthDev;
-use ConfigServer::Slurp qw(slurp);
+use ConfigServer::Slurp qw(slurp slurpee);
 
 use Exporter qw(import);
 our $VERSION   = 1.01;
@@ -213,11 +213,8 @@ sub main {
         print "<thead><tr><th>&nbsp;</th><th>A/D</th><th>IP address</th><th>Port</th><th>Dir</th><th>Time To Live</th><th>Comment</th></tr></thead>\n";
         my @deny;
         if ( !-z "/var/lib/csf/csf.tempban" ) {
-            open( my $IN, "<", "/var/lib/csf/csf.tempban" ) or die $!;
-            flock( $IN, LOCK_SH );
-            @deny = <$IN>;
+            @deny = slurpee( "/var/lib/csf/csf.tempban", 'fatal' => 1 );
             chomp @deny;
-            close($IN);
         }
         foreach my $line ( reverse @deny ) {
             if ( $line eq "" ) { next }
@@ -244,11 +241,8 @@ sub main {
         }
         my @allow;
         if ( !-z "/var/lib/csf/csf.tempallow" ) {
-            open( my $IN, "<", "/var/lib/csf/csf.tempallow" ) or die $!;
-            flock( $IN, LOCK_SH );
-            @allow = <$IN>;
+            @allow = slurpee( "/var/lib/csf/csf.tempallow", 'fatal' => 1 );
             chomp @allow;
-            close($IN);
         }
         foreach my $line (@allow) {
             if ( $line eq "" ) { next }
@@ -395,12 +389,9 @@ sub main {
         }
         $options .= "</select>\n";
 
-        open( my $AJAX, "<", "/usr/local/csf/lib/csfajaxtail.js" );
-        flock( $AJAX, LOCK_SH );
-        my @jsdata = <$AJAX>;
-        close($AJAX);
+        my $jsdata = slurpee( "/usr/local/csf/lib/csfajaxtail.js", 'wantarray' => 0 );
         print "<script>\n";
-        print @jsdata;
+        print $jsdata;
         print "</script>\n";
         print <<EOF;
 <div>$options Lines:<input type='text' id="CSFlines" value="100" size='4'>&nbsp;&nbsp;<button class='btn btn-default' onclick="CSFrefreshtimer()">Refresh Now</button></div>
@@ -535,12 +526,9 @@ EOF
         }
         $options .= "</select>\n";
 
-        open( my $AJAX, "<", "/usr/local/csf/lib/csfajaxtail.js" );
-        flock( $AJAX, LOCK_SH );
-        my @jsdata = <$AJAX>;
-        close($AJAX);
+        my $jsdata = slurpee( "/usr/local/csf/lib/csfajaxtail.js", 'wantarray' => 0 );
         print "<script>\n";
-        print @jsdata;
+        print $jsdata;
         print "</script>\n";
         print <<EOF;
 <div>Log: $options</div>
@@ -704,10 +692,7 @@ EOF
     elsif ( $FORM{action} eq "readme" ) {
         &resize("top");
         print "<pre id='output' class='comment' style='white-space: pre-wrap;height: 500px; overflow: auto; resize:both; clear:both'>\n";
-        open( my $IN, "<", "/etc/csf/readme.txt" ) or die $!;
-        flock( $IN, LOCK_SH );
-        my @readme = <$IN>;
-        close($IN);
+        my @readme = slurpee( "/etc/csf/readme.txt", 'fatal' => 1 );
         chomp @readme;
 
         foreach my $line (@readme) {
