@@ -16,92 +16,93 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, see <https://www.gnu.org/licenses>.
 ###############################################################################
-## no critic (RequireUseWarnings, ProhibitExplicitReturnUndef, ProhibitMixedBooleanOperators, RequireBriefOpen)
-# start main
+
 package ConfigServer::RegexMain;
 
-use strict;
-use lib '/usr/local/csf/lib';
-use IPC::Open3;
-use ConfigServer::Config;
-use ConfigServer::CheckIP qw(checkip);
-use ConfigServer::Slurp   qw(slurp);
-use ConfigServer::Logger  qw(logfile);
-use ConfigServer::GetEthDev;
+use cPstrict;
 
-use Exporter qw(import);
-our $VERSION   = 1.03;
-our @ISA       = qw(Exporter);
-our @EXPORT_OK = qw();
+use IPC::Open3 ();
 
-our ( %config, %cpconfig, $slurpreg, $cleanreg, %globlogs, %brd, %ips );
+use ConfigServer::Config    ();
+use ConfigServer::Logger    ();
+use ConfigServer::GetEthDev ();
+use ConfigServer::CheckIP   qw(checkip);
 
-my $config = ConfigServer::Config->loadconfig();
-%config = $config->config;
+use Cpanel::Config::LoadWwwAcctConf ();
 
-$slurpreg = ConfigServer::Slurp->slurpreg;
-$cleanreg = ConfigServer::Slurp->cleanreg;
+our $VERSION = 1.03;
 
-if ( -e "/etc/wwwacct.conf" ) {
-    foreach my $line ( slurp("/etc/wwwacct.conf") ) {
-        $line =~ s/$cleanreg//g;
-        if ( $line =~ /^(\s|\#|$)/ ) { next }
-        my ( $name, $value ) = split( / /, $line, 2 );
-        $cpconfig{$name} = $value;
+our ( %config, %globlogs, %brd, %ips );
+
+sub _config {
+    return if %config;
+
+    my $config = ConfigServer::Config->loadconfig();
+    %config = $config->config;
+
+    if ( $config{LF_APACHE_ERRPORT} == 0 ) {
+        my $apachebin = "";
+        if    ( -e "/usr/local/apache/bin/httpd" ) { $apachebin = "/usr/local/apache/bin/httpd" }
+        elsif ( -e "/usr/sbin/httpd" )             { $apachebin = "/usr/sbin/httpd" }
+        elsif ( -e "/usr/sbin/apache2" )           { $apachebin = "/usr/sbin/apache2" }
+        elsif ( -e "/usr/sbin/httpd2" )            { $apachebin = "/usr/sbin/httpd2" }
+        if    ( -e $apachebin ) {
+            my ( $childin, $childout );
+            my $mypid   = IPC::Open3::open3( $childin, $childout, $childout, $apachebin, "-v" );
+            my @version = <$childout>;
+            waitpid( $mypid, 0 );
+            chomp @version;
+            $version[0] =~ /Apache\/(\d+)\.(\d+)\.(\d+)/;
+            my $mas = $1;
+            my $maj = $2;
+            my $min = $3;
+            if ( "$mas.$maj" < 2.4 ) { $config{LF_APACHE_ERRPORT} = 1 }
+        }
     }
-}
-if ( -e "/usr/local/cpanel/version" ) {
-    foreach my $line ( slurp("/usr/local/cpanel/version") ) {
-        $line =~ s/$cleanreg//g;
-        if ( $line =~ /\d/ ) { $cpconfig{version} = $line }
+    unless ( $config{LF_APACHE_ERRPORT} == 1 ) {
+        $config{LF_APACHE_ERRPORT} = 2;
     }
+
+    ConfigServer::Logger::logfile("LF_APACHE_ERRPORT: Set to [$config{LF_APACHE_ERRPORT}]");
+
+    return;
 }
 
-if ( $config{LF_APACHE_ERRPORT} == 0 ) {
-    my $apachebin = "";
-    if    ( -e "/usr/local/apache/bin/httpd" ) { $apachebin = "/usr/local/apache/bin/httpd" }
-    elsif ( -e "/usr/sbin/httpd" )             { $apachebin = "/usr/sbin/httpd" }
-    elsif ( -e "/usr/sbin/apache2" )           { $apachebin = "/usr/sbin/apache2" }
-    elsif ( -e "/usr/sbin/httpd2" )            { $apachebin = "/usr/sbin/httpd2" }
-    if    ( -e $apachebin ) {
-        my ( $childin, $childout );
-        my $mypid   = open3( $childin, $childout, $childout, $apachebin, "-v" );
-        my @version = <$childout>;
-        waitpid( $mypid, 0 );
-        chomp @version;
-        $version[0] =~ /Apache\/(\d+)\.(\d+)\.(\d+)/;
-        my $mas = $1;
-        my $maj = $2;
-        my $min = $3;
-        if ( "$mas.$maj" < 2.4 ) { $config{LF_APACHE_ERRPORT} = 1 }
-    }
+sub _eth_info {
+    return if %brd or %ips;    # Loaded already.
+
+    my $ethdev = ConfigServer::GetEthDev->new();
+    %brd = $ethdev->brd;
+    %ips = $ethdev->ipv4;
 }
-unless ( $config{LF_APACHE_ERRPORT} == 1 ) { $config{LF_APACHE_ERRPORT} = 2 }
-ConfigServer::Logger::logfile("LF_APACHE_ERRPORT: Set to [$config{LF_APACHE_ERRPORT}]");
 
-my $ethdev = ConfigServer::GetEthDev->new();
-%brd = $ethdev->brd;
-%ips = $ethdev->ipv4;
+if ( -e "/usr/local/csf/bin/regex.custom.pm" ) {
 
-if ( -e "/usr/local/csf/bin/regex.custom.pm" ) { require "/usr/local/csf/bin/regex.custom.pm" }    ##no critic
+    # Pre-load these in the event something was manipulating it.
+    _config();
+    _eth_info();
 
-# end main
-###############################################################################
-# start processline
+    require "/usr/local/csf/bin/regex.custom.pm";
+}
+
 sub processline {
     my $line         = shift;
     my $lgfile       = shift;
     my $globlogs_ref = shift;
     %globlogs = %{$globlogs_ref};
+
     $line =~ s/\n//g;
     $line =~ s/\r//g;
 
     if ( -e "/usr/local/csf/bin/regex.custom.pm" ) {
-        my ( $text, $ip, $app, $trigger, $ports, $temp, $cf ) = &custom_line( $line, $lgfile );
+        my ( $text, $ip, $app, $trigger, $ports, $temp, $cf ) = custom_line( $line, $lgfile );
         if ($text) {
             return ( $text, $ip, $app, $trigger, $ports, $temp, $cf );
         }
     }
+
+    # Be sure %config is loaded.
+    _config();
 
     #openSSH
     #RH
@@ -580,11 +581,10 @@ sub processline {
 
 }
 
-# end processline
-###############################################################################
-# start processloginline
 sub processloginline {
     my $line = shift;
+
+    _config();    # Make sure config is loaded.
 
     #courier-imap
     if ( ( $config{LT_POP3D} ) and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) \S+ pop3d(-ssl)?: LOGIN, user=(\S*), ip=\[(\S+)\], port=\S+/ ) ) {
@@ -619,11 +619,10 @@ sub processloginline {
     }
 }
 
-# end processloginline
-###############################################################################
-# start processsshline
 sub processsshline {
     my $line = shift;
+
+    _config();    # Make sure config is loaded.
 
     if ( ( $config{LF_SSH_EMAIL_ALERT} ) and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) (\S+ )?sshd\[\d+\]: Accepted (\S+) for (\S+) from (\S+) port \S+/ ) ) {
         my $ip  = $5;
@@ -635,11 +634,10 @@ sub processsshline {
     }
 }
 
-# end processsshline
-###############################################################################
-# start processsuline
 sub processsuline {
     my $line = shift;
+
+    _config();    # Make sure config is loaded.
 
     #RH + Debian/Ubuntu
     if ( ( $config{LF_SU_EMAIL_ALERT} ) and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) (\S+ )?su(\[\d+\])?: pam_unix\(su(-l)?:session\): session opened for user\s+(\S+)\s+by\s+(\S+)\s*$/ ) ) {
@@ -665,11 +663,10 @@ sub processsuline {
     return;
 }
 
-# end processsuline
-###############################################################################
-# start processsudoline
 sub processsudoline {
     my $line = shift;
+
+    _config();    # Make sure config is loaded.
 
     if ( ( $config{LF_SUDO_EMAIL_ALERT} ) and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) (\S+ )?sudo(\[\d+\])?: pam_unix\(sudo(-l)?:auth\): authentication failure; logname=\S*\s+\S+\s+\S+\s+\S+\s+ruser=(\S+)+\s+\S+\s+user=(\S+)\s*$/ ) ) {
         return ( $6, $5, "Failed login" );
@@ -695,22 +692,20 @@ sub processsudoline {
     return;
 }
 
-# end processsudoline
-###############################################################################
-# start processconsoleline
 sub processconsoleline {
     my $line = shift;
+
+    _config();    # Make sure config is loaded.
 
     if ( ( $config{LF_CONSOLE_EMAIL_ALERT} ) and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) \S+ login(\[\d+\])?: ROOT LOGIN/ ) ) {
         return 1;
     }
 }
 
-# end processconsoleline
-###############################################################################
-# start processcpanelline
 sub processcpanelline {
     my $line = shift;
+
+    _config();    # Make sure config is loaded.
 
     if ( $config{LF_CPANEL_ALERT} and ( $line =~ /^(\S+)\s+\-\s+(\w+)\s+\[[^\]]+\]\s\"[^\"]+\"\s200\s/ ) ) {
         my $ip  = $1;
@@ -721,11 +716,10 @@ sub processcpanelline {
     }
 }
 
-# end processcpanelline
-###############################################################################
-# start processwebminline
 sub processwebminline {
     my $line = shift;
+
+    _config();    # Make sure config is loaded.
 
     if ( $config{LF_WEBMIN_EMAIL_ALERT} and ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) \S+ webmin\[\d+\]: Successful login as (\S+) from (\S+)/ ) ) {
         my $ip  = $3;
@@ -736,11 +730,12 @@ sub processwebminline {
     }
 }
 
-# end processwebminline
-###############################################################################
-# start scriptlinecheck
+my $_cpconfig;
+
 sub scriptlinecheck {
     my $line = shift;
+
+    _config();    # Make sure config is loaded.
 
     if ( $config{LF_SCRIPT_ALERT} ) {
         my $fulldir;
@@ -748,16 +743,19 @@ sub scriptlinecheck {
         elsif ( $line =~ /^\S+\s+\S+\s+(\[\d+\]\s)?\S+ H=localhost (.*)PWD=(.*)  REMOTE_ADDR=\S+$/ ) { $fulldir = $3 }
         if    ( $fulldir ne "" ) {
             my ( undef, $dir, undef ) = split( /\//, $fulldir );
-            if ( $dir eq "home" )                                               { return $fulldir }
-            if ( $cpconfig{HOMEDIR} and ( $fulldir =~ /^$cpconfig{HOMEDIR}/ ) ) { return $fulldir }
-            if ( $cpconfig{HOMEMATCH} and ( $dir =~ /$cpconfig{HOMEMATCH}/ ) )  { return $fulldir }
+            return $fulldir if $dir eq "home";
+
+            $_cpconfig //= Cpanel::Config::LoadWwwAcctConf::loadwwwacctconf();
+
+            my $homedir = $_cpconfig->{HOMEDIR};
+            return $fulldir if ( length $homedir and $fulldir =~ /^$homedir/ );
+
+            my $homematch = $_cpconfig->{HOMEMATCH};
+            return $fulldir if ( length $homematch and $dir =~ /$homematch/ );
         }
     }
 }
 
-# end scriptlinecheck
-###############################################################################
-# start relaycheck
 sub relaycheck {
     my $line  = shift;
     my $tline = $line;
@@ -790,11 +788,11 @@ sub relaycheck {
 
 }
 
-# end relaycheck
-###############################################################################
-# start pslinecheck
 sub pslinecheck {
     my $line = shift;
+
+    _config();    # Make sure config is loaded.
+
     if ( $line !~ /^(\S+|\S+\s+\d+\s+\S+) \S+ kernel:\s(\[[^\]]+\]\s)?Firewall:/ ) { return }
     if ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) \S+ kernel:\s(\[[^\]]+\]\s)?Firewall: \*INVALID\*/ and $config{PS_PORTS} !~ /INVALID/ ) { return }
 
@@ -804,6 +802,8 @@ sub pslinecheck {
         my $proto = $3;
         my $port  = $4;
         $ip =~ s/^::ffff://;
+
+        _eth_info();
         if ( $config{PS_PORTS} !~ /BRD/ and $proto eq "UDP" and $brd{$dst} and !$ips{$dst} ) { return }
         if ( $config{PS_PORTS} !~ /OPEN/ ) {
             my $hit = 0;
@@ -855,18 +855,12 @@ sub pslinecheck {
     }
 }
 
-# end pslinecheck
-###############################################################################
-# start uidlinecheck
 sub uidlinecheck {
     my $line = shift;
     if ( $line !~ /^(\S+|\S+\s+\d+\s+\S+) \S+ kernel(\[\d+\])?:\s(\[[^\]]+\]\s)?Firewall:/ ) { return }
     if ( $line =~ /OUT=\S+.*DPT=(\S+).*UID=(\d+)/ )                                          { return ( $1, $2 ) }
 }
 
-# end uidlinecheck
-###############################################################################
-# start portknockingcheck
 sub portknockingcheck {
     my $line = shift;
     if ( $line !~ /^(\S+|\S+\s+\d+\s+\S+) \S+ kernel(\[\d+\])?:\s(\[[^\]]+\]\s)?Knock: \*\d+_IN\*/ ) { return }
@@ -880,9 +874,6 @@ sub portknockingcheck {
     }
 }
 
-# end portknockingcheck
-###############################################################################
-# start processdistftpline
 sub processdistftpline {
     my $line = shift;
 
@@ -905,9 +896,6 @@ sub processdistftpline {
     }
 }
 
-# end processdistftpline
-###############################################################################
-# start processdistsmtpline
 sub processdistsmtpline {
     my $line  = shift;
     my $tline = $line;
@@ -943,11 +931,11 @@ sub processdistsmtpline {
     }
 }
 
-# end processdistsmtpline
-###############################################################################
-# start loginline404
 sub loginline404 {
     my $line = shift;
+
+    _config();    # Make sure config is loaded.
+
     if ( $line =~ /^\[\S+\s+\S+\s+\S+\s+\S+\s+\S+\] \[(\S*:)?(error|info)\] (\[pid \d+(:tid \d+)?\] )?\[(client|remote) (\S+)\] (\w+: )?File does not exist\:/ ) {
         my $ip = $6;
         $ip =~ s/^::ffff://;
@@ -957,11 +945,11 @@ sub loginline404 {
     }
 }
 
-# end loginline404
-###############################################################################
-# start loginline403
 sub loginline403 {
     my $line = shift;
+
+    _config();    # Make sure config is loaded.
+
     if ( $line =~ /^\[\S+\s+\S+\s+\S+\s+\S+\s+\S+\] \[(\S*:)?error\] (\[pid \d+(:tid \d+)?\] )?\[(client|remote) (\S+)\] (\w+: )?client denied by server configuration\:/ ) {
         my $ip = $5;
         $ip =~ s/^::ffff://;
@@ -971,11 +959,11 @@ sub loginline403 {
     }
 }
 
-# end loginline403
-###############################################################################
-# start loginline401
 sub loginline401 {
     my $line = shift;
+
+    _config();    # Make sure config is loaded.
+
     if ( $line =~ /^\[\S+\s+\S+\s+\S+\s+\S+\s+\S+\] \[(\S*:)?error\] (\[pid \d+(:tid \d+)?\] )?\[(client|remote) (\S+)\] (\w+: )?(user  not found|user \w+ not found|user \w+: authentication failure for "\/\w+\/")\:/ ) {
         my $ip = $5;
         $ip =~ s/^::ffff://;
@@ -985,17 +973,11 @@ sub loginline401 {
     }
 }
 
-# end loginline401
-###############################################################################
-# start statscheck
 sub statscheck {
     my $line = shift;
     if ( $line =~ /^(\S+|\S+\s+\d+\s+\S+) \S+ kernel:\s(\[[^\]]+\]\s)?(Firewall|Knock):/ ) { return 1 }
 }
 
-# end statscheck
-###############################################################################
-# start syslogcheckline
 sub syslogcheckline {
     my $line            = shift;
     my $syslogcheckcode = shift;
@@ -1004,8 +986,5 @@ sub syslogcheckline {
         else                            { return }
     }
 }
-
-# end syslogcheckline
-###############################################################################
 
 1;
