@@ -630,6 +630,7 @@ sub get_config {
         $class->loadconfig();
     }
 
+    return %config if !defined $key;    # They didn't pass a key so just give the whole hash back.
     return $config{$key};
 }
 

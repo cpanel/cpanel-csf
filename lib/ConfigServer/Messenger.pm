@@ -16,39 +16,31 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, see <https://www.gnu.org/licenses>.
 ###############################################################################
-## no critic (RequireUseWarnings, ProhibitExplicitReturnUndef, ProhibitMixedBooleanOperators, RequireBriefOpen)
-# start main
+
 package ConfigServer::Messenger;
 
-use strict;
-use lib '/usr/local/csf/lib';
-use Fcntl qw(:DEFAULT :flock);
-use File::Copy;
-use JSON::Tiny;
-use IO::Socket::INET;
-use Net::CIDR::Lite;
-use Net::IP;
-use IPC::Open3;
-use ConfigServer::Config;
+use cPstrict;
+
+use Fcntl            ();
+use File::Copy       ();
+use JSON::Tiny       ();
+use IO::Socket::INET ();
+use Net::CIDR::Lite  ();
+use Net::IP          ();
+use IPC::Open3       ();
+
+use ConfigServer::Config    ();
+use ConfigServer::URLGet    ();
+use ConfigServer::GetEthDev ();
+
 use ConfigServer::CheckIP qw(checkip);
 use ConfigServer::Logger  qw(logfile);
-use ConfigServer::URLGet;
-use ConfigServer::Slurp  qw(slurp);
-use ConfigServer::GetIPs qw(getips);
-use ConfigServer::GetEthDev;
+use ConfigServer::Slurp   qw(slurp);
+use ConfigServer::GetIPs  qw(getips);
 
-use Exporter qw(import);
-our $VERSION   = 3.00;
-our @ISA       = qw(Exporter);
-our @EXPORT_OK = qw();
+our $VERSION = 3.00;
 
-my $slurpreg = ConfigServer::Slurp->slurpreg;
-my $cleanreg = ConfigServer::Slurp->cleanreg;
-
-my $config  = ConfigServer::Config->loadconfig();
-my %config  = $config->config();
-my $ipv4reg = ConfigServer::Config->ipv4reg;
-my $ipv6reg = ConfigServer::Config->ipv6reg;
+our %config;    # Autoloaded internally.
 
 my $childproc;
 my $hostname;
@@ -74,9 +66,6 @@ my $phphandler;
 my $version = 1;
 my $serverroot;
 
-# end main
-###############################################################################
-# start init
 sub init {
     my $class = shift;
     $version = shift;
@@ -85,7 +74,7 @@ sub init {
 
     if ( -e "/proc/sys/kernel/hostname" ) {
         open( my $IN, "<", "/proc/sys/kernel/hostname" );
-        flock( $IN, LOCK_SH );
+        flock( $IN, Fcntl::LOCK_SH );
         $hostname = <$IN>;
         chomp $hostname;
         close($IN);
@@ -94,13 +83,13 @@ sub init {
         $hostname = "unknown";
     }
     if ( $version == 1 ) {
-        if ( $config{MESSENGER6} ) {
+        if ( ConfigServer::Config->get_config('MESSENGER6') ) {
             eval('use IO::Socket::INET6;');    ##no critic
             if ($@) { $config{MESSENGER6} = "0" }
         }
         $ipscidr6 = Net::CIDR::Lite->new;
-        &getethdev;
-        foreach my $ip ( split( /,/, $config{RECAPTCHA_NAT} ) ) {
+        _getethdev;
+        foreach my $ip ( split( /,/, ConfigServer::Config->get_config('RECAPTCHA_NAT') ) ) {
             $ip =~ s/\s*//g;
             $ips{$ip} = 1;
         }
@@ -117,9 +106,6 @@ sub init {
     return $self;
 }
 
-# end init
-###############################################################################
-# start start
 sub start {
     my $self = shift;
     my $port = shift;
@@ -128,22 +114,19 @@ sub start {
     my $status;
     my $reason;
     if ( $version == 1 ) {
-        ( $status, $reason ) = &messenger( $port, $user, $type );
+        ( $status, $reason ) = _messenger( $port, $user, $type );
     }
     elsif ( $version == 2 ) {
-        ( $status, $reason ) = &messengerv2();
+        ( $status, $reason ) = messengerv2();
     }
     elsif ( $version == 3 ) {
-        ( $status, $reason ) = &messengerv3();
+        ( $status, $reason ) = _messengerv3();
     }
 
     return ( $status, $reason );
 }
 
-# end start
-###############################################################################
-# start messenger
-sub messenger {
+sub _messenger {
     my $port    = shift;
     my $user    = shift;
     my $type    = shift;
@@ -153,12 +136,14 @@ sub messenger {
     my %sslkeys;
 
     $SIG{CHLD}    = 'IGNORE';
-    $SIG{INT}     = \&childcleanup;
-    $SIG{TERM}    = \&childcleanup;
-    $SIG{HUP}     = \&childcleanup;
-    $SIG{__DIE__} = sub { &childcleanup(@_); };
+    $SIG{INT}     = \&_childcleanup;
+    $SIG{TERM}    = \&_childcleanup;
+    $SIG{HUP}     = \&_childcleanup;
+    $SIG{__DIE__} = sub { _childcleanup(@_); };
     $0            = "lfd $type messenger";
     $childproc    = "Messenger ($type)";
+
+    %config ||= ConfigServer::Config->get_config;    # Local cache.
 
     if ( $type eq "HTTPS" ) {
         eval {
@@ -245,7 +230,7 @@ sub messenger {
                     SSL_use_cert  => 1,
                     SSL_cert_file => \%sslcerts,
                     SSL_key_file  => \%sslkeys,
-                ) or &error( "MESSENGER: *Error* cannot open server on port $port: " . IO::Socket::SSL->errstr );
+                ) or error( "MESSENGER: *Error* cannot open server on port $port: " . IO::Socket::SSL->errstr );
             }
             else {
                 $server = IO::Socket::SSL->new(
@@ -258,9 +243,9 @@ sub messenger {
                     SSL_use_cert  => 1,
                     SSL_cert_file => \%sslcerts,
                     SSL_key_file  => \%sslkeys,
-                ) or &error( "MESSENGER: *Error* cannot open server on port $port: " . IO::Socket::SSL->errstr );
+                ) or error( "MESSENGER: *Error* cannot open server on port $port: " . IO::Socket::SSL->errstr );
             }
-            &logfile( "Messenger HTTPS Service started for " . scalar( keys %sslcerts ) . " domains" );
+            logfile( "Messenger HTTPS Service started for " . scalar( keys %sslcerts ) . " domains" );
             $type = "HTML";
         };
         if ($@) {
@@ -273,7 +258,7 @@ sub messenger {
             Type      => SOCK_STREAM,
             ReuseAddr => 1,
             Listen    => $config{MESSENGER_CHILDREN}
-        ) or &childcleanup( __LINE__, "*Error* cannot open server on port $port: $!" );
+        ) or _childcleanup( __LINE__, "*Error* cannot open server on port $port: $!" );
     }
     else {
         $server = IO::Socket::INET->new(
@@ -281,7 +266,7 @@ sub messenger {
             Type      => SOCK_STREAM,
             ReuseAddr => 1,
             Listen    => $config{MESSENGER_CHILDREN}
-        ) or &childcleanup( __LINE__, "*Error* cannot open server on port $port: $!" );
+        ) or _childcleanup( __LINE__, "*Error* cannot open server on port $port: $!" );
     }
 
     my $index;
@@ -289,7 +274,7 @@ sub messenger {
     elsif ( $type eq "HTML" )                                      { $index = "/etc/csf/messenger/index.html" }
     else                                                           { $index = "/etc/csf/messenger/index.text" }
     open( my $IN, "<", $index );
-    flock( $IN, LOCK_SH );
+    flock( $IN, Fcntl::LOCK_SH );
     my @message = <$IN>;
     close($IN);
     chomp @message;
@@ -300,7 +285,7 @@ sub messenger {
         foreach my $file ( readdir(DIR) ) {
             if ( $file =~ /\.(gif|png|jpg)$/ ) {
                 open( my $IN, "<", "/etc/csf/messenger/$file" );
-                flock( $IN, LOCK_SH );
+                flock( $IN, Fcntl::LOCK_SH );
                 my @data = <$IN>;
                 close($IN);
                 chomp @data;
@@ -315,7 +300,7 @@ sub messenger {
 
     if ( $oldtype eq "HTTPS" ) {
         open( my $STATUS, "<", "/proc/$$/status" ) or next;
-        flock( $STATUS, LOCK_SH );
+        flock( $STATUS, Fcntl::LOCK_SH );
         my @status = <$STATUS>;
         close($STATUS);
         chomp @status;
@@ -385,7 +370,7 @@ sub messenger {
                                 if ( $firstline =~ /\r$/ ) { chop $firstline }
                             }
 
-                            &messengerlog( $homedir, "Client connection [$peeraddress] [$firstline]" );
+                            _messengerlog( $homedir, "Client connection [$peeraddress] [$firstline]" );
                             my $error;
                             my $success;
                             my $failure;
@@ -401,7 +386,7 @@ sub messenger {
                                     ( $status, $text ) = $urlget->urlget($url);
                                 };
                                 if ($status) {
-                                    &messengerlog( $homedir, "*Error*, ReCaptcha ($peeraddress): $text" );
+                                    _messengerlog( $homedir, "*Error*, ReCaptcha ($peeraddress): $text" );
                                     if ( $config{DEBUG} >= 1 ) {
                                         if ($@) { $error .= "Error:" . $@ }
                                         if ($!) { $error .= "Error:" . $! }
@@ -413,24 +398,28 @@ sub messenger {
                                     my $resp = JSON::Tiny::decode_json($text);
                                     if ( $resp->{success} ) {
                                         my $ip = $resp->{hostname};
+
+                                        my $ipv4reg = ConfigServer::Config->ipv4reg;
+                                        my $ipv6reg = ConfigServer::Config->ipv6reg;
+
                                         unless ( $ip =~ /^($ipv4reg|$ipv6reg)$/ ) { $ip = ( getips($ip) )[0] }
                                         if     ( $ips{$ip} or $ip eq $hostaddress or $ipscidr6->find($ip) ) {
-                                            sysopen( my $UNBLOCK, "$homedir/unblock.txt", O_WRONLY | O_APPEND | O_CREAT ) or $error .= "Unable to write to [$homedir/unblock.txt] (make sure that MESSENGER_USER has a home directory)";
-                                            flock( $UNBLOCK, LOCK_EX );
+                                            sysopen( my $UNBLOCK, "$homedir/unblock.txt", Fcntl::O_WRONLY | Fcntl::O_APPEND | Fcntl::O_CREAT ) or $error .= "Unable to write to [$homedir/unblock.txt] (make sure that MESSENGER_USER has a home directory)";
+                                            flock( $UNBLOCK, Fcntl::LOCK_EX );
                                             print $UNBLOCK "$peeraddress;$resp->{hostname};$ip\n";
                                             close($UNBLOCK);
                                             $success = 1;
-                                            &messengerlog( $homedir, "*Success*, ReCaptcha ($peeraddress): [$resp->{hostname} ($ip)] requested unblock" );
+                                            _messengerlog( $homedir, "*Success*, ReCaptcha ($peeraddress): [$resp->{hostname} ($ip)] requested unblock" );
                                         }
                                         else {
                                             $error .= "Failed, [$resp->{hostname} ($ip)] does not appear to be hosted on this server.";
-                                            &messengerlog( $homedir, "*Failed*, ReCaptcha ($peeraddress): [$resp->{hostname} ($ip)] does not appear to be hosted on this server" );
+                                            _messengerlog( $homedir, "*Failed*, ReCaptcha ($peeraddress): [$resp->{hostname} ($ip)] does not appear to be hosted on this server" );
                                         }
                                     }
                                     else {
                                         $failure = 1;
                                         my @codes = @{ $resp->{'error-codes'} };
-                                        &messengerlog( $homedir, "*Failure*, ReCaptcha ($peeraddress): [$codes[0]]" );
+                                        _messengerlog( $homedir, "*Failure*, ReCaptcha ($peeraddress): [$codes[0]]" );
                                     }
                                 }
                             }
@@ -505,10 +494,9 @@ sub messenger {
     return;
 }
 
-# end messenger
-###############################################################################
-# start messengerv2
 sub messengerv2 {
+    %config ||= ConfigServer::Config->get_config;    # Local cache.
+
     my ( undef, undef, $uid, $gid, undef, undef, undef, $homedir ) = getpwnam( $config{MESSENGER_USER} );
     if ( $homedir eq "" or $homedir eq "/" or $homedir =~ m[/etc/csf] ) {
         return ( 1, "The home directory for $config{MESSENGER_USER} is not valid [$homedir]" );
@@ -525,7 +513,7 @@ sub messengerv2 {
     }
     unless ( -e $public_html . "/.htaccess" ) {
         open( my $HTACCESS, ">", $public_html . "/.htaccess" );
-        flock( $HTACCESS, LOCK_EX );
+        flock( $HTACCESS, Fcntl::LOCK_EX );
         print $HTACCESS "Require all granted\n";
         print $HTACCESS "DirectoryIndex index.php index.cgi index.html index.htm\n";
         print $HTACCESS "Options +FollowSymLinks +ExecCGI\n";
@@ -552,7 +540,7 @@ sub messengerv2 {
         system( "chmod", "644",                                             $homedir . "/en.php" );
     }
     open( my $CONF, ">", $homedir . "/recaptcha.php" );
-    flock( $CONF, LOCK_EX );
+    flock( $CONF, Fcntl::LOCK_EX );
     print $CONF "<?php\n";
     print $CONF "\$secret = '$config{RECAPTCHA_SECRET}';\n";
     print $CONF "\$sitekey = '$config{RECAPTCHA_SITEKEY}';\n";
@@ -563,7 +551,7 @@ sub messengerv2 {
     system( "chmod", "644",                                             $homedir . "/recaptcha.php" );
 
     open( my $OUT, ">", "/var/lib/csf/csf.conf" );
-    flock( $OUT, LOCK_EX );
+    flock( $OUT, Fcntl::LOCK_EX );
 
     if ( $config{MESSENGER_HTML_IN} ne "" ) {
         print $OUT "Listen 0.0.0.0:$config{MESSENGER_HTML}\n";
@@ -622,14 +610,14 @@ sub messengerv2 {
                         if ( $line =~ /\s*SSLCertificateFile\s+(\S+)/ ) {
                             my $match = $1;
                             if ( -e $match ) {
-                                copy( $match, $ssldir . "certs/" . $sslhost . "\.crt" );
+                                File::Copy::copy( $match, $ssldir . "certs/" . $sslhost . "\.crt" );
                                 $sslcert = $ssldir . "certs/" . $sslhost . "\.crt";
                             }
                         }
                         if ( $line =~ /\s*SSLCertificateKeyFile\s+(\S+)/ ) {
                             my $match = $1;
                             if ( -e $match ) {
-                                copy( $match, $ssldir . "keys/" . $sslhost . "\.key" );
+                                File::Copy::copy( $match, $ssldir . "keys/" . $sslhost . "\.key" );
                                 $sslkey = $ssldir . "keys/" . $sslhost . "\.key";
                             }
                         }
@@ -682,11 +670,11 @@ sub messengerv2 {
             print $OUT " SSLEngine on\n";
 
             if ( -e $config{MESSENGER_HTTPS_KEY} ) {
-                copy( $config{MESSENGER_HTTPS_KEY}, $ssldir . "keys/" . $hostname . "\.key" );
+                File::Copy::copy( $config{MESSENGER_HTTPS_KEY}, $ssldir . "keys/" . $hostname . "\.key" );
                 print $OUT " SSLCertificateKeyFile " . $ssldir . "keys/" . $hostname . "\.key\n";
             }
             if ( -e $config{MESSENGER_HTTPS_CRT} ) {
-                copy( $config{MESSENGER_HTTPS_CRT}, $ssldir . "certs/" . $hostname . "\.crt" );
+                File::Copy::copy( $config{MESSENGER_HTTPS_CRT}, $ssldir . "certs/" . $hostname . "\.crt" );
                 print $OUT " SSLCertificateFile " . $ssldir . "certs/" . $hostname . "\.crt\n";
             }
             print $OUT " SSLUseStapling off\n";
@@ -734,7 +722,7 @@ sub messengerv2 {
     system( "cp", "-f", "/var/lib/csf/csf.conf", "/etc/apache2/conf.d/csf.messenger.conf" );
 
     my ( $childin, $childout );
-    my $cmdpid = open3( $childin, $childout, $childout, "/usr/sbin/apachectl", "configtest" );
+    my $cmdpid = IPC::Open3::open3( $childin, $childout, $childout, "/usr/sbin/apachectl", "configtest" );
     my @data   = <$childout>;
     waitpid( $cmdpid, 0 );
 
@@ -753,17 +741,16 @@ sub messengerv2 {
         system("/scripts/restartsrv_httpd");
 
         open( my $ERROR, ">", "/var/lib/csf/apachectl.error" );
-        flock( $ERROR, LOCK_EX );
+        flock( $ERROR, Fcntl::LOCK_EX );
         foreach (@data) { print $ERROR $_ }
         close($ERROR);
     }
     return;
 }
 
-# end messengerv2
-###############################################################################
-# start messengerv3
-sub messengerv3 {
+sub _messengerv3 {
+    %config ||= ConfigServer::Config->get_config;    # Local cache.
+
     my ( undef, undef, $uid, $gid, undef, undef, undef, $homedir ) = getpwnam( $config{MESSENGER_USER} );
     if ( $homedir eq "" or $homedir eq "/" or $homedir =~ m[/etc/csf] ) {
         return ( 1, "The home directory for $config{MESSENGER_USER} is not valid [$homedir]" );
@@ -779,7 +766,7 @@ sub messengerv3 {
     }
     unless ( -e $public_html . "/.htaccess" ) {
         open( my $HTACCESS, ">", $public_html . "/.htaccess" );
-        flock( $HTACCESS, LOCK_EX );
+        flock( $HTACCESS, Fcntl::LOCK_EX );
         print $HTACCESS <<EOF;
 Require all granted
 DirectoryIndex index.php index.cgi index.html index.htm
@@ -808,7 +795,7 @@ EOF
         system( "chmod", "644",                                             $homedir . "/en.php" );
     }
     open( my $CONF, ">", $homedir . "/recaptcha.php" );
-    flock( $CONF, LOCK_EX );
+    flock( $CONF, Fcntl::LOCK_EX );
     print $CONF "<?php\n";
     print $CONF "\$secret = '$config{RECAPTCHA_SECRET}';\n";
     print $CONF "\$sitekey = '$config{RECAPTCHA_SITEKEY}';\n";
@@ -826,7 +813,7 @@ EOF
     }
 
     open( my $OUT, ">", "/var/lib/csf/csf.conf" );
-    flock( $OUT, LOCK_EX );
+    flock( $OUT, Fcntl::LOCK_EX );
 
     if ( $config{MESSENGERV3PHPHANDLER} ne "" ) {
         $phphandler = $config{MESSENGERV3PHPHANDLER};
@@ -873,20 +860,20 @@ EOF
                 $serverroot = $1;
             }
         }
-        &conftree( $config{MESSENGERV3HTTPS_CONF} );
+        _conftree( $config{MESSENGERV3HTTPS_CONF} );
         if ( $webserver eq "litespeed" ) {
             if ( $sslhost ne "" and $osslcert ne "" and $ssldomains{$sslhost}{cert} eq "" ) {
                 if ( -e $osslcert ) {
                     $sslcert = $ssldir . "certs/" . $sslhost . "\.crt";
-                    copy( $osslcert, $ssldir . "certs/" . $sslhost . "\.crt" );
+                    File::Copy::copy( $osslcert, $ssldir . "certs/" . $sslhost . "\.crt" );
                 }
                 if ( -e $osslkey ) {
                     $sslkey = $ssldir . "keys/" . $sslhost . "\.key";
-                    copy( $osslkey, $ssldir . "keys/" . $sslhost . "\.key" );
+                    File::Copy::copy( $osslkey, $ssldir . "keys/" . $sslhost . "\.key" );
                 }
                 if ( -e $osslca ) {
                     $sslca = $ssldir . "ca/" . $sslhost . "\.ca";
-                    copy( $osslca, $ssldir . "ca/" . $sslhost . "\.ca" );
+                    File::Copy::copy( $osslca, $ssldir . "ca/" . $sslhost . "\.ca" );
                 }
                 $sslaliases =~ s/\$VH_NAME/$sslhost/;
                 $ssldomains{$sslhost}{key}     = $sslkey;
@@ -1013,8 +1000,8 @@ EOF
     elsif ( -f $config{MESSENGERV3LOCATION} ) {
         my @conf = slurp( $config{MESSENGERV3LOCATION} );
         unless ( grep { $_ =~ m[^Include /var/lib/csf/csf.conf]i } @conf ) {
-            sysopen( my $FILE, $config{MESSENGERV3LOCATION}, O_WRONLY | O_APPEND | O_CREAT );
-            flock( $FILE, LOCK_EX );
+            sysopen( my $FILE, $config{MESSENGERV3LOCATION}, Fcntl::O_WRONLY | Fcntl::O_APPEND | Fcntl::O_CREAT );
+            flock( $FILE, Fcntl::LOCK_EX );
             if ( $webserver eq "apache" ) {
                 print $FILE "Include /var/lib/csf/csf.conf\n";
             }
@@ -1032,7 +1019,7 @@ EOF
 
     if ( $config{MESSENGERV3TEST} ne "" ) {
         my ( $childin, $childout );
-        my $cmdpid = open3( $childin, $childout, $childout, $config{MESSENGERV3TEST} );
+        my $cmdpid = IPC::Open3::open3( $childin, $childout, $childout, $config{MESSENGERV3TEST} );
         my @data   = <$childout>;
         waitpid( $cmdpid, 0 );
 
@@ -1047,7 +1034,7 @@ EOF
         }
         else {
             open( my $ERROR, ">", "/var/lib/csf/messenger.error" );
-            flock( $ERROR, LOCK_EX );
+            flock( $ERROR, Fcntl::LOCK_EX );
             foreach (@data) { print $ERROR $_ }
             close($ERROR);
 
@@ -1057,8 +1044,9 @@ EOF
             elsif ( -f $config{MESSENGERV3LOCATION} ) {
                 my @conf = slurp( $config{MESSENGERV3LOCATION} );
                 if ( grep { $_ =~ m[^Include /var/lib/csf/csf.conf]i } @conf ) {
-                    sysopen( my $FILE, $config{MESSENGERV3LOCATION}, O_WRONLY | O_CREAT | O_TRUNC );
-                    flock( $FILE, LOCK_EX );
+                    sysopen( my $FILE, $config{MESSENGERV3LOCATION}, Fcntl::O_WRONLY | Fcntl::O_CREAT | Fcntl::O_TRUNC );
+                    flock( $FILE, Fcntl::LOCK_EX );
+                    my $cleanreg = ConfigServer::Slurp->cleanreg;
                     foreach my $line (@conf) {
                         $line =~ s/$cleanreg//g;
                         if ( $line =~ m[^Include /var/lib/csf/csf.conf]i ) { next }
@@ -1080,24 +1068,18 @@ EOF
     return;
 }
 
-# end messengerv3
-###############################################################################
-# start messengerlog
-sub messengerlog {
+sub _messengerlog {
     my $homedir = shift;
     my $message = shift;
-    if ( $config{DEBUG} ) {
-        sysopen( my $LOG, "/var/log/lfd_messenger.log", O_WRONLY | O_APPEND | O_CREAT );
+    if ( ConfigServer::Config->get_config('DEBUG') ) {
+        sysopen( my $LOG, "/var/log/lfd_messenger.log", Fcntl::O_WRONLY | Fcntl::O_APPEND | Fcntl::O_CREAT );
         print $LOG "[$$]: " . $message . "\n";
         close($LOG);
     }
     return;
 }
 
-# end messengerlog
-###############################################################################
-# start childcleanup
-sub childcleanup {
+sub _childcleanup {
     $SIG{INT}  = 'IGNORE';
     $SIG{TERM} = 'IGNORE';
     $SIG{HUP}  = 'IGNORE';
@@ -1118,10 +1100,7 @@ sub childcleanup {
     exit;
 }
 
-# end childcleanup
-###############################################################################
-# start getethdev
-sub getethdev {
+sub _getethdev {
     my $ethdev = ConfigServer::GetEthDev->new();
     my %g_ipv4 = $ethdev->ipv4;
     my %g_ipv6 = $ethdev->ipv6;
@@ -1130,7 +1109,8 @@ sub getethdev {
         my $type  = $netip->iptype();
         if ( $type eq "PUBLIC" ) { $ips{$key} = 1 }
     }
-    if ( $config{IPV6} ) {
+
+    if ( ConfigServer::Config->get_config('IPV6') ) {
         foreach my $key ( keys %g_ipv6 ) {
             if ( $key !~ m[::1/128] ) {
                 eval {
@@ -1143,25 +1123,22 @@ sub getethdev {
     return;
 }
 
-# end getethdev
-###############################################################################
-# start error
 sub error {
     my $error = shift;
     logfile($error);
     exit;
 }
 
-# end error
-###############################################################################
-# start conftree
-sub conftree {
+sub _conftree {
     my $fileglob = shift;
+
+    my $DEBUG = ConfigServer::Config->get_config('DEBUG');
+
     foreach my $file ( glob($fileglob) ) {
         if ( $file =~ /csf\.messenger\.conf$/ )      { next }
         if ( $file =~ /\/var\/lib\/csf\/csf.conf$/ ) { next }
         if ( -e $file ) {
-            if ( $config{DEBUG} >= 1 ) { logfile("SSL: Processing [$file]") }
+            if ( $DEBUG >= 1 ) { logfile("SSL: Processing [$file]") }
             my $start = 0;
             foreach my $line ( slurp($file) ) {
                 if ( $webserver eq "apache" ) {
@@ -1173,15 +1150,15 @@ sub conftree {
                     if ( $serverroot eq "" and -d "/etc/apache2" ) { $serverroot = "/etc/apache2" }
                     if ( $line =~ /^\s*Include\s+(\S+)/ ) {
                         my $include = $1;
-                        if ( $include !~ /^\// )   { $include = "$serverroot/$include" }
-                        if ( $config{DEBUG} >= 1 ) { logfile("SSL: Including [$include]") }
-                        &conftree($include);
+                        if ( $include !~ /^\// ) { $include = "$serverroot/$include" }
+                        if ( $DEBUG >= 1 )       { logfile("SSL: Including [$include]") }
+                        _conftree($include);
                     }
                     if ( $line =~ /^\s*IncludeOptional\s+(\S+)/ ) {
                         my $include = $1;
-                        if ( $include !~ /^\// )   { $include = "$serverroot/$include" }
-                        if ( $config{DEBUG} >= 1 ) { logfile("SSL: IncludeOptional [$include]") }
-                        &conftree($include);
+                        if ( $include !~ /^\// ) { $include = "$serverroot/$include" }
+                        if ( $DEBUG >= 1 )       { logfile("SSL: IncludeOptional [$include]") }
+                        _conftree($include);
                     }
                     if ( $line =~ /^\s*<VirtualHost\s+[^\>]+>/ ) {
                         $start = 1;
@@ -1217,22 +1194,22 @@ sub conftree {
                         if ( $sslhost ne "" and !checkip($sslhost) and $osslcert ne "" ) {
                             if ( -e $osslcert ) {
                                 $sslcert = $ssldir . "certs/" . $sslhost . "\.crt";
-                                copy( $osslcert, $ssldir . "certs/" . $sslhost . "\.crt" );
+                                File::Copy::copy( $osslcert, $ssldir . "certs/" . $sslhost . "\.crt" );
                             }
                             if ( -e $osslkey ) {
                                 $sslkey = $ssldir . "keys/" . $sslhost . "\.key";
-                                copy( $osslkey, $ssldir . "keys/" . $sslhost . "\.key" );
+                                File::Copy::copy( $osslkey, $ssldir . "keys/" . $sslhost . "\.key" );
                             }
                             if ( -e $osslca ) {
                                 $sslca = $ssldir . "ca/" . $sslhost . "\.ca";
-                                copy( $osslca, $ssldir . "ca/" . $sslhost . "\.ca" );
+                                File::Copy::copy( $osslca, $ssldir . "ca/" . $sslhost . "\.ca" );
                             }
                             $ssldomains{$sslhost}{key}     = $sslkey;
                             $ssldomains{$sslhost}{aliases} = $sslaliases;
                             $ssldomains{$sslhost}{cert}    = $sslcert;
                             $ssldomains{$sslhost}{ca}      = $sslca;
                             push @ssldomainkeys, $sslhost;
-                            if ( $config{DEBUG} >= 1 ) { logfile("SSL: Found [$sslhost] in [$file]") }
+                            if ( $DEBUG >= 1 ) { logfile("SSL: Found [$sslhost] in [$file]") }
                         }
                         $sslhost    = "";
                         $sslcert    = "";
@@ -1250,34 +1227,34 @@ sub conftree {
                         my $include = $1;
                         $include =~ s/\$SERVER_ROOT/$serverroot/;
                         $include =~ s/\$VH_NAME/$sslhost/;
-                        if ( $include !~ /^\// )   { $include = "$serverroot/$include" }
-                        if ( $config{DEBUG} >= 1 ) { logfile("SSL: include [$include]") }
-                        &conftree($include);
+                        if ( $include !~ /^\// ) { $include = "$serverroot/$include" }
+                        if ( $DEBUG >= 1 )       { logfile("SSL: include [$include]") }
+                        _conftree($include);
                     }
                     if ( $line =~ /^\s*configFile\s+(\S+)/ ) {
                         my $include = $1;
                         $include =~ s/\$SERVER_ROOT/$serverroot/;
                         $include =~ s/\$VH_NAME/$sslhost/;
-                        if ( $include !~ /^\// )   { $include = "$serverroot/$include" }
-                        if ( $config{DEBUG} >= 1 ) { logfile("SSL: configFile [$include]") }
-                        &conftree($include);
+                        if ( $include !~ /^\// ) { $include = "$serverroot/$include" }
+                        if ( $DEBUG >= 1 )       { logfile("SSL: configFile [$include]") }
+                        _conftree($include);
                     }
                     if ( $line =~ /^\s*virtualHost\s+([^\{]+)\s+\{/ ) {
                         my $newsslhost = $1;
-                        if ( $newsslhost ne "" and $config{DEBUG} >= 1 ) { logfile("SSL: Found [$newsslhost] in [$file]") }
+                        if ( $newsslhost ne "" and $DEBUG >= 1 ) { logfile("SSL: Found [$newsslhost] in [$file]") }
                         if ( $litestart == 1 ) {
                             if ( $sslhost ne "" and $osslcert ne "" ) {
                                 if ( -e $osslcert ) {
                                     $sslcert = $ssldir . "certs/" . $sslhost . "\.crt";
-                                    copy( $osslcert, $ssldir . "certs/" . $sslhost . "\.crt" );
+                                    File::Copy::copy( $osslcert, $ssldir . "certs/" . $sslhost . "\.crt" );
                                 }
                                 if ( -e $osslkey ) {
                                     $sslkey = $ssldir . "keys/" . $sslhost . "\.key";
-                                    copy( $osslkey, $ssldir . "keys/" . $sslhost . "\.key" );
+                                    File::Copy::copy( $osslkey, $ssldir . "keys/" . $sslhost . "\.key" );
                                 }
                                 if ( -e $osslca ) {
                                     $sslca = $ssldir . "ca/" . $sslhost . "\.ca";
-                                    copy( $osslca, $ssldir . "ca/" . $sslhost . "\.ca" );
+                                    File::Copy::copy( $osslca, $ssldir . "ca/" . $sslhost . "\.ca" );
                                 }
                                 $sslaliases =~ s/\$VH_NAME/$sslhost/;
                                 $ssldomains{$sslhost}{key}     = $sslkey;
@@ -1323,8 +1300,5 @@ sub conftree {
     }
     return;
 }
-
-# end conftree
-###############################################################################
 
 1;
