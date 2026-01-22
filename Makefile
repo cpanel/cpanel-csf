@@ -1,4 +1,4 @@
-.PHONY: all test man install
+.PHONY: all test man install sandbox
 
 all:
 	mkdir -p /usr/local/csf
@@ -53,3 +53,11 @@ install: lib/csf.help
 		csget.pl \
 		auto.pl
 	@echo "Created csf.tar.gz"
+
+sandbox:
+	mkdir -p /usr/local/cpanel/whostmgr/cgi/configserver
+	test -e /usr/local/cpanel/whostmgr/cgi/configserver/csf.cgi && rm -f /usr/local/cpanel/whostmgr/cgi/configserver/csf.cgi
+	ln -s $(CURDIR)/cpanel/csf.cgi /usr/local/cpanel/whostmgr/cgi/configserver/csf.cgi
+	test -e /usr/local/cpanel/whostmgr/docroot/templates/csf.tmpl && rm -f /usr/local/cpanel/whostmgr/docroot/templates/csf.tmpl
+	ln -s $(CURDIR)/cpanel/csf.tmpl /usr/local/cpanel/whostmgr/docroot/templates/csf.tmpl
+	/usr/local/cpanel/bin/register_appconfig cpanel/csf.conf
