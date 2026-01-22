@@ -1,21 +1,8 @@
-###############################################################################
-# Copyright (C) 2006-2025 Jonathan Michaelson
-#
-# https://github.com/waytotheweb/scripts
-#
-# This program is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation; either version 3 of the License, or (at your option) any later
-# version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
-# details.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, see <https://www.gnu.org/licenses>.
-###############################################################################
+#                                      Copyright 2026 WebPros International, LLC
+#                                                           All rights reserved.
+# copyright@cpanel.net                                         http://cpanel.net
+# This code is subject to the cPanel license. Unauthorized copying is prohibited.
+
 package ConfigServer::URLGet;
 
 =head1 NAME
@@ -464,7 +451,9 @@ sub _binget {
     my $file     = shift;
     my $quiet    = shift;
     my $errormsg = shift;
+    my $url_for_output = _redact_key_from_text($url);
     $url = "'$url'";
+    my $quoted_url_for_output = "'$url_for_output'";
 
     my $cmd;
     my $curl_bin = ConfigServer::Config->get_config('CURL');
@@ -485,7 +474,7 @@ sub _binget {
             waitpid( $cmdpid, 0 );
             unless ( $quiet and $option != 3 ) {
                 print "Using fallback [$cmd]\n";
-                print @output;
+                print map { _redact_key_from_text($_) } @output;
             }
             if ( -e "$file\.tmp" ) {
                 rename( "$file\.tmp", "$file" ) or return ( 1, "Unable to rename $file\.tmp to $file: $!" );
@@ -493,7 +482,8 @@ sub _binget {
             }
             else {
                 if ( $option == 3 ) {
-                    return ( 1, "Unable to download: " . $cmd . " $file\.tmp $url" . join( "", @output ) );
+                    my $output_for_error = join( "", map { _redact_key_from_text($_) } @output );
+                    return ( 1, "Unable to download: " . $cmd . " $file\.tmp $quoted_url_for_output" . $output_for_error );
                 }
                 else {
                     return ( 1, "Unable to download: " . $errormsg );
@@ -510,7 +500,8 @@ sub _binget {
             }
             else {
                 if ( $option == 3 ) {
-                    return ( 1, "Unable to download: [$cmd $url]" . join( "", @output ) );
+                    my $output_for_error = join( "", map { _redact_key_from_text($_) } @output );
+                    return ( 1, "Unable to download: [$cmd $quoted_url_for_output]" . $output_for_error );
                 }
                 else {
                     return ( 1, "Unable to download: " . $errormsg );
@@ -524,6 +515,15 @@ sub _binget {
     else {
         return ( 1, "Unable to download (CURL/WGET also not present, see csf.conf): " . $errormsg );
     }
+}
+
+sub _redact_key_from_text {
+    my $text = shift;
+    return $text if !defined $text;
+
+    $text =~ s/([?&])key=[^&\s'\"]*/${1}key=REDACTED/ig;
+
+    return $text;
 }
 
 1;

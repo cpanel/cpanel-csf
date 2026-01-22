@@ -1,6 +1,6 @@
 #!/usr/local/cpanel/3rdparty/bin/perl
 ###############################################################################
-# Copyright (C) 2006-2025 Jonathan Michaelson
+# Copyright (C) 2006-2026 Jonathan Michaelson
 #
 # https://github.com/waytotheweb/scripts
 #
@@ -3393,8 +3393,14 @@ sub loadcheck {
             if ($@) { push @netstat, "Unable to obtain netstat output within 10 seconds - Timed out" }
 
             my $url = $config{PT_APACHESTATUS};
+            my $key = _get_whm_server_status_key();
+            if ( defined $key ) {
+                $url .= "?key=$key";
+            }
+            my $log_url = $url;
+            $log_url =~ s/([?&])key=[^&]*/$1key=REDACTED/;
             my ( $status, $apache ) = $urlget->urlget($url);
-            if ($status) { $apache = "Unable to retrieve Apache Server Status [$url] - $apache" }
+            if ($status) { $apache = "Unable to retrieve Apache Server Status [$log_url] - $apache" }
 
             my @alert    = slurp("/usr/local/csf/tpl/loadalert.txt");
             my $boundary = "csf" . time;
@@ -10665,6 +10671,24 @@ sub lfdclient {
     return;
 }
 
+sub _get_whm_server_status_key {
+    my $whm_server_status_key_file = '/var/cpanel/whm_server_status_key';
+    return unless -e $whm_server_status_key_file;
+
+    my ($key) = slurp($whm_server_status_key_file);
+    unless ( defined $key ) {
+        logfile('Unable to read Apache server-status key file');
+        return;
+    }
+
+    if ( defined $key ) {
+        $key =~ s/\s+//g;
+    }
+
+    return unless length $key;
+    return $key;
+}
+
 sub updateconfig {
     my $chname  = shift;
     my $chvalue = shift;
@@ -10992,9 +11016,15 @@ sub systemstats {
                 local $SIG{'ALRM'}  = sub { die };
                 alarm(15);
                 my $url = $config{PT_APACHESTATUS} . "?auto";
+                my $key = _get_whm_server_status_key();
+                if ( length $key ) {
+                    $url .= "&key=$key";
+                }
+                my $log_url = $url;
+                $log_url =~ s/([?&])key=[^&]*/$1key=REDACTED/;
                 my ( $status, $apache ) = $urlget->urlget($url);
                 if ($status) {
-                    logfile("STATS: Unable to retrieve Apache Server Status [$url] - $apache");
+                    logfile("STATS: Unable to retrieve Apache Server Status [$log_url] - $apache");
                 }
                 else {
                     foreach my $line ( split( /\n/, $apache ) ) {

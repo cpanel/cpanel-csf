@@ -104,13 +104,13 @@ use ConfigServer::Config ();
 use ConfigServer::Slurp  ();
 
 our $VERSION        = 1.02;
-our $INIT_TYPE_FILE = '/proc/1/comm';    # For test isolation
+our $INIT_TYPE_FILE = '/proc/1/comm';
 
-# Internal: Lazy detection of init system type (uses package variable for testability)
 our $_init_type_cache;
 
 sub _get_init_type {
-    return $_init_type_cache if defined $_init_type_cache;
+    return $_init_type_cache if length( $_init_type_cache // '' );
+
     my $proc_comm = $INIT_TYPE_FILE;
     if ( -r $proc_comm ) {
         my @lines   = ConfigServer::Slurp::slurp($proc_comm);
@@ -121,10 +121,10 @@ sub _get_init_type {
     else {
         $_init_type_cache = 'init';
     }
+
     return $_init_type_cache;
 }
 
-# Internal: For test reset
 sub _reset_init_type {
     undef $_init_type_cache;
     return;
@@ -153,7 +153,7 @@ Starts the lfd service using the appropriate method for the detected init system
 sub startlfd {
     my $init = _get_init_type();
     if ( $init eq 'systemd' ) {
-        my $systemctl = ConfigServer::Config->get_config('SYSTEMCTL');
+        my $systemctl = ConfigServer::Config->get_config('SYSTEMCTL') || 'systemctl';
         _printcmd( $systemctl, 'start',  'lfd.service' );
         _printcmd( $systemctl, 'status', 'lfd.service' );
     }
@@ -174,7 +174,7 @@ Stops the lfd service using the appropriate method for the detected init system.
 sub stoplfd {
     my $init = _get_init_type();
     if ( $init eq 'systemd' ) {
-        my $systemctl = ConfigServer::Config->get_config('SYSTEMCTL');
+        my $systemctl = ConfigServer::Config->get_config('SYSTEMCTL') || 'systemctl';
         _printcmd( $systemctl, 'stop', 'lfd.service' );
     }
     else {
@@ -194,7 +194,7 @@ Restarts the lfd service using the appropriate method for the detected init syst
 sub restartlfd {
     my $init = _get_init_type();
     if ( $init eq 'systemd' ) {
-        my $systemctl = ConfigServer::Config->get_config('SYSTEMCTL');
+        my $systemctl = ConfigServer::Config->get_config('SYSTEMCTL') || 'systemctl';
         _printcmd( $systemctl, 'restart', 'lfd.service' );
         _printcmd( $systemctl, 'status',  'lfd.service' );
     }
@@ -215,7 +215,7 @@ Shows the status of the lfd service using the appropriate method for the detecte
 sub statuslfd {
     my $init = _get_init_type();
     if ( $init eq 'systemd' ) {
-        my $systemctl = ConfigServer::Config->get_config('SYSTEMCTL');
+        my $systemctl = ConfigServer::Config->get_config('SYSTEMCTL') || 'systemctl';
         _printcmd( $systemctl, 'status', 'lfd.service' );
     }
     else {
