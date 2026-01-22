@@ -1414,6 +1414,7 @@ EOD
         seek( $OUT, 0, 0 );
         truncate( $OUT, 0 );
         for ( my $x = 0; $x < @confdata; $x++ ) {
+            $confdata[$x] =~ s/[[:cntrl:]]//g;
             if ( ( $confdata[$x] !~ /^\#/ ) and ( $confdata[$x] =~ /=/ ) ) {
                 my ( $start, $end ) = split( /=/, $confdata[$x], 2 );
                 if ( $end =~ /\"(.*)\"/ ) { $end = $1 }
@@ -1425,8 +1426,9 @@ EOD
                     print $OUT "$confdata[$x]\n";
                 }
                 else {
-                    print $OUT "$start= \"$FORM{$name}\"\n";
                     $end = $FORM{$name};
+                    $end =~ s/[[:cntrl:]]//g;
+                    print $OUT "$start= \"$end\"\n";
                 }
             }
             else {
