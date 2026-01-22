@@ -98,12 +98,23 @@ for file in tpl/*; do
 	fi
 done
 
-if [ ! -e "/usr/local/csf/bin/regex.custom.pm" ]; then
-	cp -avf regex.custom.pm /usr/local/csf/bin/.
-fi
-if [ ! -e "/usr/local/csf/bin/pt_deleted_action.pl" ]; then
-	cp -avf pt_deleted_action.pl /usr/local/csf/bin/.
-fi
+# Copy bin files from bin/ directory to /usr/local/csf/bin/
+for file in bin/*; do
+	filename=$(basename "$file")
+	# Only skip copying if file exists for user-customizable files
+	case "$filename" in
+		regex.custom.pm|pt_deleted_action.pl)
+			if [ ! -e "/usr/local/csf/bin/$filename" ]; then
+				cp -avf "$file" /usr/local/csf/bin/.
+			fi
+			;;
+		*)
+			# Always update all other bin files
+			cp -avf "$file" /usr/local/csf/bin/.
+			;;
+	esac
+done
+
 if [ ! -e "/etc/csf/messenger" ]; then
 	cp -avf messenger /etc/csf/.
 fi
@@ -129,6 +140,16 @@ sed -i "s%/etc/init.d/lfd restart%/usr/sbin/csf --lfd restart%" /etc/cron.d/lfd-
 if [ -e "/usr/local/csf/bin/servercheck.pm" ]; then
 	rm -f /usr/local/csf/bin/servercheck.pm
 fi
+
+# Remove obsolete CPAN modules now provided by cpanel-perl
+rm -rf /usr/local/csf/lib/Crypt
+rm -rf /usr/local/csf/lib/HTTP
+rm -rf /usr/local/csf/lib/Net
+rm -rf /usr/local/csf/lib/Geo
+rm -rf /usr/local/csf/lib/JSON
+rm -rf /usr/local/csf/lib/version
+rm -f /usr/local/csf/lib/Module/Installed/Tiny.pm
+
 if [ -e "/etc/csf/cseui.pl" ]; then
 	rm -f /etc/csf/cseui.pl
 fi
@@ -182,9 +203,6 @@ cp -avf csf/* da/images/
 
 cp -avf messenger/*.php /etc/csf/messenger/
 cp -avf csf/csf_small.png /usr/local/cpanel/whostmgr/docroot/addon_plugins/
-cp -avf uninstall.sh /usr/local/csf/bin/
-cp -avf csftest.pl /usr/local/csf/bin/
-cp -avf remove_apf_bfd.sh /usr/local/csf/bin/
 cp -avf readme.txt /etc/csf/
 cp -avf sanity.txt /usr/local/csf/lib/
 cp -avf csf.rbls /usr/local/csf/lib/
@@ -195,12 +213,6 @@ cp -avf install.txt /etc/csf/
 cp -avf version.txt /etc/csf/
 cp -avf license.txt /etc/csf/
 cp -avf ConfigServer /usr/local/csf/lib/
-cp -avf Net /usr/local/csf/lib/
-cp -avf Geo /usr/local/csf/lib/
-cp -avf Crypt /usr/local/csf/lib/
-cp -avf HTTP /usr/local/csf/lib/
-cp -avf JSON /usr/local/csf/lib/
-cp -avf version/* /usr/local/csf/lib/
 cp -avf csf.div /usr/local/csf/lib/
 cp -avf csfajaxtail.js /usr/local/csf/lib/
 cp -avf ui/images /etc/csf/ui/.
