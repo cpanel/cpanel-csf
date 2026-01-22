@@ -70,6 +70,10 @@ fi
 
 # Copy config files from etc/ directory to /etc/csf/
 for file in etc/*; do
+	# Skip directories - they're handled separately
+	if [ -d "$file" ]; then
+		continue
+	fi
 	filename=$(basename "$file")
 	if [ ! -e "/etc/csf/$filename" ]; then
 		cp -avf "$file" /etc/csf/.
@@ -116,10 +120,10 @@ for file in bin/*; do
 done
 
 if [ ! -e "/etc/csf/messenger" ]; then
-	cp -avf messenger /etc/csf/.
+	cp -avf etc/messenger /etc/csf/.
 fi
 if [ ! -e "/etc/csf/messenger/index.recaptcha.html" ]; then
-	cp -avf messenger/index.recaptcha.html /etc/csf/messenger/.
+	cp -avf etc/messenger/index.recaptcha.html /etc/csf/messenger/.
 fi
 if [ ! -e "/etc/csf/ui" ]; then
 	cp -avf ui /etc/csf/.
@@ -201,7 +205,7 @@ mkdir da/images
 cp -avf csf/* ui/images/
 cp -avf csf/* da/images/
 
-cp -avf messenger/*.php /etc/csf/messenger/
+cp -avf etc/messenger/*.php /etc/csf/messenger/
 cp -avf csf/csf_small.png /usr/local/cpanel/whostmgr/docroot/addon_plugins/
 cp -avf readme.txt /etc/csf/
 cp -avf sanity.txt /usr/local/csf/lib/
@@ -218,7 +222,7 @@ cp -avf csfajaxtail.js /usr/local/csf/lib/
 cp -avf ui/images /etc/csf/ui/.
 cp -avf profiles /usr/local/csf/
 cp -avf etc/csf.conf /usr/local/csf/profiles/reset_to_defaults.conf
-cp -avf messenger/*.php /etc/csf/messenger/.
+cp -avf etc/messenger/*.php /etc/csf/messenger/.
 cp -avf lfd.logrotate /etc/logrotate.d/lfd
 
 rm -fv /etc/csf/csf.spamhaus /etc/csf/csf.dshield /etc/csf/csf.tor /etc/csf/csf.bogon
