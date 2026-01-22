@@ -16,38 +16,29 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, see <https://www.gnu.org/licenses>.
 ###############################################################################
-## no critic (RequireUseWarnings, ProhibitExplicitReturnUndef, ProhibitMixedBooleanOperators, RequireBriefOpen)
+
 package ConfigServer::DisplayResellerUI;
 
-use strict;
-use lib '/usr/local/csf/lib';
-use Fcntl qw(:DEFAULT :flock);
-use POSIX qw(:sys_wait_h sysconf strftime);
-use File::Basename;
-use Net::CIDR::Lite;
-use IPC::Open3;
+use cPstrict;
 
-use ConfigServer::Config;
-use ConfigServer::CheckIP qw(checkip);
-use ConfigServer::Sendmail;
-use ConfigServer::Logger;
+use Fcntl      ();
+use POSIX      ();
+use IPC::Open3 ();
 
-use Exporter qw(import);
-our $VERSION   = 1.01;
-our @ISA       = qw(Exporter);
-our @EXPORT_OK = qw();
+use ConfigServer::CheckIP  qw(checkip);
+use ConfigServer::Sendmail ();
+use ConfigServer::Logger   ();
+
+our $VERSION = 1.01;
 
 umask(0177);
 
 our (
-    $chart,     $ipscidr6, $ipv6reg,   $ipv4reg, %config, %ips,    $mobile,
-    %FORM,      $script,   $script_da, $images,  $myv,    %rprivs, $hostname,
-    $hostshort, $tz,       $panel
+    $chart,     $ipv6reg, $ipv4reg,   %config, %ips, $mobile,
+    %FORM,      $script,  $script_da, $images, $myv, %rprivs, $hostname,
+    $hostshort, $tz,      $panel
 );
 
-#
-###############################################################################
-# start main
 sub main {
     my $form_ref = shift;
     %FORM      = %{$form_ref};
@@ -57,7 +48,7 @@ sub main {
     $myv       = shift;
 
     open( my $IN, "<", "/etc/csf/csf.resellers" );
-    flock( $IN, LOCK_SH );
+    flock( $IN, Fcntl::LOCK_SH );
     while ( my $line = <$IN> ) {
         my ( $user, $alert, $privs ) = split( /\:/, $line );
         $privs =~ s/\s//g;
@@ -69,15 +60,12 @@ sub main {
     close($IN);
 
     open( my $HOSTNAME, "<", "/proc/sys/kernel/hostname" );
-    flock( $HOSTNAME, LOCK_SH );
+    flock( $HOSTNAME, Fcntl::LOCK_SH );
     $hostname = <$HOSTNAME>;
     chomp $hostname;
     close($HOSTNAME);
     $hostshort = ( split( /\./, $hostname ) )[0];
-    $tz        = strftime( "%z", localtime );
-
-    my $config = ConfigServer::Config->loadconfig();
-    %config = $config->config();
+    $tz        = POSIX::strftime( "%z", localtime );
 
     $panel = "cPanel";
 
@@ -101,12 +89,12 @@ sub main {
                 print "<table class='table table-bordered table-striped'>\n";
                 print "<tr><td>";
                 print "<p>Allowing $FORM{ip}...</p>\n<p><pre style='font-family: Courier New, Courier; font-size: 12px'>\n";
-                my $text = &printcmd( "/usr/sbin/csf", "-a", $FORM{ip}, "ALLOW by Reseller $ENV{REMOTE_USER} ($FORM{comment})" );
+                my $text = _printcmd( "/usr/sbin/csf", "-a", $FORM{ip}, "ALLOW by Reseller $ENV{REMOTE_USER} ($FORM{comment})" );
                 print "</p>\n<p>...<b>Done</b>.</p>\n";
                 print "</td></tr></table>\n";
                 if ( $rprivs{ $ENV{REMOTE_USER} }{ALERT} ) {
                     open( my $IN, "<", "/usr/local/csf/tpl/reselleralert.txt" );
-                    flock( $IN, LOCK_SH );
+                    flock( $IN, Fcntl::LOCK_SH );
                     my @alert = <$IN>;
                     close($IN);
                     chomp @alert;
@@ -136,12 +124,12 @@ sub main {
                 print "<table class='table table-bordered table-striped'>\n";
                 print "<tr><td>";
                 print "<p>Blocking $FORM{ip}...</p>\n<p><pre style='font-family: Courier New, Courier; font-size: 12px'>\n";
-                my $text = &printcmd( "/usr/sbin/csf", "-d", $FORM{ip}, "DENY by Reseller $ENV{REMOTE_USER} ($FORM{comment})" );
+                my $text = _printcmd( "/usr/sbin/csf", "-d", $FORM{ip}, "DENY by Reseller $ENV{REMOTE_USER} ($FORM{comment})" );
                 print "</p>\n<p>...<b>Done</b>.</p>\n";
                 print "</td></tr></table>\n";
                 if ( $rprivs{ $ENV{REMOTE_USER} }{ALERT} ) {
                     open( my $IN, "<", "/usr/local/csf/tpl/reselleralert.txt" );
-                    flock( $IN, LOCK_SH );
+                    flock( $IN, Fcntl::LOCK_SH );
                     my @alert = <$IN>;
                     close($IN);
                     chomp @alert;
@@ -165,24 +153,24 @@ sub main {
             my $text = "";
             if ( $rprivs{ $ENV{REMOTE_USER} }{ALERT} ) {
                 my ( $childin, $childout );
-                my $pid = open3( $childin, $childout, $childout, "/usr/sbin/csf", "-g", $FORM{ip} );
+                my $pid = IPC::Open3::open3( $childin, $childout, $childout, "/usr/sbin/csf", "-g", $FORM{ip} );
                 while (<$childout>) { $text .= $_ }
                 waitpid( $pid, 0 );
             }
             print "<table class='table table-bordered table-striped'>\n";
             print "<tr><td>";
             print "<p>Unblock $FORM{ip}, trying permanent blocks...</p>\n<p><pre style='font-family: Courier New, Courier; font-size: 12px'>\n";
-            my $text1 = &printcmd( "/usr/sbin/csf", "-dr", $FORM{ip} );
+            my $text1 = _printcmd( "/usr/sbin/csf", "-dr", $FORM{ip} );
             print "</p>\n<p>...<b>Done</b>.</p>\n";
             print "<p>Unblock $FORM{ip}, trying temporary blocks...</p>\n<p><pre style='font-family: Courier New, Courier; font-size: 12px'>\n";
-            my $text2 = &printcmd( "/usr/sbin/csf", "-tr", $FORM{ip} );
+            my $text2 = _printcmd( "/usr/sbin/csf", "-tr", $FORM{ip} );
             print "</p>\n<p>...<b>Done</b>.</p>\n";
             print "</td></tr></table>\n";
             print "<p><form action='$script' method='post'><input type='hidden' name='mobi' value='$FORM{mobi}'><input type='submit' class='btn btn-default' value='Return'></form></p>\n";
 
             if ( $rprivs{ $ENV{REMOTE_USER} }{ALERT} ) {
                 open( my $IN, "<", "/usr/local/csf/tpl/reselleralert.txt" );
-                flock( $IN, LOCK_SH );
+                flock( $IN, Fcntl::LOCK_SH );
                 my @alert = <$IN>;
                 close($IN);
                 chomp @alert;
@@ -204,7 +192,7 @@ sub main {
             print "<table class='table table-bordered table-striped'>\n";
             print "<tr><td>";
             print "<p>Searching for $FORM{ip}...</p>\n<p><pre style='font-family: Courier New, Courier; font-size: 12px'>\n";
-            &printcmd( "/usr/sbin/csf", "-g", $FORM{ip} );
+            _printcmd( "/usr/sbin/csf", "-g", $FORM{ip} );
             print "</p>\n<p>...<b>Done</b>.</p>\n";
             print "</td></tr></table>\n";
             print "<p><form action='$script' method='post'><input type='submit' class='btn btn-default' value='Return'></form></p>\n";
@@ -233,20 +221,14 @@ sub main {
     return;
 }
 
-# end main
-###############################################################################
-# start printcmd
-sub printcmd {
+sub _printcmd {
     my @command = @_;
     my $text;
     my ( $childin, $childout );
-    my $pid = open3( $childin, $childout, $childout, @command );
+    my $pid = IPC::Open3::open3( $childin, $childout, $childout, @command );
     while (<$childout>) { print $_; $text .= $_ }
     waitpid( $pid, 0 );
     return $text;
 }
-
-# end printcmd
-###############################################################################
 
 1;
