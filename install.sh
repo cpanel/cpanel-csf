@@ -251,51 +251,23 @@ chmod 700 /etc/cron.daily/csget
 chmod -v 700 auto.pl
 ./auto.pl $OLDVERSION
 
-mkdir /usr/local/cpanel/whostmgr/docroot/cgi/configserver
+# Install cPanel CGI files.
+mkdir -p  /usr/local/cpanel/whostmgr/docroot/cgi/configserver/csf
 chmod 700 /usr/local/cpanel/whostmgr/docroot/cgi/configserver
-mkdir /usr/local/cpanel/whostmgr/docroot/cgi/configserver/csf
 chmod 700 /usr/local/cpanel/whostmgr/docroot/cgi/configserver/csf
-
 cp -avf cpanel/csf.cgi /usr/local/cpanel/whostmgr/docroot/cgi/configserver/csf.cgi
 chmod -v 700 /usr/local/cpanel/whostmgr/docroot/cgi/configserver/csf.cgi
 
 cp -avf csf/ /usr/local/cpanel/whostmgr/docroot/cgi/configserver/
-cp -avf cpanel/Driver /usr/local/cpanel/whostmgr/docroot/cgi/configserver/csf/
 cp -avf ui/images/icon.gif /usr/local/cpanel/whostmgr/docroot/themes/x/icons/csf.gif
 cp -avf cpanel/csf.tmpl /usr/local/cpanel/whostmgr/docroot/templates/
 
-VERSION=`cat /usr/local/cpanel/version | cut -d '.' -f2`
-if [ "$VERSION" -lt "65" ]; then
-    sed -i "s/^target=.*$/target=mainFrame/" cpanel/csf.conf
-    echo "cPanel v$VERSION, target set to mainFrame"
-else
-    sed -i "s/^target=.*$/target=_self/" cpanel/csf.conf
-    echo "cPanel v$VERSION, target set to _self"
-fi
+/bin/cp -af cpanel/Driver/* /usr/local/cpanel/Cpanel/Config/ConfigObj/Driver/
+/bin/touch /usr/local/cpanel/Cpanel/Config/ConfigObj/Driver
 
-cp -avf cpanel/csf.conf /usr/local/cpanel/whostmgr/docroot/cgi/configserver/csf/csf.conf
-cp -avf cpanel/upgrade.sh /usr/local/cpanel/whostmgr/docroot/cgi/configserver/csf/upgrade.sh
-chmod 700 /usr/local/cpanel/whostmgr/docroot/cgi/configserver/csf/upgrade.sh
+/usr/local/cpanel/bin/register_appconfig cpanel/csf.conf
 
-if [ -e "/usr/local/cpanel/bin/register_appconfig" ]; then
-    /bin/cp -af /usr/local/cpanel/whostmgr/docroot/cgi/configserver/csf/Driver/* /usr/local/cpanel/Cpanel/Config/ConfigObj/Driver/
-    /bin/touch /usr/local/cpanel/Cpanel/Config/ConfigObj/Driver
-
-    /usr/local/cpanel/bin/register_appconfig /usr/local/cpanel/whostmgr/docroot/cgi/configserver/csf/csf.conf
-    /bin/rm -f /usr/local/cpanel/whostmgr/docroot/cgi/addon_csf.cgi
-    /bin/rm -Rf /usr/local/cpanel/whostmgr/docroot/cgi/csf
-else
-    cp -avf cpanel/csf.cgi /usr/local/cpanel/whostmgr/docroot/cgi/addon_csf.cgi
-    chmod -v 700 /usr/local/cpanel/whostmgr/docroot/cgi/addon_csf.cgi
-    cp -avf csf/ /usr/local/cpanel/whostmgr/docroot/cgi/
-    if [ ! -d "/var/cpanel/apps" ]; then
-        mkdir /var/cpanel/apps
-        chmod 755 /var/cpanel/apps
-    fi
-    /bin/cp -avf cpanel/csf.conf.old /var/cpanel/apps/csf.conf
-    chmod 600 /var/cpanel/apps/csf.conf
-fi
-
+# ####
 if test `cat /proc/1/comm` = "systemd"
 then
     if [ -e /etc/init.d/lfd ]; then
