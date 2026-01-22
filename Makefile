@@ -1,11 +1,20 @@
-.PHONY: all test man install sandbox
+.PHONY: sandbox test man install
 
-all:
+ULC=/usr/local/cpanel
+sandbox:
 	mkdir -p /usr/local/csf
 	ln -sfn $(CURDIR)/lib /usr/local/csf/lib
 	if [ ! -d /etc/csf ] || [ -L /etc/csf ]; then ln -sfn $(CURDIR)/etc /etc/csf; fi
 	mkdir -p /usr/local/man/man1
 	ln -sfn $(CURDIR)/csf.1.txt /usr/local/man/man1/csf.1
+	mkdir -p $(ULC)/whostmgr/cgi/configserver/csf
+	test -e $(ULC)/whostmgr/cgi/configserver/csf.cgi && rm -f $(ULC)/whostmgr/cgi/configserver/csf.cgi; /bin/true
+	ln -s $(CURDIR)/cpanel/csf.cgi $(ULC)/whostmgr/cgi/configserver/csf.cgi
+	test -e $(ULC)/whostmgr/docroot/templates/csf.tmpl && rm -f $(ULC)/whostmgr/docroot/templates/csf.tmpl; /bin/true
+	ln -s $(CURDIR)/cpanel/csf.tmpl $(ULC)/whostmgr/docroot/templates/csf.tmpl
+	$(ULC)/bin/register_appconfig cpanel/csf.conf
+	test -e $(ULC)/whostmgr/cgi/configserver/csf/configserver.css && rm -f $(ULC)/whostmgr/cgi/configserver/csf/configserver.css; /bin/true
+	ln -s $(CURDIR)/csf/configserver.css $(ULC)/whostmgr/cgi/configserver/csf/configserver.css
 
 clean:
 	rm -rf csf.tar.gz
@@ -53,11 +62,3 @@ install: lib/csf.help
 		csget.pl \
 		auto.pl
 	@echo "Created csf.tar.gz"
-
-sandbox:
-	mkdir -p /usr/local/cpanel/whostmgr/cgi/configserver
-	test -e /usr/local/cpanel/whostmgr/cgi/configserver/csf.cgi && rm -f /usr/local/cpanel/whostmgr/cgi/configserver/csf.cgi
-	ln -s $(CURDIR)/cpanel/csf.cgi /usr/local/cpanel/whostmgr/cgi/configserver/csf.cgi
-	test -e /usr/local/cpanel/whostmgr/docroot/templates/csf.tmpl && rm -f /usr/local/cpanel/whostmgr/docroot/templates/csf.tmpl
-	ln -s $(CURDIR)/cpanel/csf.tmpl /usr/local/cpanel/whostmgr/docroot/templates/csf.tmpl
-	/usr/local/cpanel/bin/register_appconfig cpanel/csf.conf
