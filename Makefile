@@ -15,6 +15,8 @@ sandbox:
 	$(ULC)/bin/register_appconfig cpanel/csf.conf
 	test -e $(ULC)/whostmgr/cgi/configserver/csf/configserver.css && rm -f $(ULC)/whostmgr/cgi/configserver/csf/configserver.css; /bin/true
 	ln -s $(CURDIR)/csf/configserver.css $(ULC)/whostmgr/cgi/configserver/csf/configserver.css
+	test -e $(ULC)/whostmgr/docroot/libraries/jquery-ui && rm -f $(ULC)/whostmgr/docroot/libraries/jquery-ui; /bin/true
+	ln -s $(ULC)/3rdparty/share/jquery-ui $(ULC)/whostmgr/docroot/libraries/jquery-ui
 
 clean:
 	rm -rf csf.tar.gz

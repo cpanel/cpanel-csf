@@ -183,7 +183,6 @@ EOF
     if ( $reregister ne "" ) { print $reregister }
 }
 
-#eval {
 if ($reseller) {
     ConfigServer::DisplayResellerUI::main( \%FORM, $script, 0, $images, $myv );
 }
@@ -191,117 +190,7 @@ else {
     ConfigServer::DisplayUI::main( \%FORM, $script, 0, $images, $myv );
 }
 
-#};
-#if ($@) {
-#	print "Error during UI output generation: [$@]\n";
-#	warn "Error during UI output generation: [$@]\n";
-#}
-
 unless ( $FORM{action} eq "tailcmd" or $FORM{action} =~ /^cf/ or $FORM{action} eq "logtailcmd" or $FORM{action} eq "loggrepcmd" ) {
-    print <<EOF;
-<script>
-function getCookie(cname) {
-	var name = cname + "=";
-	var ca = document.cookie.split(';');
-	for(var i = 0; i <ca.length; i++) {
-		var c = ca[i];
-		while (c.charAt(0)==' ') {
-			c = c.substring(1);
-		}
-		if (c.indexOf(name) == 0) {
-			return c.substring(name.length,c.length);
-		}
-	}
-	return "";
-} 
-\$("#loader").hide();
-\$("#docs-link").hide();
-\$.fn.scrollBottom = function() { 
-  return \$(document).height() - this.scrollTop() - this.height(); 
-};
-\$('#botlink').on("click",function(){
-	\$('html,body').animate({ scrollTop: 0 }, 'slow', function () {});
-});
-\$('#toplink').on("click",function() {
-	var window_height = \$(window).height();
-	var document_height = \$(document).height();
-	\$('html,body').animate({ scrollTop: window_height + document_height }, 'slow', function () {});
-});
-\$('#tabAll').click(function(){
-	\$('#tabAll').addClass('active');  
-	\$('.tab-pane').each(function(i,t){
-		\$('#myTabs li').removeClass('active'); 
-		\$(this).addClass('active');  
-	});
-});
-\$(document).ready(function(){
-	\$('[data-tooltip="tooltip"]').tooltip();
-	\$(window).scroll(function () {
-		if (\$(this).scrollTop() > 500) {
-			\$('#botlink').fadeIn();
-		} else {
-			\$('#botlink').fadeOut();
-		}
-		if (\$(this).scrollBottom() > 500) {
-			\$('#toplink').fadeIn();
-		} else {
-			\$('#toplink').fadeOut();
-		}
-	});
-EOF
-    if ( $config{STYLE_MOBILE} or $reseller ) {
-        print <<EOF;
-	var csfview = getCookie('csfview');
-	if (csfview == 'mobile') {
-		\$(".mobilecontainer").css('display','block');
-		\$(".normalcontainer").css('display','none');
-		\$("#csfreturn").addClass('btn-primary btn-lg btn-block').removeClass('btn-default');
-	} else if (csfview == 'desktop') {
-		\$(".mobilecontainer").css('display','none');
-		\$(".normalcontainer").css('display','block');
-		\$("#csfreturn").removeClass('btn-primary btn-lg btn-block').addClass('btn-default');
-	}
-	if (top.location == location) {
-		\$("#cpframetr2").show();
-	} else {
-		\$("#cpframetr2").hide();
-	}
-	if (\$(".mobilecontainer").css('display') == 'block' ) {
-		document.cookie = "csfview=mobile; path=/";
-		if (top.location != location) {
-			top.location.href = document.location.href ;
-		}
-	}
-	\$(window).resize(function() {
-		if (\$(".mobilecontainer").css('display') == 'block' ) {
-			document.cookie = "csfview=mobile; path=/";
-			if (top.location != location) {
-				top.location.href = document.location.href ;
-			}
-		}
-	});
-EOF
-    }
-    print "});\n";
-    if ( $config{STYLE_MOBILE} or $reseller ) {
-        print <<EOF;
-\$("#NormalView").click(function(){
-	document.cookie = "csfview=desktop; path=/";
-	\$(".mobilecontainer").css('display','none');
-	\$(".normalcontainer").css('display','block');
-});
-\$("#MobileView").click(function(){
-	document.cookie = "csfview=mobile; path=/";
-	if (top.location == location) {
-		\$(".normalcontainer").css('display','none');
-		\$(".mobilecontainer").css('display','block');
-	} else {
-		top.location.href = document.location.href;
-	}
-});
-EOF
-    }
-    print "</script>\n";
     print @footer;
 }
 unless ( $FORM{action} eq "tailcmd" or $FORM{action} =~ /^cf/ or $FORM{action} eq "logtailcmd" or $FORM{action} eq "loggrepcmd" ) {
@@ -313,6 +202,8 @@ unless ( $FORM{action} eq "tailcmd" or $FORM{action} =~ /^cf/ or $FORM{action} e
             "template_file"     => "${thisapp}.tmpl",
             "${thisapp}_output" => $templatehtml,
             "print"             => 1,
+            'config'            => \%config,
+            'reseller'          => $reseller,
         }
     );
 }

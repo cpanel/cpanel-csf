@@ -1,14 +1,124 @@
 [%
- 
+USE Whostmgr;
+
+# The jquery that's loaded by default is straight up broken, and you can't
+# just pass it into scripts and get it to work. As such just jam it in.
+SET JQUERY = Whostmgr.find_file_url('libraries/jquery/current/jquery.min.js');
+# Also, this uses JQuery UI, but never loaded it??? Maybe it was bundled before?
+SET JQ_UI  = Whostmgr.find_file_url('libraries/jquery-ui/current/jquery-ui.min.js');
+
 WRAPPER 'master_templates/master.tmpl'
-	header = 'ConfigServer Security &amp; Firewall'
-	skipsupport = 1
-	hide_license_warnings = 1
-    stylesheets=Whostmgr.find_file_url('/3rdparty/bootstrap-rtl/optimized/dist/css/bootstrap-rtl.min.css')
-	theme='bootstrap'
-    breadcrumburl='/cgi/configserver/csf.cgi'
+	header = 'ConfigServer Security &amp; Firewall',
+	hide_license_warnings = 1,
+    stylesheets=[
+        Whostmgr.find_file_url('3rdparty/bootstrap-rtl/optimized/dist/css/bootstrap-rtl.min.css'),
+        Whostmgr.find_file_url('libraries/jquery-ui/current/jquery-ui.min.css'),
+    ],
+	theme='bootstrap',
+    breadcrumburl='/cgi/configserver/csf.cgi',
 %]
- 
+
 [% csf_output %]
+
+<script type="text/javascript" src="[% JQUERY %]"></script>
+<script type="text/javascript" src="[% JQ_UI  %]"></script>
+<script type="text/javascript">
+function getCookie(cname) {
+	var name = cname + "=";
+	var ca = document.cookie.split(';');
+	for(var i = 0; i <ca.length; i++) {
+		var c = ca[i];
+		while (c.charAt(0)==' ') {
+			c = c.substring(1);
+		}
+		if (c.indexOf(name) == 0) {
+			return c.substring(name.length,c.length);
+		}
+	}
+	return "";
+}
+$(document).ready(function() {
+    $("#loader").hide();
+    $("#docs-link").hide();
+    $.fn.scrollBottom = function() { 
+      return $(document).height() - this.scrollTop() - this.height(); 
+    };
+    $('#botlink').on("click",function(){
+        $('html,body').animate({ scrollTop: 0 }, 'slow', function () {});
+    });
+    $('#toplink').on("click",function() {
+        var window_height = $(window).height();
+        var document_height = $(document).height();
+        $('html,body').animate({ scrollTop: window_height + document_height }, 'slow', function () {});
+    });
+    $('#tabAll').click(function(){
+        $('#tabAll').addClass('active');  
+        $('.tab-pane').each(function(i,t){
+            $('#myTabs li').removeClass('active'); 
+            $(this).addClass('active');  
+        });
+    });
+
+	$('[data-tooltip="tooltip"]').tooltip();
+	$(window).scroll(function () {
+		if ($(this).scrollTop() > 500) {
+			$('#botlink').fadeIn();
+		} else {
+			$('#botlink').fadeOut();
+		}
+		if ($(this).scrollBottom() > 500) {
+			$('#toplink').fadeIn();
+		} else {
+			$('#toplink').fadeOut();
+		}
+	});
+
+    [% IF config.STYLE_MOBILE || reseller %]
+	var csfview = getCookie('csfview');
+	if (csfview == 'mobile') {
+		$(".mobilecontainer").css('display','block');
+		$(".normalcontainer").css('display','none');
+		$("#csfreturn").addClass('btn-primary btn-lg btn-block').removeClass('btn-default');
+	} else if (csfview == 'desktop') {
+		$(".mobilecontainer").css('display','none');
+		$(".normalcontainer").css('display','block');
+		$("#csfreturn").removeClass('btn-primary btn-lg btn-block').addClass('btn-default');
+	}
+	if (top.location == location) {
+		$("#cpframetr2").show();
+	} else {
+		$("#cpframetr2").hide();
+	}
+	if ($(".mobilecontainer").css('display') == 'block' ) {
+		document.cookie = "csfview=mobile; path=/";
+		if (top.location != location) {
+			top.location.href = document.location.href ;
+		}
+	}
+	$(window).resize(function() {
+		if ($(".mobilecontainer").css('display') == 'block' ) {
+			document.cookie = "csfview=mobile; path=/";
+			if (top.location != location) {
+				top.location.href = document.location.href ;
+			}
+		}
+	});
+    $("#NormalView").click(function(){
+        document.cookie = "csfview=desktop; path=/";
+        $(".mobilecontainer").css('display','none');
+        $(".normalcontainer").css('display','block');
+    });
+    $("#MobileView").click(function(){
+        document.cookie = "csfview=mobile; path=/";
+        if (top.location == location) {
+            $(".normalcontainer").css('display','none');
+            $(".mobilecontainer").css('display','block');
+        } else {
+            top.location.href = document.location.href;
+        }
+    });
+    [% END %]
+});
+</script>
 
 [% END %]
