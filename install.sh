@@ -38,7 +38,6 @@ if [ ! -e "install.sh" ]; then
 fi
 
 mkdir -v -m 0600 /etc/csf
-cp -avf install.txt /etc/csf/
 
 echo
 echo "Checking Perl modules..."
@@ -68,20 +67,28 @@ if [ -e "/etc/csf/alert.txt" ]; then
 	sh migratedata.sh
 fi
 
-# Copy config files from etc/ directory to /etc/csf/
-for file in etc/*; do
-	# Skip directories - they're handled separately
-	if [ -d "$file" ]; then
-		continue
+# Copy config files from etc/ directory to /etc/csf/ (recursively)
+find etc -type f | while read file; do
+	# Get relative path from etc/
+	relpath="${file#etc/}"
+	destfile="/etc/csf/$relpath"
+	destdir=$(dirname "$destfile")
+
+	# Create directory structure if needed
+	if [ ! -d "$destdir" ]; then
+		mkdir -p "$destdir"
 	fi
-	filename=$(basename "$file")
-	if [ ! -e "/etc/csf/$filename" ]; then
-		cp -avf "$file" /etc/csf/.
+
+	if [ ! -e "$destfile" ]; then
+		cp -avf "$file" "$destfile"
 	else
 		# For existing files that should be updated, create a .new version
-		case "$filename" in
+		case "$(basename "$file")" in
 			csf.blocklists)
-				cp -avf "$file" /etc/csf/$filename.new
+				cp -avf "$file" "$destfile.new"
+				;;
+			index.recaptcha.html)
+				cp -avf "$file" "$destfile"
 				;;
 		esac
 	fi
@@ -119,15 +126,6 @@ for file in bin/*; do
 	esac
 done
 
-if [ ! -e "/etc/csf/messenger" ]; then
-	cp -avf etc/messenger /etc/csf/.
-fi
-if [ ! -e "/etc/csf/messenger/index.recaptcha.html" ]; then
-	cp -avf etc/messenger/index.recaptcha.html /etc/csf/messenger/.
-fi
-if [ ! -e "/etc/csf/ui" ]; then
-	cp -avf ui /etc/csf/.
-fi
 if [ -e "/etc/cron.d/csfcron.sh" ]; then
 	mv -fv /etc/cron.d/csfcron.sh /etc/cron.d/csf-cron
 fi
@@ -199,30 +197,15 @@ fi
 chcon -h system_u:object_r:bin_t:s0 /usr/sbin/lfd
 chcon -h system_u:object_r:bin_t:s0 /usr/sbin/csf
 
-mkdir ui/images
-mkdir da/images
-
-cp -avf csf/* ui/images/
-cp -avf csf/* da/images/
-
-cp -avf etc/messenger/*.php /etc/csf/messenger/
-cp -avf csf/csf_small.png /usr/local/cpanel/whostmgr/docroot/addon_plugins/
-cp -avf readme.txt /etc/csf/
+cp -avf etc/ui/images/csf_small.png /usr/local/cpanel/whostmgr/docroot/addon_plugins/
 cp -avf sanity.txt /usr/local/csf/lib/
 cp -avf csf.rbls /usr/local/csf/lib/
 cp -avf restricted.txt /usr/local/csf/lib/
-cp -avf changelog.txt /etc/csf/
-cp -avf downloadservers /etc/csf/
-cp -avf install.txt /etc/csf/
-cp -avf version.txt /etc/csf/
-cp -avf license.txt /etc/csf/
 cp -avf ConfigServer /usr/local/csf/lib/
 cp -avf csf.div /usr/local/csf/lib/
 cp -avf csfajaxtail.js /usr/local/csf/lib/
-cp -avf ui/images /etc/csf/ui/.
 cp -avf profiles /usr/local/csf/
 cp -avf etc/csf.conf /usr/local/csf/profiles/reset_to_defaults.conf
-cp -avf etc/messenger/*.php /etc/csf/messenger/.
 cp -avf lfd.logrotate /etc/logrotate.d/lfd
 
 rm -fv /etc/csf/csf.spamhaus /etc/csf/csf.dshield /etc/csf/csf.tor /etc/csf/csf.bogon
@@ -263,7 +246,7 @@ cp -avf cpanel/csf.cgi /usr/local/cpanel/whostmgr/docroot/cgi/configserver/csf.c
 chmod -v 700 /usr/local/cpanel/whostmgr/docroot/cgi/configserver/csf.cgi
 
 cp -avf csf/ /usr/local/cpanel/whostmgr/docroot/cgi/configserver/
-cp -avf ui/images/icon.gif /usr/local/cpanel/whostmgr/docroot/themes/x/icons/csf.gif
+cp -avf etc/ui/images/icon.gif /usr/local/cpanel/whostmgr/docroot/themes/x/icons/csf.gif
 cp -avf cpanel/csf.tmpl /usr/local/cpanel/whostmgr/docroot/templates/
 
 /bin/cp -af cpanel/Driver/* /usr/local/cpanel/Cpanel/Config/ConfigObj/Driver/
