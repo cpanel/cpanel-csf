@@ -25,6 +25,7 @@ description: "Perl development standards, module patterns, and Perl conventions"
 
 - Prefer idiomatic Perl over least common denominator Perl.
 - Always disable imports: use `use Module ();` instead of `use Module;`.
+  - **Exception**: `Data::Dumper` may be imported without `()` as `use Data::Dumper;` since `Dumper` is commonly used for debugging.
 - Always use fully qualified names when referencing functions or variables from another package.
 - Use `unless` sparingly; prefer when it reads more naturally than `if (!$cond)`.
 - When refactoring modules, remove `use Exporter` and related variables (`@EXPORT`, `@EXPORT_OK`) if the module is not exporting anything. You should also remove `@ISA` if it's only there for `Exporter`.
