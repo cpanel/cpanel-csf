@@ -176,9 +176,7 @@ EOF
 
 unless ( $FORM{action} eq "tailcmd" or $FORM{action} =~ /^cf/ or $FORM{action} eq "logtailcmd" or $FORM{action} eq "loggrepcmd" ) {
     print <<EOF;
-<div id="loader"></div><br />
-<div class='panel panel-default'>
-<h4><img src='$images/csf_small.png' style='padding-left: 10px'> ConfigServer Security &amp; Firewall - csf v$myv</h4></div>
+<div id="loader"></div>
 EOF
     if ( $reregister ne "" ) { print $reregister }
 }
@@ -204,6 +202,8 @@ unless ( $FORM{action} eq "tailcmd" or $FORM{action} =~ /^cf/ or $FORM{action} e
             "print"             => 1,
             'config'            => \%config,
             'reseller'          => $reseller,
+            'app_key'           => 'csf', # Both this and icon work around failures of Whostmgr's templates/appconfig code to do the right thing.
+            'icon'              => 'csf_small.png',
         }
     );
 }
