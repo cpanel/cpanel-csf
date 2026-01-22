@@ -133,13 +133,12 @@ subtest 'slurp() handles empty lines between content' => sub {
 # Test slurp with non-existent file
 subtest 'slurp() handles non-existent file' => sub {
     my @lines;
-    my $warnings = warnings {
+    my $exception = dies {
         @lines = ConfigServer::Slurp::slurp('/nonexistent/path/to/file.txt');
     };
 
-    ok( scalar @$warnings > 0, 'Generates warning for non-existent file' );
-    like( $warnings->[0], qr/File does not exist/, 'Warning message mentions file does not exist' );
-    is( scalar @lines, 0, 'Returns empty list for non-existent file' );
+    ok( $exception, 'Throws exception for non-existent file' );
+    like( $exception, qr/FileNotFound/, 'Exception indicates file not found' );
 };
 
 # Test slurp with special characters

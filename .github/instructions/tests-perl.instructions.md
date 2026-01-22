@@ -13,6 +13,23 @@ description: "Perl unit testing conventions using Test2 framework"
 For example `ConfigServer::AbuseIP` package, which exists on disk at `lib/ConfigServer/AbuseIP.pm` will have all their tests in multiple files like
 `t/ConfigServer-AbuseIP.t` or `t/ConfigServer-AbuseIP_*.t`.
 
+## Test File Structure
+
+### Shebang Line (REQUIRED)
+
+**Every test file MUST begin with the following shebang line:**
+
+```perl
+#!/usr/local/cpanel/3rdparty/bin/perl
+```
+
+**DO NOT use:**
+- `#!/usr/bin/perl` ❌
+- `#!/bin/perl` ❌
+- `#!/usr/bin/env perl` ❌
+
+The correct shebang points to the cPanel-specific Perl installation which includes all required dependencies and ensures consistency across environments.
+
 ## Test Framework
 
 When writing tests prefer using Test2 framework.
@@ -380,7 +397,7 @@ If a module cannot be properly mocked with Test2::Mock (e.g., due to XS code, co
 ## Example header code.
 This is what the header for most tests should look like, depending on the year you modified the file.
 
-```
+```perl
 #!/usr/local/cpanel/3rdparty/bin/perl
 
 #                                      Copyright 2025 WebPros International, LLC
@@ -388,14 +405,21 @@ This is what the header for most tests should look like, depending on the year y
 # copyright@cpanel.net                                         http://cpanel.net
 # This code is subject to the cPanel license. Unauthorized copying is prohibited.
 
-use strict;
-use warnings;
+use cPstrict;
 
 use Test2::V0;
 use Test2::Tools::Explain;
 use Test2::Plugin::NoWarnings;
 ```
-- Insert the current year in copyright as a static value (e.g., 2025) based on the system date at the time
+
+**IMPORTANT:** Test files MUST use `use cPstrict;` after the copyright header.
+
+- `cPstrict` is a cPanel pragma that enforces strict coding standards and includes `use strict;` and `use warnings;`
+- It should be placed immediately after the copyright block and before any Test2 imports
+- Do NOT use `use strict;` and `use warnings;` separately - use `cPstrict` instead
+- Note: While `Test2::V0` also enables `strict` and `warnings`, `cPstrict` must still be explicitly declared for consistency with cPanel standards
+
+Insert the current year in copyright as a static value (e.g., 2025) based on the system date at the time
 of generation.
 
 ## Test2 Framework Guide

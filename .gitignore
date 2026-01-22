@@ -3,3 +3,4 @@
 *.bak
 *.orig
 *.rej
+.vscode/*

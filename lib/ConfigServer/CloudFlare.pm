@@ -16,40 +16,82 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, see <https://www.gnu.org/licenses>.
 ###############################################################################
-# no critic (RequireUseWarnings, ProhibitExplicitReturnUndef, ProhibitMixedBooleanOperators, RequireBriefOpen)
-# start main
+
 package ConfigServer::CloudFlare;
 
-use strict;
-use lib '/usr/local/csf/lib';
-use Carp;
-use Fcntl qw(:DEFAULT :flock);
-use JSON::Tiny();
-use LWP::UserAgent;
-use Time::Local();
-use ConfigServer::Config;
-use ConfigServer::Slurp  qw(slurp);
-use ConfigServer::Logger qw(logfile);
-use YAML::Tiny;
+=head1 NAME
+
+ConfigServer::CloudFlare - CloudFlare API integration for CSF firewall management
+
+=head1 SYNOPSIS
+
+    use ConfigServer::CloudFlare;
+
+    # Block an IP address
+    ConfigServer::CloudFlare::action("deny", "1.2.3.4", "block", "", "example.com", 1);
+
+    # Whitelist an IP address
+    ConfigServer::CloudFlare::action("allow", "1.2.3.4", "whitelist", "", "example.com", 1);
+
+    # Remove an IP from CloudFlare
+    ConfigServer::CloudFlare::action("remove", "1.2.3.4", "block");
+
+    # Get CloudFlare scope configuration
+    my $scope = ConfigServer::CloudFlare::getscope();
+
+=head1 DESCRIPTION
+
+This module provides integration between ConfigServer Security & Firewall (CSF) and CloudFlare's
+Firewall API. It allows CSF to automatically add, remove, and manage IP addresses in CloudFlare's
+firewall rules, providing an additional layer of protection at the edge.
+
+The module supports multiple CloudFlare accounts and can be configured to work with specific domains
+or all domains associated with a user account.
+
+=cut
+
+use cPstrict;
+
+use Fcntl          ();
+use JSON::Tiny     ();
+use LWP::UserAgent ();
+use Time::Local    ();
+use YAML::Tiny     ();
+
 use Data::Dumper;
 
-use Exporter qw(import);
-our $VERSION   = 1.00;
-our @ISA       = qw(Exporter);
-our @EXPORT_OK = qw();
+use ConfigServer::Config ();
+use ConfigServer::Slurp  ();
+use ConfigServer::Logger qw(logfile);
 
-my $config = ConfigServer::Config->loadconfig();
-my %config = $config->config();
+our $VERSION = 1.00;
 
-my $slurpreg = ConfigServer::Slurp->slurpreg;
-my $cleanreg = ConfigServer::Slurp->cleanreg;
+my %args = ( 'content-type' => 'application/json' );
 
-my %args;
-$args{"content-type"} = "application/json";
+=head2 action($action, $ip, $mode, $id, $domainlist, $allowany)
 
-# end main
-###############################################################################
-# start action
+Main entry point for CloudFlare firewall operations.
+
+=over 4
+
+=item * C<$action> - Action to perform: "deny", "allow", "remove", "del", "add", "getlist"
+
+=item * C<$ip> - IP address to operate on
+
+=item * C<$mode> - Firewall mode: "block", "challenge", "whitelist"
+
+=item * C<$id> - Optional CloudFlare rule ID for removal operations
+
+=item * C<$domainlist> - Comma-separated list of domains to apply the action to
+
+=item * C<$allowany> - Boolean flag to apply action to all domains if configured
+
+=back
+
+Returns status message or array of results depending on action.
+
+=cut
+
 sub action {
     my $action     = shift;
     my $ip         = shift;
@@ -61,16 +103,18 @@ sub action {
     my $status;
     my $return;
 
-    if     ( $config{DEBUG} == 1 ) { logfile("Debug: CloudFlare - [$action] [$ip] [$mode] [$id] [$domainlist] [$allowany]") }
-    unless ( $config{URLGET} ) {
+    my $DEBUG = ConfigServer::Config->get_config('DEBUG');
+
+    if     ( $DEBUG == 1 ) { logfile("Debug: CloudFlare - [$action] [$ip] [$mode] [$id] [$domainlist] [$allowany]") }
+    unless ( ConfigServer::Config->get_config('URLGET') ) {
         logfile("CloudFlare: URLGET must be set to 1 to use LWP for this feature");
         return;
     }
 
     if ( $action eq "remove" ) {
         my @newfile;
-        sysopen( my $TEMP, "/var/lib/csf/cloudflare.temp", O_RDWR | O_CREAT );
-        flock( $TEMP, LOCK_EX );
+        sysopen( my $TEMP, "/var/lib/csf/cloudflare.temp", Fcntl::O_RDWR | Fcntl::O_CREAT );
+        flock( $TEMP, Fcntl::LOCK_EX );
         my $hit;
         while ( my $line = <$TEMP> ) {
             chomp $line;
@@ -80,7 +124,7 @@ sub action {
                 $args{"X-Auth-Email"} = $raccount;
                 $args{"X-Auth-Key"}   = $rapikey;
 
-                $status = &remove( $ip, $mode, $rid );
+                $status = _remove( $ip, $mode, $rid );
                 logfile( $status . " ($user)" );
                 $hit = 1;
             }
@@ -107,7 +151,7 @@ sub action {
             $domains{$domain} = 1;
         }
 
-        my $scope = &getscope();
+        my $scope = getscope();
 
         foreach my $user ( keys %{ $scope->{user} } ) {
             if ( $allowany and ( $scope->{user}{$user}{domain} eq "any" or $scope->{user}{$user}{any} ) ) {
@@ -136,35 +180,35 @@ sub action {
             my $user = $authlist{$account}{user};
 
             if ( $action eq "deny" ) {
-                my ( $id, $status ) = &block($ip);
+                my ( $id, $status ) = _block($ip);
                 logfile( $status . " ($user)" );
-                sysopen( my $TEMP, "/var/lib/csf/cloudflare.temp", O_WRONLY | O_APPEND | O_CREAT );
-                flock( $TEMP, LOCK_EX );
+                sysopen( my $TEMP, "/var/lib/csf/cloudflare.temp", Fcntl::O_WRONLY | Fcntl::O_APPEND | Fcntl::O_CREAT );
+                flock( $TEMP, Fcntl::LOCK_EX );
                 print $TEMP "$ip|$mode|$user|$account|$authlist{$account}{apikey}|$id|" . time . "\n";
                 close($TEMP);
             }
             elsif ( $action eq "allow" ) {
-                my ( $id, $status ) = &whitelist($ip);
+                my ( $id, $status ) = _whitelist($ip);
                 logfile( $status . " ($user)" );
-                sysopen( my $TEMP, "/var/lib/csf/cloudflare.temp", O_WRONLY | O_APPEND | O_CREAT );
-                flock( $TEMP, LOCK_EX );
+                sysopen( my $TEMP, "/var/lib/csf/cloudflare.temp", Fcntl::O_WRONLY | Fcntl::O_APPEND | Fcntl::O_CREAT );
+                flock( $TEMP, Fcntl::LOCK_EX );
                 print $TEMP "$ip|$mode|$user|$account|$authlist{$account}{apikey}|$id|" . time . "\n";
                 close($TEMP);
             }
             elsif ( $action eq "del" ) {
-                my $status = &remove( $ip, $mode );
+                my $status = _remove( $ip, $mode );
                 print "csf - $status ($user)\n";
             }
             elsif ( $action eq "add" ) {
                 my $id;
                 my $status;
-                if ( $mode eq "block" )     { ( $id, $status ) = &block($ip) }
-                if ( $mode eq "challenge" ) { ( $id, $status ) = &challenge($ip) }
-                if ( $mode eq "whitelist" ) { ( $id, $status ) = &whitelist($ip) }
+                if ( $mode eq "block" )     { ( $id, $status ) = _block($ip) }
+                if ( $mode eq "challenge" ) { ( $id, $status ) = _challenge($ip) }
+                if ( $mode eq "whitelist" ) { ( $id, $status ) = _whitelist($ip) }
                 print "csf - $status ($user)\n";
             }
             elsif ( $action eq "getlist" ) {
-                push @list, &getlist($user);
+                push @list, _getlist($user);
             }
         }
         if ( $action eq "getlist" ) { return @list }
@@ -173,17 +217,22 @@ sub action {
     return;
 }
 
-# end action
-###############################################################################
-# start block
-sub block {
+sub _block {
     my $ip     = shift;
-    my $target = &checktarget($ip);
+    my $target = _checktarget($ip);
 
-    my $block->{mode} = $config{CF_BLOCK};
-    $block->{configuration}->{target} = $target;
-    $block->{configuration}->{value}  = $ip;
-    $block->{notes}                   = "csf $config{CF_BLOCK}";
+    my $DEBUG = ConfigServer::Config->get_config('DEBUG');
+
+    my $cf_block = ConfigServer::Config->get_config('CF_BLOCK');
+
+    my $block = {
+        mode          => $cf_block,
+        configuration => {
+            target => $target,
+            value  => $ip,
+        },
+        notes => "csf $cf_block",
+    };
 
     my $content;
     eval {
@@ -196,31 +245,34 @@ sub block {
 
     if ( $res->is_success ) {
         my $id = JSON::Tiny::decode_json( $res->content );
-        return $id->{result}->{id}, "CloudFlare: $config{CF_BLOCK} $target $ip";
+        return $id->{result}->{id}, "CloudFlare: $cf_block $target $ip";
     }
     else {
-        if    ( $config{DEBUG} == 1 ) { print "Debug: " . $res->content . "\n" }
-        elsif ( $config{DEBUG} >= 2 ) {
+        if    ( $DEBUG == 1 ) { print "Debug: " . $res->content . "\n" }
+        elsif ( $DEBUG >= 2 ) {
             eval {
                 local $SIG{__DIE__} = undef;
                 print Dumper( JSON::Tiny::decode_json( $res->content ) );
             };
         }
-        return "CloudFlare: [$ip] $config{CF_BLOCK} failed: " . $res->status_line;
+        return "CloudFlare: [$ip] $cf_block failed: " . $res->status_line;
     }
 }
 
-# end block
-###############################################################################
-# start whitelist
-sub whitelist {
+sub _whitelist {
     my $ip     = shift;
-    my $target = &checktarget($ip);
+    my $target = _checktarget($ip);
 
-    my $whitelist->{mode} = "whitelist";
-    $whitelist->{configuration}->{target} = $target;
-    $whitelist->{configuration}->{value}  = $ip;
-    $whitelist->{notes}                   = "csf whitelist";
+    my $DEBUG = ConfigServer::Config->get_config('DEBUG');
+
+    my $whitelist = {
+        mode          => "whitelist",
+        configuration => {
+            target => $target,
+            value  => $ip,
+        },
+        notes => "csf whitelist",
+    };
 
     my $content;
     eval {
@@ -236,8 +288,8 @@ sub whitelist {
         return $id->{result}->{id}, "CloudFlare: whitelisted $target $ip";
     }
     else {
-        if    ( $config{DEBUG} == 1 ) { print "Debug: " . $res->content . "\n" }
-        elsif ( $config{DEBUG} >= 2 ) {
+        if    ( $DEBUG == 1 ) { print "Debug: " . $res->content . "\n" }
+        elsif ( $DEBUG >= 2 ) {
             eval {
                 local $SIG{__DIE__} = undef;
                 print Dumper( JSON::Tiny::decode_json( $res->content ) );
@@ -247,17 +299,20 @@ sub whitelist {
     }
 }
 
-# end whitelist
-###############################################################################
-# start challenge
-sub challenge {
+sub _challenge {
     my $ip     = shift;
-    my $target = &checktarget($ip);
+    my $target = _checktarget($ip);
 
-    my $challenge->{mode} = "challenge";
-    $challenge->{configuration}->{target} = $target;
-    $challenge->{configuration}->{value}  = $ip;
-    $challenge->{notes}                   = "csf challenge";
+    my $DEBUG = ConfigServer::Config->get_config('DEBUG');
+
+    my $challenge = {
+        mode          => "challenge",
+        configuration => {
+            target => $target,
+            value  => $ip,
+        },
+        notes => "csf challenge",
+    };
 
     my $content;
     eval {
@@ -273,8 +328,8 @@ sub challenge {
         return $id->{result}->{id}, "CloudFlare: challenged $target $ip";
     }
     else {
-        if    ( $config{DEBUG} == 1 ) { print "Debug: " . $res->content . "\n" }
-        elsif ( $config{DEBUG} >= 2 ) {
+        if    ( $DEBUG == 1 ) { print "Debug: " . $res->content . "\n" }
+        elsif ( $DEBUG >= 2 ) {
             eval {
                 local $SIG{__DIE__} = undef;
                 print Dumper( JSON::Tiny::decode_json( $res->content ) );
@@ -284,17 +339,21 @@ sub challenge {
     }
 }
 
-# end challenge
-###############################################################################
-# start add
-sub add {
+# This is dead code as far as we can tell It's been renamed but the sub was add originally.
+sub _add {
     my $ip     = shift;
     my $mode   = shift;
-    my $target = &checktarget($ip);
+    my $target = _checktarget($ip);
 
-    my $add->{mode} = $mode;
-    $add->{configuration}->{target} = $target;
-    $add->{configuration}->{value}  = $ip;
+    my $DEBUG = ConfigServer::Config->get_config('DEBUG');
+
+    my $add = {
+        mode          => $mode,
+        configuration => {
+            target => $target,
+            value  => $ip,
+        },
+    };
 
     my $content;
     eval {
@@ -310,8 +369,8 @@ sub add {
         return $id->{result}->{id}, "CloudFlare: $mode added $target $ip";
     }
     else {
-        if    ( $config{DEBUG} == 1 ) { print "Debug: " . $res->content . "\n" }
-        elsif ( $config{DEBUG} >= 2 ) {
+        if    ( $DEBUG == 1 ) { print "Debug: " . $res->content . "\n" }
+        elsif ( $DEBUG >= 2 ) {
             eval {
                 local $SIG{__DIE__} = undef;
                 print Dumper( JSON::Tiny::decode_json( $res->content ) );
@@ -321,17 +380,16 @@ sub add {
     }
 }
 
-# end whitelist
-###############################################################################
-# start remove
-sub remove {
+sub _remove {
     my $ip     = shift;
     my $mode   = shift;
     my $id     = shift;
-    my $target = &checktarget($ip);
+    my $target = _checktarget($ip);
 
-    if ( $id eq "" ) {
-        $id = getid( $ip, $mode );
+    my $DEBUG = ConfigServer::Config->get_config('DEBUG');
+
+    if ( !length $id ) {
+        $id = _getid( $ip, $mode );
         if ( $id =~ /CloudFlare:/ ) { return $id }
         if ( $id eq "" )            { return "CloudFlare: [$ip] remove failed: id not found" }
     }
@@ -343,8 +401,8 @@ sub remove {
         return "CloudFlare: removed $target $ip";
     }
     else {
-        if    ( $config{DEBUG} == 1 ) { print "Debug: " . $res->content . "\n" }
-        elsif ( $config{DEBUG} >= 2 ) {
+        if    ( $DEBUG == 1 ) { print "Debug: " . $res->content . "\n" }
+        elsif ( $DEBUG >= 2 ) {
             eval {
                 local $SIG{__DIE__} = undef;
                 print Dumper( JSON::Tiny::decode_json( $res->content ) );
@@ -354,13 +412,12 @@ sub remove {
     }
 }
 
-# end remove
-###############################################################################
-# start getid
-sub getid {
+sub _getid {
     my $ip     = shift;
     my $mode   = shift;
-    my $target = &checktarget($ip);
+    my $target = _checktarget($ip);
+
+    my $DEBUG = ConfigServer::Config->get_config('DEBUG');
 
     my $ua  = LWP::UserAgent->new;
     my $res = $ua->get( 'https://api.cloudflare.com/client/v4/user/firewall/access_rules/rules?page=1&per_page=100&configuration.target=' . $target . '&configuration.value=' . $ip . '&match=all&order=mode&direction=desc', %args );
@@ -371,8 +428,8 @@ sub getid {
         return $entry->{id};
     }
     else {
-        if    ( $config{DEBUG} == 1 ) { print "Debug: " . $res->content . "\n" }
-        elsif ( $config{DEBUG} >= 2 ) {
+        if    ( $DEBUG == 1 ) { print "Debug: " . $res->content . "\n" }
+        elsif ( $DEBUG >= 2 ) {
             eval {
                 local $SIG{__DIE__} = undef;
                 print Dumper( JSON::Tiny::decode_json( $res->content ) );
@@ -382,11 +439,10 @@ sub getid {
     }
 }
 
-# end getid
-###############################################################################
-# start getlist
-sub getlist {
+sub _getlist {
     my $domain = shift;
+
+    my $DEBUG = ConfigServer::Config->get_config('DEBUG');
 
     my %ips;
     my $page  = 1;
@@ -419,7 +475,7 @@ sub getlist {
             }
         }
         else {
-            if ( $config{DEBUG} >= 2 ) {
+            if ( $DEBUG >= 2 ) {
                 eval {
                     local $SIG{__DIE__} = undef;
                     print Dumper( JSON::Tiny::decode_json( $res->content ) );
@@ -435,20 +491,42 @@ sub getlist {
     return \%ips;
 }
 
-# end getlist
-###############################################################################
-# start getscope
+=head2 getscope()
+
+Retrieves CloudFlare account configuration and scope information.
+
+Reads configuration from C</etc/csf/csf.cloudflare> and optionally integrates with cPanel's
+CloudFlare data if CF_CPANEL is enabled.
+
+Returns a hashref containing:
+
+=over 4
+
+=item * C<domain> - Hash of domain configurations keyed by domain name
+
+=item * C<user> - Hash of user configurations keyed by username
+
+=item * C<disabled> - Hash of disabled users
+
+=item * C<any> - Hash of users configured for "any" domain
+
+=back
+
+=cut
+
 sub getscope {
     my %scope;
     my %disabled;
     my %any;
-    my @entries = slurp("/etc/csf/csf.cloudflare");
+    my @entries = ConfigServer::Slurp::slurp("/etc/csf/csf.cloudflare");
     foreach my $line (@entries) {
         if ( $line =~ /^Include\s*(.*)$/ ) {
-            my @incfile = slurp($1);
+            my @incfile = ConfigServer::Slurp::slurp("$1");
             push @entries, @incfile;
         }
     }
+
+    my $cleanreg = ConfigServer::Slurp->cleanreg;
     foreach my $line (@entries) {
         $line =~ s/$cleanreg//g;
         if ( $line eq "" )               { next }
@@ -477,13 +555,13 @@ sub getscope {
             $any{ $setting[1] } = 1;
         }
     }
-    if ( $config{CF_CPANEL} ) {
+    if ( ConfigServer::Config->get_config('CF_CPANEL') ) {
         my %userdomains;
         my %accounts;
         my %creds;
 
         open( my $IN, "<", "/etc/userdomains" );
-        flock( $IN, LOCK_SH );
+        flock( $IN, Fcntl::LOCK_SH );
         my @localusers = <$IN>;
         close($IN);
         chomp @localusers;
@@ -529,10 +607,7 @@ sub getscope {
     return \%scope;
 }
 
-# end getscope
-###############################################################################
-# start checktarget
-sub checktarget {
+sub _checktarget {
     my $arg = shift;
     if    ( $arg =~ /^\w\w$/ ) { return "country" }
     elsif ( $arg =~ /\/16$/ )  { return "ip_range" }
@@ -540,6 +615,4 @@ sub checktarget {
     else                       { return "ip" }
 }
 
-# end checktarget
-###############################################################################
 1;
