@@ -1,4 +1,4 @@
-csf(1)							     General Commands Manual							  csf(1)
+csf(1)										      General Commands Manual										     csf(1)
 
 NAME
        csf - ConfigServer & Security Firewall
@@ -7,8 +7,8 @@ SYNOPSIS
        csf [OPTIONS]
 
 DESCRIPTION
-       This   manual   documents   the	csf  command  line  options  for  the  ConfigServer  &	Security  Firewall.  See  /etc/csf/csf.conf  and
-       /etc/csf/readme.txt for more detailed information on how to use and configure this application.
+       This  manual  documents the csf command line options for the ConfigServer & Security Firewall. See /etc/csf/csf.conf and /etc/csf/readme.txt for more detailed information on how to use and
+       configure this application.
 
 OPTIONS
        -h,  --help
@@ -36,8 +36,7 @@ OPTIONS
 	      Force CLI restart regardless of LFDSTART setting
 
        -ra, --restartall
-	      Restart firewall rules (csf) and then restart lfd daemon. Both csf and then lfd should be restarted after making	any  changes  to
-	      the configuration files
+	      Restart firewall rules (csf) and then restart lfd daemon. Both csf and then lfd should be restarted after making any changes to the configuration files
 
        --lfd [stop|start|restart|status]
 	      Actions to take with the lfd daemon
@@ -76,8 +75,8 @@ OPTIONS
 	      Remove an IP from the temporary IP allow list only
 
        -td, --tempdeny ip ttl [-p port] [-d direction] [comment]
-	      Add  an  IP  to the temp IP ban list. ttl is how long to blocks for (default:seconds, can use one suffix of h/m/d). Optional port.
-	      Optional direction of block can be one of: in, out or inout (default:in)
+	      Add an IP to the temp IP ban list. ttl is how long to blocks for (default:seconds, can use one suffix of h/m/d). Optional port. Optional direction of block can be one of: in, out or
+	      inout (default:in)
 
        -ta, --tempallow ip ttl [-p port] [-d direction] [comment]
 	      Add an IP to the temp IP allow list (default:inout)
@@ -125,9 +124,8 @@ OPTIONS
 	      Cluster restart csf and lfd
 
        --trace [add|remove] ip
-	      Log SYN packets for an IP across iptables chains. Note, this can create a LOT  of	 logging  information  in  /var/log/messages  so
-	      should  only  be	used for a short period of time. This option requires the iptables TRACE module and access to the raw PREROUTING
-	      chain to function
+	      Log  SYN	packets	 for  an IP across iptables chains. Note, this can create a LOT of logging information in /var/log/messages so should only be used for a short period of time. This
+	      option requires the iptables TRACE module and access to the raw PREROUTING chain to function
 
        -m,  --mail [email]
 	      Display Server Check in HTML or email to [email] if present
@@ -165,8 +163,7 @@ OPTIONS
 	      Remove old Configuration Backups and keep the latest [num]
 
 	      diff [profile|backup] [profile|backup]
-	      Report differences between Configuration Profiles or Configuration Backups, only specify one [profile|backup] to	compare	 to  the
-	      current Configuration
+	      Report differences between Configuration Profiles or Configuration Backups, only specify one [profile|backup] to compare to the current Configuration
 
        --mregen
 	      MESSENGERV2 /etc/apache2/conf.d/csf_messenger.conf regeneration. This will also gracefully restart httpd
@@ -174,8 +171,8 @@ OPTIONS
        --cloudflare [command]
 	      Commands for interacting with the CloudFlare firewall. See /etc/csf/readme.txt and CF_ENABLE for more detailed information
 
-	      Note:  target  can  be  one of: An IP address; 2 letter Country Code; IP range CIDR. Only Enterprise customers can block a Country
-	      Code, but all can allow and challenge. IP range CIDR is limited to /16 and /24
+	      Note: target can be one of: An IP address; 2 letter Country Code; IP range CIDR. Only Enterprise customers can block a Country Code, but all can allow and challenge. IP	range  CIDR
+	      is limited to /16 and /24
 
 	      list [all|block|challenge|whitelist] [user1,user2,domain1...]
 	      List specified type of CloudFlare Firewall rules for comma separated list of users/domains
@@ -187,8 +184,7 @@ OPTIONS
 	      Delete CloudFlare Firewall rule for target for comma separated list of users/domains only
 
 	      tempadd [allow|deny] ip [user1,user2,domain1...]
-	      Add a temporary block for CF_TEMP seconds to both csf and the CloudFlare	Firewall  rule	for  ip	 for  comma  separated	list  of
-	      users/domains as well as any user set to "any"
+	      Add a temporary block for CF_TEMP seconds to both csf and the CloudFlare Firewall rule for ip for comma separated list of users/domains as well as any user set to "any"
 
        -c,  --check
 	      Check for updates to csf but do not upgrade
@@ -219,4 +215,4 @@ BUGS
 AUTHOR
        (c)2006-2023, Jonathan Michaelson (http://www.configserver.com)
 
-																	  csf(1)
+																							     csf(1)
