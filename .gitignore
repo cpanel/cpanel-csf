@@ -5,3 +5,15 @@
 *.rej
 .vscode/*
 csf.tar.gz
+
+# Perl development
+*.swp
+*.tmp
+.prove
+cover_db/
+nytprof.out
+nytprof/
+
+# Universal
+.DS_Store
+Thumbs.db

@@ -16,52 +16,146 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, see <https://www.gnu.org/licenses>.
 ###############################################################################
-## no critic (RequireUseWarnings, ProhibitExplicitReturnUndef, ProhibitMixedBooleanOperators, RequireBriefOpen)
 # start main
 package ConfigServer::RBLCheck;
 
-use strict;
+=head1 NAME
+
+ConfigServer::RBLCheck - Check server IPs against Real-time Blackhole Lists
+
+=head1 SYNOPSIS
+
+    use ConfigServer::RBLCheck;
+    
+    # Get HTML output without printing
+    my ($failures, $html) = ConfigServer::RBLCheck::report(1, "/images", 0);
+    print "Found $failures IPs on blocklists\n";
+    print $html;
+    
+    # Print directly to STDOUT (UI mode)
+    ConfigServer::RBLCheck::report(2, "/images", 1);
+
+=head1 DESCRIPTION
+
+This module checks all public IP addresses on the server against configured
+Real-time Blackhole Lists (RBLs) to detect if any IPs are listed for spam
+or malware activity.
+
+RBL configuration is loaded from F</usr/local/csf/lib/csf.rbls> (default list)
+and F</etc/csf/csf.rblconf> (user overrides). Results are cached in
+F</var/lib/csf/{ip}.rbls> to avoid redundant DNS lookups.
+
+Only public IPv4 addresses are checked. Private IPs and IPv6 addresses are
+skipped. IPv6 checking is not currently implemented.
+
+=cut
+
+use cPstrict;
 use lib '/usr/local/csf/lib';
-use Fcntl qw(:DEFAULT :flock);
+use Fcntl ();
 use ConfigServer::Config;
 use ConfigServer::CheckIP   qw(checkip);
 use ConfigServer::Slurp     qw(slurp);
 use ConfigServer::GetIPs    qw(getips);
 use ConfigServer::RBLLookup qw(rbllookup);
-use IPC::Open3;
 use Net::IP;
 use ConfigServer::GetEthDev;
 
-use Exporter qw(import);
-our $VERSION   = 1.01;
-our @ISA       = qw(Exporter);
-our @EXPORT_OK = qw();
+our $VERSION = 1.01;
 
 my (
-    $ui,       $failures, $verbose, $cleanreg, $status, %ips, $images, %config,
+    $ui,       $failures, $verbose, $cleanreg, $status, %ips, $images,
     $ipresult, $output
 );
-
-my $ipv4reg = ConfigServer::Config->ipv4reg;
-my $ipv6reg = ConfigServer::Config->ipv6reg;
 
 # end main
 ###############################################################################
 # start report
+
+=head2 report($verbose, $images, $ui)
+
+Checks all server public IPs against configured RBLs.
+
+=head3 Parameters
+
+=over 4
+
+=item C<$verbose> - Integer verbosity level
+
+    0 = Basic output (only failures shown)
+    1 = Detailed output (all checks shown)
+    2 = All IPs including private addresses
+
+=item C<$images> - String path to UI images directory
+
+Path prefix for images used in HTML output (e.g., C</images>).
+
+=item C<$ui> - Boolean UI mode flag
+
+If true (1), prints output directly to STDOUT.
+If false (0), accumulates output and returns it.
+
+=back
+
+=head3 Returns
+
+List of C<($failures, $output)>:
+
+=over 4
+
+=item C<$failures> - Integer count of IPs found on blocklists
+
+Number of public IPs that were listed on one or more RBLs.
+
+=item C<$output> - String containing HTML output
+
+Complete HTML report of all checks. Empty string if C<$ui> is true.
+
+=back
+
+=head3 Behavior
+
+=over 4
+
+=item * Discovers all server IP addresses via ConfigServer::GetEthDev
+
+=item * Loads RBL configuration from csf.rbls and csf.rblconf
+
+=item * Checks only PUBLIC IPv4 addresses (skips private/reserved ranges)
+
+=item * Uses cached results from F</var/lib/csf/{ip}.rbls> when available
+
+=item * Performs DNS lookups via ConfigServer::RBLLookup for new checks
+
+=item * Caches new results to avoid redundant lookups
+
+=back
+
+=head3 Example
+
+    # Get report without printing
+    my ($count, $html) = ConfigServer::RBLCheck::report(1, "/images", 0);
+    if ($count > 0) {
+        print "WARNING: $count IPs are listed on RBLs!\n";
+        print $html;
+    }
+
+=cut
+
 sub report {
     $verbose = shift;
     $images  = shift;
     $ui      = shift;
     my $config = ConfigServer::Config->loadconfig();
-    %config   = $config->config();
+    my %config = $config->config();
     $cleanreg = ConfigServer::Slurp->cleanreg;
     $failures = 0;
 
     $| = 1;
 
-    &startoutput;
+    _startoutput();
 
-    &getethdev;
+    _getethdev();
 
     my @RBLS = slurp("/usr/local/csf/lib/csf.rbls");
 
@@ -116,7 +210,7 @@ sub report {
                 if ($verbose) {
                     $ipresult = "";
                     my $hits = 0;
-                    &addtitle( "Checked $ip ($type) on " . localtime() );
+                    _addtitle( "Checked $ip ($type) on " . localtime() );
 
                     foreach my $line (@RBLS) {
                         my ( $rbl, $rblurl ) = split( /:/, $line, 2 );
@@ -126,21 +220,22 @@ sub report {
                         my @tmptxt = $rbltxt;
                         $rbltxt = "";
                         foreach my $line (@tmptxt) {
+                            next unless defined $line;
                             $line =~ s/(http(\S+))/<a target="_blank" href="$1">$1<\/a>/g;
                             $rbltxt .= "${line}\n";
                         }
                         $rbltxt =~ s/\n/<br>\n/g;
 
                         if ( $rblhit eq "timeout" ) {
-                            &addline( 0, $rbl, $rblurl, "TIMEOUT" );
+                            _addline( 0, $rbl, $rblurl, "TIMEOUT" );
                         }
                         elsif ( $rblhit eq "" ) {
                             if ( $verbose == 2 ) {
-                                &addline( 0, $rbl, $rblurl, "OK" );
+                                _addline( 0, $rbl, $rblurl, "OK" );
                             }
                         }
                         else {
-                            &addline( 1, $rbl, $rblurl, $rbltxt );
+                            _addline( 1, $rbl, $rblurl, $rbltxt );
                             $hits++;
                         }
                     }
@@ -151,13 +246,13 @@ sub report {
                         else       { $output .= $text }
                         $ipresult .= $text;
                     }
-                    sysopen( my $OUT, "/var/lib/csf/${ip}.rbls", O_WRONLY | O_CREAT );
-                    flock( $OUT, LOCK_EX );
+                    sysopen( my $OUT, "/var/lib/csf/${ip}.rbls", Fcntl::O_WRONLY | Fcntl::O_CREAT );
+                    flock( $OUT, Fcntl::LOCK_EX );
                     print $OUT $ipresult;
                     close($OUT);
                 }
                 else {
-                    &addtitle("New $ip ($type)");
+                    _addtitle("New $ip ($type)");
                     my $text;
                     $text .= "<div style='clear: both;background: #FFD1DC;padding: 8px;border: 1px solid #DDDDDD;'>Not Checked</div>\n";
                     if   ($ui) { print $text }
@@ -167,7 +262,7 @@ sub report {
         }
         else {
             if ( $verbose == 2 ) {
-                &addtitle("Skipping $ip ($type)");
+                _addtitle("Skipping $ip ($type)");
                 my $text;
                 $text .= "<div style='clear: both;background: #BDECB6;padding: 8px;border: 1px solid #DDDDDD;'>OK</div>\n";
                 if   ($ui) { print $text }
@@ -175,22 +270,22 @@ sub report {
             }
         }
     }
-    &endoutput;
+    _endoutput();
 
     return ( $failures, $output );
 }
 
 # end report
 ###############################################################################
-# start startoutput
-sub startoutput {
+# start _startoutput
+sub _startoutput {
     return;
 }
 
-# end startoutput
+# end _startoutput
 ###############################################################################
-# start addline
-sub addline {
+# start _addline
+sub _addline {
     my $status  = shift;
     my $rbl     = shift;
     my $rblurl  = shift;
@@ -219,10 +314,10 @@ sub addline {
     return;
 }
 
-# end addline
+# end _addline
 ###############################################################################
-# start addtitle
-sub addtitle {
+# start _addtitle
+sub _addtitle {
     my $title = shift;
     my $text;
 
@@ -235,20 +330,20 @@ sub addtitle {
     return;
 }
 
-# end addtitle
+# end _addtitle
 ###############################################################################
-# start endoutput
-sub endoutput {
+# start _endoutput
+sub _endoutput {
     if   ($ui) { print "<br>\n" }
     else       { $output .= "<br>\n" }
 
     return;
 }
 
-# end endoutput
+# end _endoutput
 ###############################################################################
-# start getethdev
-sub getethdev {
+# start _getethdev
+sub _getethdev {
     my $ethdev = ConfigServer::GetEthDev->new();
     my %g_ipv4 = $ethdev->ipv4;
     my %g_ipv6 = $ethdev->ipv6;
