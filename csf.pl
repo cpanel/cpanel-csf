@@ -51,8 +51,6 @@ our (
     $faststart,  $urlget,      $statemodulenew, $statemodule6new, $cxsreputation
 );
 
-our ( $IPTABLESLOCK, $CSFLOCKFILE );
-
 our (
     %input,      %config, %ips, %ifaces, %messengerports, %sanitydefault,
     %blocklists, %cxsports
@@ -203,12 +201,13 @@ exit 0;
 # start csflock
 sub csflock {
     my $lock = shift;
+    state $csflockfile_fh;
     if ( $lock eq "lock" ) {
-        sysopen( $CSFLOCKFILE, "/var/lib/csf/csf.lock", O_RDWR | O_CREAT ) or die("Error: Unable to open csf lock file: $!");
-        flock( $CSFLOCKFILE, LOCK_EX | LOCK_NB )                           or die "Error: csf is being restarted, try again in a moment: $!";
+        sysopen( $csflockfile_fh, "/var/lib/csf/csf.lock", O_RDWR | O_CREAT ) or die("Error: Unable to open csf lock file: $!");
+        flock( $csflockfile_fh, LOCK_EX | LOCK_NB )                           or die "Error: csf is being restarted, try again in a moment: $!";
     }
     else {
-        close($CSFLOCKFILE);
+        close($csflockfile_fh);
     }
     return;
 }
@@ -5567,17 +5566,17 @@ sub doprofile {
                     $config1{$name} = $value;
                 }
 
-                my $PROFILE;
+                my $profile_fh;
                 if ( $profile2 eq "" or $profile2 eq "current" ) {
                     $profile2 = "current";
-                    open( $PROFILE, "<", "/etc/csf/csf.conf" ) or die $!;
+                    open( $profile_fh, "<", "/etc/csf/csf.conf" ) or die $!;
                 }
                 else {
-                    open( $PROFILE, "<", $secondfile ) or die $!;
+                    open( $profile_fh, "<", $secondfile ) or die $!;
                 }
-                flock( $PROFILE, LOCK_SH ) or die $!;
-                @configdata = sort <$PROFILE>;
-                close($PROFILE);
+                flock( $profile_fh, LOCK_SH ) or die $!;
+                @configdata = sort <$profile_fh>;
+                close($profile_fh);
                 chomp @configdata;
 
                 print "[SETTING]\t[$profile1]\t[$profile2]\n\n";
@@ -5969,16 +5968,17 @@ sub syscommand {
 sub iptableslock {
     my $lock      = shift;
     my $iptablesx = shift;
+    state $iptableslock_fh;
     if ( $lock eq "lock" ) {
-        sysopen( $IPTABLESLOCK, "/var/lib/csf/lock/command.lock", O_RDWR | O_CREAT );
-        flock( $IPTABLESLOCK, LOCK_EX );
-        autoflush $IPTABLESLOCK 1;
-        seek( $IPTABLESLOCK, 0, 0 );
-        truncate( $IPTABLESLOCK, 0 );
-        print $IPTABLESLOCK $$;
+        sysopen( $iptableslock_fh, "/var/lib/csf/lock/command.lock", O_RDWR | O_CREAT );
+        flock( $iptableslock_fh, LOCK_EX );
+        autoflush $iptableslock_fh 1;
+        seek( $iptableslock_fh, 0, 0 );
+        truncate( $iptableslock_fh, 0 );
+        print $iptableslock_fh $$;
     }
     else {
-        close($IPTABLESLOCK);
+        close($iptableslock_fh);
     }
     return;
 }
