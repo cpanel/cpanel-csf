@@ -19,6 +19,37 @@
 
 package ConfigServer::CloudFlare;
 
+=head1 NAME
+
+ConfigServer::CloudFlare - CloudFlare API integration for CSF firewall management
+
+=head1 SYNOPSIS
+
+    use ConfigServer::CloudFlare;
+
+    # Block an IP address
+    ConfigServer::CloudFlare::action("deny", "1.2.3.4", "block", "", "example.com", 1);
+
+    # Whitelist an IP address
+    ConfigServer::CloudFlare::action("allow", "1.2.3.4", "whitelist", "", "example.com", 1);
+
+    # Remove an IP from CloudFlare
+    ConfigServer::CloudFlare::action("remove", "1.2.3.4", "block");
+
+    # Get CloudFlare scope configuration
+    my $scope = ConfigServer::CloudFlare::getscope();
+
+=head1 DESCRIPTION
+
+This module provides integration between ConfigServer Security & Firewall (CSF) and CloudFlare's
+Firewall API. It allows CSF to automatically add, remove, and manage IP addresses in CloudFlare's
+firewall rules, providing an additional layer of protection at the edge.
+
+The module supports multiple CloudFlare accounts and can be configured to work with specific domains
+or all domains associated with a user account.
+
+=cut
+
 use cPstrict;
 
 use Fcntl          ();
@@ -30,12 +61,36 @@ use YAML::Tiny     ();
 use Data::Dumper;
 
 use ConfigServer::Config ();
-use ConfigServer::Slurp  qw(slurp);
+use ConfigServer::Slurp  ();
 use ConfigServer::Logger qw(logfile);
 
 our $VERSION = 1.00;
 
 my %args = ( 'content-type' => 'application/json' );
+
+=head2 action($action, $ip, $mode, $id, $domainlist, $allowany)
+
+Main entry point for CloudFlare firewall operations.
+
+=over 4
+
+=item * C<$action> - Action to perform: "deny", "allow", "remove", "del", "add", "getlist"
+
+=item * C<$ip> - IP address to operate on
+
+=item * C<$mode> - Firewall mode: "block", "challenge", "whitelist"
+
+=item * C<$id> - Optional CloudFlare rule ID for removal operations
+
+=item * C<$domainlist> - Comma-separated list of domains to apply the action to
+
+=item * C<$allowany> - Boolean flag to apply action to all domains if configured
+
+=back
+
+Returns status message or array of results depending on action.
+
+=cut
 
 sub action {
     my $action     = shift;
@@ -284,6 +339,7 @@ sub _challenge {
     }
 }
 
+# This is dead code as far as we can tell It's been renamed but the sub was add originally.
 sub _add {
     my $ip     = shift;
     my $mode   = shift;
@@ -332,7 +388,7 @@ sub _remove {
 
     my $DEBUG = ConfigServer::Config->get_config('DEBUG');
 
-    if ( $id eq "" ) {
+    if ( !length $id ) {
         $id = _getid( $ip, $mode );
         if ( $id =~ /CloudFlare:/ ) { return $id }
         if ( $id eq "" )            { return "CloudFlare: [$ip] remove failed: id not found" }
@@ -435,14 +491,37 @@ sub _getlist {
     return \%ips;
 }
 
+=head2 getscope()
+
+Retrieves CloudFlare account configuration and scope information.
+
+Reads configuration from C</etc/csf/csf.cloudflare> and optionally integrates with cPanel's
+CloudFlare data if CF_CPANEL is enabled.
+
+Returns a hashref containing:
+
+=over 4
+
+=item * C<domain> - Hash of domain configurations keyed by domain name
+
+=item * C<user> - Hash of user configurations keyed by username
+
+=item * C<disabled> - Hash of disabled users
+
+=item * C<any> - Hash of users configured for "any" domain
+
+=back
+
+=cut
+
 sub getscope {
     my %scope;
     my %disabled;
     my %any;
-    my @entries = slurp("/etc/csf/csf.cloudflare");
+    my @entries = ConfigServer::Slurp::slurp("/etc/csf/csf.cloudflare");
     foreach my $line (@entries) {
         if ( $line =~ /^Include\s*(.*)$/ ) {
-            my @incfile = slurp($1);
+            my @incfile = ConfigServer::Slurp::slurp("$1");
             push @entries, @incfile;
         }
     }

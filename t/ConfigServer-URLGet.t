@@ -192,7 +192,7 @@ subtest 'urlget - HTTP::Tiny failure triggers binget' => sub {
 
     my $urlget = ConfigServer::URLGet->new( 1, "TestAgent/1.0", "" );
 
-    my ($status, $text);
+    my ( $status, $text );
     my @warnings = warnings { ( $status, $text ) = $urlget->urlget("https://example.com/fail") };
 
     # Should fail because binaries are not configured
