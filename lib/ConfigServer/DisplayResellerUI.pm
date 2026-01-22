@@ -19,6 +19,42 @@
 
 package ConfigServer::DisplayResellerUI;
 
+=head1 NAME
+
+ConfigServer::DisplayResellerUI - Reseller web interface for CSF firewall
+management
+
+=head1 SYNOPSIS
+
+    use ConfigServer::DisplayResellerUI ();
+
+    my %form_data = (
+        action  => 'qallow',
+        ip      => '192.168.1.1',
+        comment => 'Allow office IP',
+    );
+
+    ConfigServer::DisplayResellerUI::main(
+        \%form_data,
+        '/cgi/csf.cgi',
+        0,
+        '/images',
+        '1.01'
+    );
+
+=head1 DESCRIPTION
+
+This module provides a web-based interface for resellers to manage CSF
+(ConfigServer Firewall) operations. It allows authorized reseller users to
+perform limited firewall management tasks such as allowing IPs, blocking IPs,
+unblocking IPs, and searching for IP addresses in iptables.
+
+Reseller privileges are controlled through the C</etc/csf/csf.resellers>
+configuration file, which defines what actions each reseller is permitted to
+perform. Available privileges include ALLOW, DENY, UNBLOCK, GREP, and ALERT.
+
+=cut
+
 use cPstrict;
 
 use Fcntl      ();
@@ -34,10 +70,69 @@ our $VERSION = 1.01;
 umask(0177);
 
 our (
-    $chart,     $ipv6reg, $ipv4reg,   %config, %ips, $mobile,
-    %FORM,      $script,  $script_da, $images, $myv, %rprivs, $hostname,
-    $hostshort, $tz,      $panel
+    %FORM,      $script, $script_da, $images, $myv, %rprivs, $hostname,
+    $hostshort, $tz,     $panel
 );
+
+=head2 main
+
+Renders the reseller web interface for CSF firewall management.
+
+    ConfigServer::DisplayResellerUI::main(
+        \%form_data,
+        $script_path,
+        $script_da,
+        $images_path,
+        $version
+    );
+
+=over 4
+
+=item * C<$form_ref> - Hash reference containing form data with keys:
+
+=over 4
+
+=item * C<action> - Action to perform: 'qallow', 'qdeny', 'qkill', or 'grep'
+
+=item * C<ip> - IP address to operate on
+
+=item * C<comment> - Comment for allow/deny operations (required)
+
+=item * C<mobi> - Mobile flag for form redirects
+
+=back
+
+=item * C<$script> - Script URL path for form actions
+
+=item * C<$script_da> - DirectAdmin script path (unused in current version)
+
+=item * C<images> - Path to images directory
+
+=item * C<myv> - CSF version string
+
+=back
+
+The function performs the following operations based on user privileges:
+
+=over 4
+
+=item * B<Quick Allow> - Adds IP to csf.allow and allows through firewall
+
+=item * B<Quick Deny> - Adds IP to csf.deny and blocks in firewall
+
+=item * B<Quick Unblock> - Removes IP from both temporary and permanent blocks
+
+=item * B<Search for IP> - Searches iptables rules for the specified IP
+
+=back
+
+All actions require appropriate privileges defined in
+C</etc/csf/csf.resellers>. If ALERT privilege is enabled, email notifications
+are sent for each action performed.
+
+Returns nothing. Outputs HTML directly to STDOUT.
+
+=cut
 
 sub main {
     my $form_ref = shift;
@@ -47,27 +142,34 @@ sub main {
     $images    = shift;
     $myv       = shift;
 
-    open( my $IN, "<", "/etc/csf/csf.resellers" );
-    flock( $IN, Fcntl::LOCK_SH );
-    while ( my $line = <$IN> ) {
-        my ( $user, $alert, $privs ) = split( /\:/, $line );
-        $privs =~ s/\s//g;
-        foreach my $priv ( split( /\,/, $privs ) ) {
-            $rprivs{$user}{$priv} = 1;
+    if ( open( my $IN, "<", "/etc/csf/csf.resellers" ) ) {
+        flock( $IN, Fcntl::LOCK_SH ) if fileno($IN);
+        while ( my $line = <$IN> ) {
+            my ( $user, $alert, $privs ) = split( /\:/, $line );
+            $privs //= '';
+            $privs =~ s/\s//g;
+            foreach my $priv ( split( /\,/, $privs ) ) {
+                $rprivs{$user}{$priv} = 1;
+            }
+            $rprivs{$user}{ALERT} = $alert;
         }
-        $rprivs{$user}{ALERT} = $alert;
+        close($IN);
     }
-    close($IN);
 
-    open( my $HOSTNAME, "<", "/proc/sys/kernel/hostname" );
-    flock( $HOSTNAME, Fcntl::LOCK_SH );
-    $hostname = <$HOSTNAME>;
-    chomp $hostname;
-    close($HOSTNAME);
+    if ( open( my $HOSTNAME, "<", "/proc/sys/kernel/hostname" ) ) {
+        flock( $HOSTNAME, Fcntl::LOCK_SH );
+        $hostname = <$HOSTNAME>;
+        chomp $hostname;
+        close($HOSTNAME);
+    }
     $hostshort = ( split( /\./, $hostname ) )[0];
     $tz        = POSIX::strftime( "%z", localtime );
 
     $panel = "cPanel";
+
+    $FORM{ip}     //= '';
+    $FORM{action} //= '';
+    $FORM{mobi}   //= '';
 
     if ( $FORM{ip} ne "" ) { $FORM{ip} =~ s/(^\s+)|(\s+$)//g }
 
@@ -198,6 +300,7 @@ sub main {
             print "<p><form action='$script' method='post'><input type='submit' class='btn btn-default' value='Return'></form></p>\n";
         }
         else {
+            $ENV{REMOTE_USER} //= '';
             print "<table class='table table-bordered table-striped'>\n";
             print "<thead><tr><th align='left' colspan='2'>csf - ConfigServer Firewall options for $ENV{REMOTE_USER}</th></tr></thead>";
             if ( $rprivs{ $ENV{REMOTE_USER} }{ALLOW} ) {
@@ -232,3 +335,30 @@ sub _printcmd {
 }
 
 1;
+
+=head1 VERSION
+
+1.01
+
+=head1 AUTHOR
+
+Jonathan Michaelson
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (C) 2006-2025 Jonathan Michaelson
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation; either version 3 of the License, or (at your option) any later
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+details.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, see L<https://www.gnu.org/licenses>.
+
+=cut
