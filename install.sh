@@ -126,6 +126,22 @@ for file in bin/*; do
 	esac
 done
 
+# Copy library files from lib/ directory to /usr/local/csf/lib/ (recursively)
+find lib -type f | while read file; do
+	# Get relative path from lib/
+	relpath="${file#lib/}"
+	destfile="/usr/local/csf/lib/$relpath"
+	destdir=$(dirname "$destfile")
+
+	# Create directory structure if needed
+	if [ ! -d "$destdir" ]; then
+		mkdir -p "$destdir"
+	fi
+
+	# Always update library files
+	cp -avf "$file" "$destfile"
+done
+
 if [ -e "/etc/cron.d/csfcron.sh" ]; then
 	mv -fv /etc/cron.d/csfcron.sh /etc/cron.d/csf-cron
 fi
@@ -198,12 +214,6 @@ chcon -h system_u:object_r:bin_t:s0 /usr/sbin/lfd
 chcon -h system_u:object_r:bin_t:s0 /usr/sbin/csf
 
 cp -avf etc/ui/images/csf_small.png /usr/local/cpanel/whostmgr/docroot/addon_plugins/
-cp -avf sanity.txt /usr/local/csf/lib/
-cp -avf csf.rbls /usr/local/csf/lib/
-cp -avf restricted.txt /usr/local/csf/lib/
-cp -avf ConfigServer /usr/local/csf/lib/
-cp -avf csf.div /usr/local/csf/lib/
-cp -avf csfajaxtail.js /usr/local/csf/lib/
 cp -avf profiles /usr/local/csf/
 cp -avf etc/csf.conf /usr/local/csf/profiles/reset_to_defaults.conf
 cp -avf lfd.logrotate /etc/logrotate.d/lfd
@@ -212,8 +222,6 @@ rm -fv /etc/csf/csf.spamhaus /etc/csf/csf.dshield /etc/csf/csf.tor /etc/csf/csf.
 
 mkdir -p /usr/local/man/man1/
 cp -avf csf.1.txt /usr/local/man/man1/csf.1
-man csf | col -b > csf.help
-cp -avf csf.help /usr/local/csf/lib/
 chmod 755 /usr/local/man/
 chmod 755 /usr/local/man/man1/
 chmod 644 /usr/local/man/man1/csf.1
