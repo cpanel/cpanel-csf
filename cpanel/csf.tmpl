@@ -5,24 +5,10 @@ USE JSON;
 WRAPPER 'master_templates/master.tmpl'
 	header = 'ConfigServer Security &amp; Firewall'
 	skipsupport = 1
-	skipheader = 1
 	hide_license_warnings = 1
     stylesheets=Whostmgr.find_file_url('/3rdparty/bootstrap-rtl/optimized/dist/css/bootstrap-rtl.min.css')
 	theme='bootstrap'
-	breadcrumbdata = {
-		previous = [
-		{
-			name = "Home",
-			url  = "/scripts/command?PFILE=main",
-		},
-		{
-			name = "Plugins",
-			url  = "/scripts/command?PFILE=Plugins",
-		}
-		],
-		name = 'ConfigServer Security &amp; Firewall',
-		url = '/cgi/configserver/csf.cgi',
-	};
+    breadcrumburl='/cgi/configserver/csf.cgi'
 %]
  
 [% csf_output %]
