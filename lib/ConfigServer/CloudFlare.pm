@@ -52,11 +52,11 @@ or all domains associated with a user account.
 
 use cPstrict;
 
-use Fcntl          ();
-use JSON::Tiny     ();
-use LWP::UserAgent ();
-use Time::Local    ();
-use YAML::Tiny     ();
+use Fcntl            ();
+use Cpanel::JSON::XS ();
+use LWP::UserAgent   ();
+use Time::Local      ();
+use YAML::Tiny       ();
 
 use Data::Dumper;
 
@@ -237,14 +237,14 @@ sub _block {
     my $content;
     eval {
         local $SIG{__DIE__} = undef;
-        $content = JSON::Tiny::encode_json($block);
+        $content = Cpanel::JSON::XS::encode_json($block);
     };
 
     my $ua  = LWP::UserAgent->new;
     my $res = $ua->post( 'https://api.cloudflare.com/client/v4/user/firewall/access_rules/rules', %args, Content => $content );
 
     if ( $res->is_success ) {
-        my $id = JSON::Tiny::decode_json( $res->content );
+        my $id = Cpanel::JSON::XS::decode_json( $res->content );
         return $id->{result}->{id}, "CloudFlare: $cf_block $target $ip";
     }
     else {
@@ -252,7 +252,7 @@ sub _block {
         elsif ( $DEBUG >= 2 ) {
             eval {
                 local $SIG{__DIE__} = undef;
-                print Dumper( JSON::Tiny::decode_json( $res->content ) );
+                print Dumper( Cpanel::JSON::XS::decode_json( $res->content ) );
             };
         }
         return "CloudFlare: [$ip] $cf_block failed: " . $res->status_line;
@@ -277,14 +277,14 @@ sub _whitelist {
     my $content;
     eval {
         local $SIG{__DIE__} = undef;
-        $content = JSON::Tiny::encode_json($whitelist);
+        $content = Cpanel::JSON::XS::encode_json($whitelist);
     };
 
     my $ua  = LWP::UserAgent->new;
     my $res = $ua->post( 'https://api.cloudflare.com/client/v4/user/firewall/access_rules/rules', %args, Content => $content );
 
     if ( $res->is_success ) {
-        my $id = JSON::Tiny::decode_json( $res->content );
+        my $id = Cpanel::JSON::XS::decode_json( $res->content );
         return $id->{result}->{id}, "CloudFlare: whitelisted $target $ip";
     }
     else {
@@ -292,7 +292,7 @@ sub _whitelist {
         elsif ( $DEBUG >= 2 ) {
             eval {
                 local $SIG{__DIE__} = undef;
-                print Dumper( JSON::Tiny::decode_json( $res->content ) );
+                print Dumper( Cpanel::JSON::XS::decode_json( $res->content ) );
             };
         }
         return "CloudFlare: [$ip] whitelist failed: " . $res->status_line;
@@ -317,14 +317,14 @@ sub _challenge {
     my $content;
     eval {
         local $SIG{__DIE__} = undef;
-        $content = JSON::Tiny::encode_json($challenge);
+        $content = Cpanel::JSON::XS::encode_json($challenge);
     };
 
     my $ua  = LWP::UserAgent->new;
     my $res = $ua->post( 'https://api.cloudflare.com/client/v4/user/firewall/access_rules/rules', %args, Content => $content );
 
     if ( $res->is_success ) {
-        my $id = JSON::Tiny::decode_json( $res->content );
+        my $id = Cpanel::JSON::XS::decode_json( $res->content );
         return $id->{result}->{id}, "CloudFlare: challenged $target $ip";
     }
     else {
@@ -332,7 +332,7 @@ sub _challenge {
         elsif ( $DEBUG >= 2 ) {
             eval {
                 local $SIG{__DIE__} = undef;
-                print Dumper( JSON::Tiny::decode_json( $res->content ) );
+                print Dumper( Cpanel::JSON::XS::decode_json( $res->content ) );
             };
         }
         return "CloudFlare: [$ip] challenge failed: " . $res->status_line;
@@ -358,14 +358,14 @@ sub _add {
     my $content;
     eval {
         local $SIG{__DIE__} = undef;
-        $content = JSON::Tiny::encode_json($add);
+        $content = Cpanel::JSON::XS::encode_json($add);
     };
 
     my $ua  = LWP::UserAgent->new;
     my $res = $ua->post( 'https://api.cloudflare.com/client/v4/user/firewall/access_rules/rules', %args, Content => $content );
 
     if ( $res->is_success ) {
-        my $id = JSON::Tiny::decode_json( $res->content );
+        my $id = Cpanel::JSON::XS::decode_json( $res->content );
         return $id->{result}->{id}, "CloudFlare: $mode added $target $ip";
     }
     else {
@@ -373,7 +373,7 @@ sub _add {
         elsif ( $DEBUG >= 2 ) {
             eval {
                 local $SIG{__DIE__} = undef;
-                print Dumper( JSON::Tiny::decode_json( $res->content ) );
+                print Dumper( Cpanel::JSON::XS::decode_json( $res->content ) );
             };
         }
         return "CloudFlare: [$ip] $mode failed: " . $res->status_line;
@@ -405,7 +405,7 @@ sub _remove {
         elsif ( $DEBUG >= 2 ) {
             eval {
                 local $SIG{__DIE__} = undef;
-                print Dumper( JSON::Tiny::decode_json( $res->content ) );
+                print Dumper( Cpanel::JSON::XS::decode_json( $res->content ) );
             };
         }
         return "CloudFlare: [$ip] [$id] remove failed: " . $res->status_line;
@@ -423,7 +423,7 @@ sub _getid {
     my $res = $ua->get( 'https://api.cloudflare.com/client/v4/user/firewall/access_rules/rules?page=1&per_page=100&configuration.target=' . $target . '&configuration.value=' . $ip . '&match=all&order=mode&direction=desc', %args );
 
     if ( $res->is_success ) {
-        my $result = JSON::Tiny::decode_json( $res->content );
+        my $result = Cpanel::JSON::XS::decode_json( $res->content );
         my $entry  = @{ $result->{result} }[0];
         return $entry->{id};
     }
@@ -432,7 +432,7 @@ sub _getid {
         elsif ( $DEBUG >= 2 ) {
             eval {
                 local $SIG{__DIE__} = undef;
-                print Dumper( JSON::Tiny::decode_json( $res->content ) );
+                print Dumper( Cpanel::JSON::XS::decode_json( $res->content ) );
             };
         }
         return "CloudFlare: [$ip] id [$mode] failed: " . $res->status_line;
@@ -454,7 +454,7 @@ sub _getlist {
     while (1) {
         my $res = $ua->get( 'https://api.cloudflare.com/client/v4/user/firewall/access_rules/rules?page=' . $page . '&per_page=100&order=created_on&direction=asc&match=all', %args );
         if ( $res->is_success ) {
-            my $result = JSON::Tiny::decode_json( $res->content );
+            my $result = Cpanel::JSON::XS::decode_json( $res->content );
 
             $pages = $result->{result_info}->{total_pages};
             foreach my $entry ( @{ $result->{result} } ) {
@@ -478,7 +478,7 @@ sub _getlist {
             if ( $DEBUG >= 2 ) {
                 eval {
                     local $SIG{__DIE__} = undef;
-                    print Dumper( JSON::Tiny::decode_json( $res->content ) );
+                    print Dumper( Cpanel::JSON::XS::decode_json( $res->content ) );
                 };
             }
             $ips{$domain}{success} = 0;

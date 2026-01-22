@@ -52,12 +52,13 @@ performance for repeated hostname lookups.
 use strict;
 use warnings;
 
-use Carp                  ();
-use Fcntl                 ();
-use IPC::Open3            ();
-use JSON::Tiny            ();
-use Net::IP               ();
-use Socket                ();
+use Carp             ();
+use Cpanel::JSON::XS ();
+use Fcntl            ();
+use IPC::Open3       ();
+use Net::IP          ();
+use Socket           ();
+
 use ConfigServer::CheckIP qw(checkip);
 use ConfigServer::Config  ();
 use ConfigServer::URLGet  ();
@@ -298,7 +299,7 @@ sub geo_binary {
         my ( $status, $text ) = _urlget()->urlget("http://api.db-ip.com/v2/free/$myip");
         if ($status) { $text = "" }
         if ( $text ne "" ) {
-            my $json = JSON::Tiny::decode_json($text);
+            my $json = Cpanel::JSON::XS::decode_json($text);
             return ( $json->{countryCode}, $json->{countryName}, $json->{stateProv}, $json->{city} );
         }
         else {
