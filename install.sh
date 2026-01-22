@@ -68,81 +68,20 @@ if [ -e "/etc/csf/alert.txt" ]; then
 	sh migratedata.sh
 fi
 
-if [ ! -e "/etc/csf/csf.conf" ]; then
-	cp -avf csf.conf /etc/csf/.
-fi
-
-if [ ! -e "/etc/csf/csf.allow" ]; then
-	cp -avf csf.allow /etc/csf/.
-fi
-if [ ! -e "/etc/csf/csf.deny" ]; then
-	cp -avf csf.deny /etc/csf/.
-fi
-if [ ! -e "/etc/csf/csf.redirect" ]; then
-	cp -avf csf.redirect /etc/csf/.
-fi
-if [ ! -e "/etc/csf/csf.resellers" ]; then
-	cp -avf csf.resellers /etc/csf/.
-fi
-if [ ! -e "/etc/csf/csf.dirwatch" ]; then
-	cp -avf csf.dirwatch /etc/csf/.
-fi
-if [ ! -e "/etc/csf/csf.syslogs" ]; then
-	cp -avf csf.syslogs /etc/csf/.
-fi
-if [ ! -e "/etc/csf/csf.logfiles" ]; then
-	cp -avf csf.logfiles /etc/csf/.
-fi
-if [ ! -e "/etc/csf/csf.logignore" ]; then
-	cp -avf csf.logignore /etc/csf/.
-fi
-if [ ! -e "/etc/csf/csf.blocklists" ]; then
-	cp -avf csf.blocklists /etc/csf/.
-else
-	cp -avf csf.blocklists /etc/csf/csf.blocklists.new
-fi
-if [ ! -e "/etc/csf/csf.ignore" ]; then
-	cp -avf csf.ignore /etc/csf/.
-fi
-if [ ! -e "/etc/csf/csf.pignore" ]; then
-	cp -avf csf.pignore /etc/csf/.
-fi
-if [ ! -e "/etc/csf/csf.rignore" ]; then
-	cp -avf csf.rignore /etc/csf/.
-fi
-if [ ! -e "/etc/csf/csf.fignore" ]; then
-	cp -avf csf.fignore /etc/csf/.
-fi
-if [ ! -e "/etc/csf/csf.signore" ]; then
-	cp -avf csf.signore /etc/csf/.
-fi
-if [ ! -e "/etc/csf/csf.suignore" ]; then
-	cp -avf csf.suignore /etc/csf/.
-fi
-if [ ! -e "/etc/csf/csf.uidignore" ]; then
-	cp -avf csf.uidignore /etc/csf/.
-fi
-if [ ! -e "/etc/csf/csf.mignore" ]; then
-	cp -avf csf.mignore /etc/csf/.
-fi
-if [ ! -e "/etc/csf/csf.sips" ]; then
-	cp -avf csf.sips /etc/csf/.
-fi
-if [ ! -e "/etc/csf/csf.dyndns" ]; then
-	cp -avf csf.dyndns /etc/csf/.
-fi
-if [ ! -e "/etc/csf/csf.syslogusers" ]; then
-	cp -avf csf.syslogusers /etc/csf/.
-fi
-if [ ! -e "/etc/csf/csf.smtpauth" ]; then
-	cp -avf csf.smtpauth /etc/csf/.
-fi
-if [ ! -e "/etc/csf/csf.rblconf" ]; then
-	cp -avf csf.rblconf /etc/csf/.
-fi
-if [ ! -e "/etc/csf/csf.cloudflare" ]; then
-	cp -avf csf.cloudflare /etc/csf/.
-fi
+# Copy config files from etc/ directory to /etc/csf/
+for file in etc/*; do
+	filename=$(basename "$file")
+	if [ ! -e "/etc/csf/$filename" ]; then
+		cp -avf "$file" /etc/csf/.
+	else
+		# For existing files that should be updated, create a .new version
+		case "$filename" in
+			csf.blocklists)
+				cp -avf "$file" /etc/csf/$filename.new
+				;;
+		esac
+	fi
+done
 
 if [ ! -e "/usr/local/csf/tpl/alert.txt" ]; then
 	cp -avf alert.txt /usr/local/csf/tpl/.
@@ -372,11 +311,7 @@ cp -avf csf.div /usr/local/csf/lib/
 cp -avf csfajaxtail.js /usr/local/csf/lib/
 cp -avf ui/images /etc/csf/ui/.
 cp -avf profiles /usr/local/csf/
-cp -avf csf.conf /usr/local/csf/profiles/reset_to_defaults.conf
-cp -avf cpanel.comodo.ignore /etc/csf/
-cp -avf cpanel.comodo.allow /etc/csf/
-cp -avf cpanel.ignore /etc/csf/
-cp -avf cpanel.allow /etc/csf/
+cp -avf etc/csf.conf /usr/local/csf/profiles/reset_to_defaults.conf
 cp -avf messenger/*.php /etc/csf/messenger/.
 cp -avf lfd.logrotate /etc/logrotate.d/lfd
 
