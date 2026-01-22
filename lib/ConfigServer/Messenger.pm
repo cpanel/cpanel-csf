@@ -84,7 +84,7 @@ use cPstrict;
 
 use Fcntl             ();
 use File::Copy        ();
-use JSON::Tiny        ();
+use Cpanel::JSON::XS  ();
 use IO::Socket::INET  ();
 use Net::CIDR::Lite   ();
 use Net::IP           ();
@@ -487,7 +487,7 @@ sub _messenger {
                                     $error .= "Unable to verify with Google reCAPTCHA";
                                 }
                                 else {
-                                    my $resp = JSON::Tiny::decode_json($text);
+                                    my $resp = Cpanel::JSON::XS::decode_json($text);
                                     if ( $resp->{success} ) {
                                         my $ip = $resp->{hostname};
 
