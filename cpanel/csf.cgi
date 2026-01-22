@@ -84,10 +84,6 @@ $myv = <$IN>;
 close($IN);
 chomp $myv;
 
-my $bootstrapcss = "<link rel='stylesheet' href='$images/bootstrap/css/bootstrap.min.css'>";
-my $jqueryjs     = "<script src='$images/jquery.min.js'></script>";
-my $bootstrapjs  = "<script src='$images/bootstrap/js/bootstrap.min.js'></script>";
-
 my @header;
 my @footer;
 my $htmltag = "data-post='$FORM{action}'";
@@ -150,10 +146,7 @@ unless ( $FORM{action} eq "tailcmd" or $FORM{action} =~ /^cf/ or $FORM{action} e
     select $SCRIPTOUT;
 
     print <<EOF;
-	<!-- $bootstrapcss -->
 	<link href='$images/configserver.css' rel='stylesheet' type='text/css'>
-	$jqueryjs
-	$bootstrapjs
 <style>
 .toplink {
 top: 140px;
