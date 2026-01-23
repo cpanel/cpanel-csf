@@ -1,8 +1,5 @@
 #!/usr/local/cpanel/3rdparty/bin/perl
 
-# Copyright (C) 2006-2025 Jonathan Michaelson
-# Test suite for ConfigServer::RBLCheck
-
 use cPstrict;
 
 use Test2::V0;
