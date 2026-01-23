@@ -47,6 +47,9 @@ Whostmgr::ACLS::init_acls();
 
 %FORM = Cpanel::Form::parseform();
 
+# Remove any params with HTML looking stuff (script tags, iframes, etc.)
+%FORM = map { $_ => $FORM{$_} } grep { $FORM{$_} !~ m/<\w+|%3C\w+/ } keys(%FORM);
+
 my $config   = ConfigServer::Config->loadconfig();
 my %config   = $config->config;
 my $slurpreg = ConfigServer::Slurp->slurpreg;
