@@ -226,10 +226,10 @@ sub iplookup {
                     alarm(0);
                 }
             }
-            sysopen( DNS, "/var/lib/csf/csf.dnscache", Fcntl::O_WRONLY | Fcntl::O_APPEND | Fcntl::O_CREAT );
-            flock( DNS, Fcntl::LOCK_EX );
-            print DNS "$ip|$ip|$host\n";
-            close(DNS);
+            sysopen( my $dns, "/var/lib/csf/csf.dnscache", Fcntl::O_WRONLY | Fcntl::O_APPEND | Fcntl::O_CREAT );
+            flock( $dns, Fcntl::LOCK_EX );
+            print $dns "$ip|$ip|$host\n";
+            close($dns);
         }
         if ( $host eq "" ) { $host = "-" }
     }

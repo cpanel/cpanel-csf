@@ -2463,14 +2463,14 @@ sub chart {
         $imghddir = "/etc/csf/ui/images/";
     }
 
-    my $STATS;
+    my $stats_fh;
     if ( -e "/var/lib/csf/stats/lfdstats" ) {
-        sysopen( $STATS, "/var/lib/csf/stats/lfdstats", O_RDWR | O_CREAT );
+        sysopen( $stats_fh, "/var/lib/csf/stats/lfdstats", O_RDWR | O_CREAT );
     }
     elsif ( -e "/var/lib/csf/stats/lfdmain" ) {
-        sysopen( my $OLDSTATS, "/var/lib/csf/stats/lfdmain", O_RDWR | O_CREAT );
-        flock( $OLDSTATS, LOCK_EX );
-        my @stats = <$OLDSTATS>;
+        sysopen( my $oldstats_fh, "/var/lib/csf/stats/lfdmain", O_RDWR | O_CREAT );
+        flock( $oldstats_fh, LOCK_EX );
+        my @stats = <$oldstats_fh>;
         chomp @stats;
 
         my @newstats;
@@ -2480,26 +2480,26 @@ sub chart {
             push @newstats, $line;
             $cnt++;
         }
-        sysopen( $STATS, "/var/lib/csf/stats/lfdstats", O_RDWR | O_CREAT );
-        flock( $STATS, LOCK_EX );
-        seek( $STATS, 0, 0 );
-        truncate( $STATS, 0 );
+        sysopen( $stats_fh, "/var/lib/csf/stats/lfdstats", O_RDWR | O_CREAT );
+        flock( $stats_fh, LOCK_EX );
+        seek( $stats_fh, 0, 0 );
+        truncate( $stats_fh, 0 );
         foreach my $line (@newstats) {
-            print $STATS "$line\n";
+            print $stats_fh "$line\n";
         }
-        close($STATS);
+        close($stats_fh);
 
         rename "/var/lib/csf/stats/lfdmain", "/var/lib/csf/stats/lfdmain." . time;
-        close($OLDSTATS);
-        sysopen( $STATS, "/var/lib/csf/stats/lfdstats", O_RDWR | O_CREAT );
+        close($oldstats_fh);
+        sysopen( $stats_fh, "/var/lib/csf/stats/lfdstats", O_RDWR | O_CREAT );
     }
     else {
-        sysopen( $STATS, "/var/lib/csf/stats/lfdstats", O_RDWR | O_CREAT );
+        sysopen( $stats_fh, "/var/lib/csf/stats/lfdstats", O_RDWR | O_CREAT );
     }
-    flock( $STATS, LOCK_SH );
-    my @stats = <$STATS>;
+    flock( $stats_fh, LOCK_SH );
+    my @stats = <$stats_fh>;
     chomp @stats;
-    close($STATS);
+    close($stats_fh);
 
     if (@stats) {
         ConfigServer::ServerStats::charts( $config{CC_LOOKUPS}, $imghddir );
@@ -2543,7 +2543,7 @@ sub systemstats {
         $imghddir = "/etc/csf/ui/images/";
     }
 
-    sysopen( my $STATS, "/var/lib/csf/stats/system", O_RDWR | O_CREAT );
+    sysopen( my $stats_fh, "/var/lib/csf/stats/system", O_RDWR | O_CREAT );
     flock( $STATS, LOCK_SH );
     my @stats = <$STATS>;
     chomp @stats;

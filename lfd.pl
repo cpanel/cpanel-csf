@@ -59,8 +59,6 @@ our (
     $urlget,              $version,            $messenger1,       $messenger2, $messenger3
 );
 
-our ( $LISTLOCK, $IPTABLESLOCK, $PIDFILE );
-
 our (
     %accounttracking,    %adb,          %adf,             %ads,          %apache401, %apache403, %apache404,
     %blockedips,         %blocklists,   %cfblocks,        %config,       %cpanelalert,
@@ -196,12 +194,13 @@ $hostshort   = ( split( /\./, $hostname ) )[0];
 $clock_ticks = sysconf(&POSIX::_SC_CLK_TCK) || 100;
 $tz          = strftime( "%z", localtime );
 
-sysopen( $PIDFILE, $pidfile, O_RDWR | O_CREAT ) or &childcleanup( __LINE__, "*Error* unable to create lfd PID file [$pidfile] $!" );
-flock( $PIDFILE, LOCK_EX | LOCK_NB )            or &childcleanup( __LINE__, "*Error* attempt to start lfd when it is already running" );
-autoflush $PIDFILE 1;
-seek( $PIDFILE, 0, 0 );
-truncate( $PIDFILE, 0 );
-print $PIDFILE "$pid\n";
+my $pidfile_fh;
+sysopen( $pidfile_fh, $pidfile, O_RDWR | O_CREAT ) or &childcleanup( __LINE__, "*Error* unable to create lfd PID file [$pidfile] $!" );
+flock( $pidfile_fh, LOCK_EX | LOCK_NB )            or &childcleanup( __LINE__, "*Error* attempt to start lfd when it is already running" );
+autoflush $pidfile_fh 1;
+seek( $pidfile_fh, 0, 0 );
+truncate( $pidfile_fh, 0 );
+print $pidfile_fh "$pid\n";
 $pidino    = ( stat($pidfile) )[1];
 $masterpid = $pid;
 
@@ -1170,8 +1169,8 @@ while (1) {
     $0         = "lfd - processing";
     $maintimer = time;
 
-    seek( $PIDFILE, 0, 0 );
-    my @piddata = <$PIDFILE>;
+    seek( $pidfile_fh, 0, 0 );
+    my @piddata = <$pidfile_fh>;
     chomp @piddata;
     if ( ( $pid ne $piddata[0] ) or ( $pidino ne ( stat($pidfile) )[1] ) ) {
         &cleanup( __LINE__, "*Error* pid mismatch or missing" );
@@ -3219,7 +3218,7 @@ sub lfdrestart {
 
     logfile("daemon restart requested");
 
-    close($PIDFILE);
+    close($pidfile_fh);
     unlink $pidfile;
 
     $SIG{HUP} = 'IGNORE';
@@ -7220,13 +7219,14 @@ sub globaldyndns {
 # start listlock
 sub listlock {
     my $state = shift;
+    state $listlock_fh;
     if ( $state eq "lock" ) {
-        sysopen( $LISTLOCK, "/var/lib/csf/lock/list.lock", O_RDWR | O_CREAT ) or &childcleanup("*Error* Unable to open /var/lib/csf/lock/list.lock");
-        flock( $LISTLOCK, LOCK_EX )                                           or &childcleanup("*Lock Error* [listlock] unable to lock");
-        print $LISTLOCK time;
+        sysopen( $listlock_fh, "/var/lib/csf/lock/list.lock", O_RDWR | O_CREAT ) or &childcleanup("*Error* Unable to open /var/lib/csf/lock/list.lock");
+        flock( $listlock_fh, LOCK_EX )                                           or &childcleanup("*Lock Error* [listlock] unable to lock");
+        print $listlock_fh time;
     }
     else {
-        close($LISTLOCK);
+        close($listlock_fh);
     }
     return;
 }
@@ -7927,8 +7927,8 @@ sub cleanup {
     }
     logfile("daemon stopped");
 
-    if ( $PIDFILE and fileno($PIDFILE) ) {
-        close($PIDFILE);
+    if ( $pidfile_fh and fileno($pidfile_fh) ) {
+        close($pidfile_fh);
         unlink $pidfile;
     }
 
@@ -8433,16 +8433,17 @@ sub syscommand {
 sub iptableslock {
     my $lock      = shift;
     my $iptablesx = shift;
+    state $iptableslock_fh;
     if ( $lock eq "lock" ) {
-        sysopen( $IPTABLESLOCK, "/var/lib/csf/lock/command.lock", O_RDWR | O_CREAT );
-        flock( $IPTABLESLOCK, LOCK_EX );
-        autoflush $IPTABLESLOCK 1;
-        seek( $IPTABLESLOCK, 0, 0 );
-        truncate( $IPTABLESLOCK, 0 );
-        print $IPTABLESLOCK $$;
+        sysopen( $iptableslock_fh, "/var/lib/csf/lock/command.lock", O_RDWR | O_CREAT );
+        flock( $iptableslock_fh, LOCK_EX );
+        autoflush $iptableslock_fh 1;
+        seek( $iptableslock_fh, 0, 0 );
+        truncate( $iptableslock_fh, 0 );
+        print $iptableslock_fh $$;
     }
     else {
-        close($IPTABLESLOCK);
+        close($iptableslock_fh);
     }
     return;
 }
