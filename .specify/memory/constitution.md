@@ -1,21 +1,22 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 1.0.5 → 1.0.6 (PATCH)
-Modified principles: 
-  - Test-First & Isolation: Clarified that copyright headers are optional; standardized structure applies after any optional copyright
-Added sections: None
-Removed sections: None
+Version change: 1.0.6 → 1.0.7 (MINOR)
+Modified principles: None
+Added sections: 
+  - V. Version Control & Commits: Requires case numbers and commit creation in speckit workflow
 Templates requiring updates:
-  ✅ plan-template.md - Constitution Check section compatible
-  ✅ spec-template.md - Requirements alignment verified
-  ✅ tasks-template.md - Task categorization compatible
-Follow-up TODOs: None
+  ✅ spec-template.md - Added Case Number field to header
+  ✅ plan-template.md - No changes needed
+  ✅ tasks-template.md - No changes needed
+Follow-up TODOs: 
+  - Update speckit mode instructions to prompt for case number if not provided
+  - Update speckit.implement to include commit creation as final step
 -->
 
 # CSF (ConfigServer Security & Firewall) Constitution
 
-**Version:** 1.0.6  
+**Version:** 1.0.7  
 **Ratified:** 2026-01-22  
 **Last Amended:** 2026-01-23
 

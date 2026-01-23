@@ -1,6 +1,7 @@
 # Feature Specification: [FEATURE NAME]
 
-**Feature Branch**: `[###-feature-name]`  
+**Case Number**: CPANEL-XXXXX  
+**Feature Branch**: `cpXXXXX` *(derived from case number: CPANEL-XXXXX → cpXXXXX)*  
 **Created**: [DATE]  
 **Status**: Draft  
 **Input**: User description: "$ARGUMENTS"
