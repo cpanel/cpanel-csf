@@ -1,9 +1,11 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 1.0.6 → 1.0.7 (MINOR)
+Version change: 1.0.7 → 1.0.8 (MINOR)
 Modified principles: None
 Added sections: 
+  - I. Copyright & Attribution: Jonathan Michaelson copyright header must never be altered
+Previous additions:
   - V. Version Control & Commits: Requires case numbers and commit creation in speckit workflow
 Templates requiring updates:
   ✅ spec-template.md - Added Case Number field to header
@@ -16,13 +18,48 @@ Follow-up TODOs:
 
 # CSF (ConfigServer Security & Firewall) Constitution
 
-**Version:** 1.0.7  
+**Version:** 1.0.8  
 **Ratified:** 2026-01-22  
 **Last Amended:** 2026-01-23
 
 ## Core Principles
 
-### I. Security-First Design (NON-NEGOTIABLE)
+### I. Copyright & Attribution (NON-NEGOTIABLE)
+
+The original author copyright header MUST be preserved in all source files.
+
+**Non-Negotiable Rules:**
+- The Jonathan Michaelson copyright header (lines 1-18) MUST NEVER be altered, removed, or modified in any way
+- The header begins with a line of `#` characters and ends at line 18 with a matching line of `#` characters
+- This includes the copyright years, author name, URL, and complete GPL license text
+- When creating new files based on existing code, the copyright header MUST be preserved exactly
+- Additional attribution MAY be added after line 18 but MUST NOT replace or modify the original header
+
+**Protected Header (Lines 1-18):**
+```
+###############################################################################
+# Copyright (C) 2006-2025 Jonathan Michaelson
+#
+# https://github.com/waytotheweb/scripts
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation; either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+# details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, see <https://www.gnu.org/licenses>.
+###############################################################################
+```
+
+**Rationale:** Respecting original authorship is a legal requirement under the GPL license and an ethical obligation. The copyright header establishes the licensing terms that govern the entire project.
+
+### II. Security-First Design (NON-NEGOTIABLE)
 
 CSF is security infrastructure software. Every code change MUST prioritize security over convenience.
 
@@ -36,7 +73,7 @@ CSF is security infrastructure software. Every code change MUST prioritize secur
 
 **Rationale:** CSF manages firewall rules and intrusion detection. A security flaw could compromise entire server infrastructure.
 
-### II. Perl Standards Compliance
+### III. Perl Standards Compliance
 
 All Perl code MUST follow cPanel Perl conventions and modern idiomatic Perl practices.
 
@@ -55,7 +92,7 @@ All Perl code MUST follow cPanel Perl conventions and modern idiomatic Perl prac
 
 **Rationale:** Consistent Perl standards ensure maintainability, reduce bugs, and enable effective code review across the cPanel ecosystem.
 
-### III. Test-First & Isolation
+### IV. Test-First & Isolation
 
 All new code and bug fixes MUST have corresponding unit tests using the Test2 framework.
 
@@ -91,7 +128,7 @@ All new code and bug fixes MUST have corresponding unit tests using the Test2 fr
 
 **Rationale:** Isolated, reproducible tests enable confident refactoring and prevent regressions in security-critical code. Using `cPstrict` ensures consistency with cPanel coding standards. The `mock()` function from Test2::Mock is automatically available via Test2::V0, eliminating redundant imports. Standardized test file headers ensure consistency and completeness across the test suite.
 
-### IV. Configuration Discipline
+### V. Configuration Discipline
 
 Configuration access MUST be deferred and isolated to enable testing and prevent side effects.
 
@@ -104,7 +141,7 @@ Configuration access MUST be deferred and isolated to enable testing and prevent
 
 **Rationale:** Deferred configuration loading enables unit testing without file system dependencies and prevents circular dependency issues during module compilation.
 
-### V. Simplicity & Maintainability
+### VI. Simplicity & Maintainability
 
 Code MUST favor simplicity and clarity over cleverness.
 
