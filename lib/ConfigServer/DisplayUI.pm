@@ -2543,12 +2543,7 @@ sub systemstats {
         $imghddir = "/etc/csf/ui/images/";
     }
 
-    sysopen( my $stats_fh, "/var/lib/csf/stats/system", O_RDWR | O_CREAT );
-    flock( $STATS, LOCK_SH );
-    my @stats = <$STATS>;
-    chomp @stats;
-    close($STATS);
-
+    my @stats = slurp("/var/lib/csf/stats/system");
     if ( @stats > 1 ) {
         ConfigServer::ServerStats::graphs( $type, $config{ST_SYSTEM_MAXDAYS}, $imghddir );
 
