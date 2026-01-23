@@ -395,15 +395,10 @@ my $mock = mock 'ConfigServer::Logger' => (
 If a module cannot be properly mocked with Test2::Mock (e.g., due to XS code, complex initialization, or compile-time dependencies), **stop and request assistance** rather than attempting workarounds with BEGIN blocks or `$INC` manipulation.
 
 ## Example header code.
-This is what the header for most tests should look like, depending on the year you modified the file.
+This is what the header for most tests should look like. Copyright headers in test files are optional.
 
 ```perl
 #!/usr/local/cpanel/3rdparty/bin/perl
-
-#                                      Copyright 2025 WebPros International, LLC
-#                                                           All rights reserved.
-# copyright@cpanel.net                                         http://cpanel.net
-# This code is subject to the cPanel license. Unauthorized copying is prohibited.
 
 use cPstrict;
 
@@ -412,15 +407,12 @@ use Test2::Tools::Explain;
 use Test2::Plugin::NoWarnings;
 ```
 
-**IMPORTANT:** Test files MUST use `use cPstrict;` after the copyright header.
+**IMPORTANT:** Test files MUST use `use cPstrict;` after the shebang (and after any optional copyright header if present).
 
 - `cPstrict` is a cPanel pragma that enforces strict coding standards and includes `use strict;` and `use warnings;`
-- It should be placed immediately after the copyright block and before any Test2 imports
+- It should be placed immediately after the shebang (or copyright block if present) and before any Test2 imports
 - Do NOT use `use strict;` and `use warnings;` separately - use `cPstrict` instead
 - Note: While `Test2::V0` also enables `strict` and `warnings`, `cPstrict` must still be explicitly declared for consistency with cPanel standards
-
-Insert the current year in copyright as a static value (e.g., 2025) based on the system date at the time
-of generation.
 
 ## Test2 Framework Guide
 

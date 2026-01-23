@@ -10503,7 +10503,7 @@ EOF
                                 $script          = "/$session/";
                                 $images          = "/$session/images";
                                 $config{THIS_UI} = 1;
-                                ConfigServer::cseUI::main( \%FORM, $fileinc, $script, 0, $images, $myv, $config{THIS_UI} );
+                                exit ConfigServer::cseUI::main( \%FORM, $fileinc, $script, 0, $images, $myv, $config{THIS_UI} );
                             }
                         }
                         elsif ( $file =~ /^\/images\/(\w+\/)?(\w+\/)?(\w+\/)?([\w\-]+\.(gif|png|jpg|[\w\-]+\.js|[\w\-]+\.css|css|[\w\-]+\.woff2|woff2|[\w\-]+\.woff|woff|[\w\-]+\.tff|tff))/i ) {
