@@ -61,6 +61,8 @@ use Fcntl      ();
 use POSIX      ();
 use IPC::Open3 ();
 
+use Cpanel::Encoder::Tiny ();
+
 use ConfigServer::CheckIP  qw(checkip);
 use ConfigServer::Sendmail ();
 use ConfigServer::Logger   ();
@@ -329,7 +331,11 @@ sub _printcmd {
     my $text;
     my ( $childin, $childout );
     my $pid = IPC::Open3::open3( $childin, $childout, $childout, @command );
-    while (<$childout>) { print $_; $text .= $_ }
+    while (<$childout>) {
+        my $line = Cpanel::Encoder::Tiny::safe_html_encode_str($_);
+        print $line;
+        $text .= $line;
+    }
     waitpid( $pid, 0 );
     return $text;
 }
