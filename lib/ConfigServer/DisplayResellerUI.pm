@@ -16,38 +16,124 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, see <https://www.gnu.org/licenses>.
 ###############################################################################
-## no critic (RequireUseWarnings, ProhibitExplicitReturnUndef, ProhibitMixedBooleanOperators, RequireBriefOpen)
+
 package ConfigServer::DisplayResellerUI;
 
-use strict;
-use lib '/usr/local/csf/lib';
-use Fcntl qw(:DEFAULT :flock);
-use POSIX qw(:sys_wait_h sysconf strftime);
-use File::Basename;
-use Net::CIDR::Lite;
-use IPC::Open3;
+=head1 NAME
 
-use ConfigServer::Config;
-use ConfigServer::CheckIP qw(checkip);
-use ConfigServer::Sendmail;
-use ConfigServer::Logger;
+ConfigServer::DisplayResellerUI - Reseller web interface for CSF firewall
+management
 
-use Exporter qw(import);
-our $VERSION   = 1.01;
-our @ISA       = qw(Exporter);
-our @EXPORT_OK = qw();
+=head1 SYNOPSIS
+
+    use ConfigServer::DisplayResellerUI ();
+
+    my %form_data = (
+        action  => 'qallow',
+        ip      => '192.168.1.1',
+        comment => 'Allow office IP',
+    );
+
+    ConfigServer::DisplayResellerUI::main(
+        \%form_data,
+        '/cgi/csf.cgi',
+        0,
+        '/images',
+        '1.01'
+    );
+
+=head1 DESCRIPTION
+
+This module provides a web-based interface for resellers to manage CSF
+(ConfigServer Firewall) operations. It allows authorized reseller users to
+perform limited firewall management tasks such as allowing IPs, blocking IPs,
+unblocking IPs, and searching for IP addresses in iptables.
+
+Reseller privileges are controlled through the C</etc/csf/csf.resellers>
+configuration file, which defines what actions each reseller is permitted to
+perform. Available privileges include ALLOW, DENY, UNBLOCK, GREP, and ALERT.
+
+=cut
+
+use cPstrict;
+
+use Fcntl      ();
+use POSIX      ();
+use IPC::Open3 ();
+
+use ConfigServer::CheckIP  qw(checkip);
+use ConfigServer::Sendmail ();
+use ConfigServer::Logger   ();
+
+our $VERSION = 1.01;
 
 umask(0177);
 
 our (
-    $chart,     $ipscidr6, $ipv6reg,   $ipv4reg, %config, %ips,    $mobile,
-    %FORM,      $script,   $script_da, $images,  $myv,    %rprivs, $hostname,
-    $hostshort, $tz,       $panel
+    %FORM,      $script, $script_da, $images, $myv, %rprivs, $hostname,
+    $hostshort, $tz,     $panel
 );
 
-#
-###############################################################################
-# start main
+=head2 main
+
+Renders the reseller web interface for CSF firewall management.
+
+    ConfigServer::DisplayResellerUI::main(
+        \%form_data,
+        $script_path,
+        $script_da,
+        $images_path,
+        $version
+    );
+
+=over 4
+
+=item * C<$form_ref> - Hash reference containing form data with keys:
+
+=over 4
+
+=item * C<action> - Action to perform: 'qallow', 'qdeny', 'qkill', or 'grep'
+
+=item * C<ip> - IP address to operate on
+
+=item * C<comment> - Comment for allow/deny operations (required)
+
+=item * C<mobi> - Mobile flag for form redirects
+
+=back
+
+=item * C<$script> - Script URL path for form actions
+
+=item * C<$script_da> - DirectAdmin script path (unused in current version)
+
+=item * C<images> - Path to images directory
+
+=item * C<myv> - CSF version string
+
+=back
+
+The function performs the following operations based on user privileges:
+
+=over 4
+
+=item * B<Quick Allow> - Adds IP to csf.allow and allows through firewall
+
+=item * B<Quick Deny> - Adds IP to csf.deny and blocks in firewall
+
+=item * B<Quick Unblock> - Removes IP from both temporary and permanent blocks
+
+=item * B<Search for IP> - Searches iptables rules for the specified IP
+
+=back
+
+All actions require appropriate privileges defined in
+C</etc/csf/csf.resellers>. If ALERT privilege is enabled, email notifications
+are sent for each action performed.
+
+Returns nothing. Outputs HTML directly to STDOUT.
+
+=cut
+
 sub main {
     my $form_ref = shift;
     %FORM      = %{$form_ref};
@@ -56,30 +142,34 @@ sub main {
     $images    = shift;
     $myv       = shift;
 
-    open( my $IN, "<", "/etc/csf/csf.resellers" );
-    flock( $IN, LOCK_SH );
-    while ( my $line = <$IN> ) {
-        my ( $user, $alert, $privs ) = split( /\:/, $line );
-        $privs =~ s/\s//g;
-        foreach my $priv ( split( /\,/, $privs ) ) {
-            $rprivs{$user}{$priv} = 1;
+    if ( open( my $IN, "<", "/etc/csf/csf.resellers" ) ) {
+        flock( $IN, Fcntl::LOCK_SH ) if fileno($IN);
+        while ( my $line = <$IN> ) {
+            my ( $user, $alert, $privs ) = split( /\:/, $line );
+            $privs //= '';
+            $privs =~ s/\s//g;
+            foreach my $priv ( split( /\,/, $privs ) ) {
+                $rprivs{$user}{$priv} = 1;
+            }
+            $rprivs{$user}{ALERT} = $alert;
         }
-        $rprivs{$user}{ALERT} = $alert;
+        close($IN);
     }
-    close($IN);
 
-    open( my $HOSTNAME, "<", "/proc/sys/kernel/hostname" );
-    flock( $HOSTNAME, LOCK_SH );
-    $hostname = <$HOSTNAME>;
-    chomp $hostname;
-    close($HOSTNAME);
+    if ( open( my $HOSTNAME, "<", "/proc/sys/kernel/hostname" ) ) {
+        flock( $HOSTNAME, Fcntl::LOCK_SH );
+        $hostname = <$HOSTNAME>;
+        chomp $hostname;
+        close($HOSTNAME);
+    }
     $hostshort = ( split( /\./, $hostname ) )[0];
-    $tz        = strftime( "%z", localtime );
-
-    my $config = ConfigServer::Config->loadconfig();
-    %config = $config->config();
+    $tz        = POSIX::strftime( "%z", localtime );
 
     $panel = "cPanel";
+
+    $FORM{ip}     //= '';
+    $FORM{action} //= '';
+    $FORM{mobi}   //= '';
 
     if ( $FORM{ip} ne "" ) { $FORM{ip} =~ s/(^\s+)|(\s+$)//g }
 
@@ -101,12 +191,12 @@ sub main {
                 print "<table class='table table-bordered table-striped'>\n";
                 print "<tr><td>";
                 print "<p>Allowing $FORM{ip}...</p>\n<p><pre style='font-family: Courier New, Courier; font-size: 12px'>\n";
-                my $text = &printcmd( "/usr/sbin/csf", "-a", $FORM{ip}, "ALLOW by Reseller $ENV{REMOTE_USER} ($FORM{comment})" );
+                my $text = _printcmd( "/usr/sbin/csf", "-a", $FORM{ip}, "ALLOW by Reseller $ENV{REMOTE_USER} ($FORM{comment})" );
                 print "</p>\n<p>...<b>Done</b>.</p>\n";
                 print "</td></tr></table>\n";
                 if ( $rprivs{ $ENV{REMOTE_USER} }{ALERT} ) {
                     open( my $IN, "<", "/usr/local/csf/tpl/reselleralert.txt" );
-                    flock( $IN, LOCK_SH );
+                    flock( $IN, Fcntl::LOCK_SH );
                     my @alert = <$IN>;
                     close($IN);
                     chomp @alert;
@@ -136,12 +226,12 @@ sub main {
                 print "<table class='table table-bordered table-striped'>\n";
                 print "<tr><td>";
                 print "<p>Blocking $FORM{ip}...</p>\n<p><pre style='font-family: Courier New, Courier; font-size: 12px'>\n";
-                my $text = &printcmd( "/usr/sbin/csf", "-d", $FORM{ip}, "DENY by Reseller $ENV{REMOTE_USER} ($FORM{comment})" );
+                my $text = _printcmd( "/usr/sbin/csf", "-d", $FORM{ip}, "DENY by Reseller $ENV{REMOTE_USER} ($FORM{comment})" );
                 print "</p>\n<p>...<b>Done</b>.</p>\n";
                 print "</td></tr></table>\n";
                 if ( $rprivs{ $ENV{REMOTE_USER} }{ALERT} ) {
                     open( my $IN, "<", "/usr/local/csf/tpl/reselleralert.txt" );
-                    flock( $IN, LOCK_SH );
+                    flock( $IN, Fcntl::LOCK_SH );
                     my @alert = <$IN>;
                     close($IN);
                     chomp @alert;
@@ -165,24 +255,24 @@ sub main {
             my $text = "";
             if ( $rprivs{ $ENV{REMOTE_USER} }{ALERT} ) {
                 my ( $childin, $childout );
-                my $pid = open3( $childin, $childout, $childout, "/usr/sbin/csf", "-g", $FORM{ip} );
+                my $pid = IPC::Open3::open3( $childin, $childout, $childout, "/usr/sbin/csf", "-g", $FORM{ip} );
                 while (<$childout>) { $text .= $_ }
                 waitpid( $pid, 0 );
             }
             print "<table class='table table-bordered table-striped'>\n";
             print "<tr><td>";
             print "<p>Unblock $FORM{ip}, trying permanent blocks...</p>\n<p><pre style='font-family: Courier New, Courier; font-size: 12px'>\n";
-            my $text1 = &printcmd( "/usr/sbin/csf", "-dr", $FORM{ip} );
+            my $text1 = _printcmd( "/usr/sbin/csf", "-dr", $FORM{ip} );
             print "</p>\n<p>...<b>Done</b>.</p>\n";
             print "<p>Unblock $FORM{ip}, trying temporary blocks...</p>\n<p><pre style='font-family: Courier New, Courier; font-size: 12px'>\n";
-            my $text2 = &printcmd( "/usr/sbin/csf", "-tr", $FORM{ip} );
+            my $text2 = _printcmd( "/usr/sbin/csf", "-tr", $FORM{ip} );
             print "</p>\n<p>...<b>Done</b>.</p>\n";
             print "</td></tr></table>\n";
             print "<p><form action='$script' method='post'><input type='hidden' name='mobi' value='$FORM{mobi}'><input type='submit' class='btn btn-default' value='Return'></form></p>\n";
 
             if ( $rprivs{ $ENV{REMOTE_USER} }{ALERT} ) {
                 open( my $IN, "<", "/usr/local/csf/tpl/reselleralert.txt" );
-                flock( $IN, LOCK_SH );
+                flock( $IN, Fcntl::LOCK_SH );
                 my @alert = <$IN>;
                 close($IN);
                 chomp @alert;
@@ -204,12 +294,13 @@ sub main {
             print "<table class='table table-bordered table-striped'>\n";
             print "<tr><td>";
             print "<p>Searching for $FORM{ip}...</p>\n<p><pre style='font-family: Courier New, Courier; font-size: 12px'>\n";
-            &printcmd( "/usr/sbin/csf", "-g", $FORM{ip} );
+            _printcmd( "/usr/sbin/csf", "-g", $FORM{ip} );
             print "</p>\n<p>...<b>Done</b>.</p>\n";
             print "</td></tr></table>\n";
             print "<p><form action='$script' method='post'><input type='submit' class='btn btn-default' value='Return'></form></p>\n";
         }
         else {
+            $ENV{REMOTE_USER} //= '';
             print "<table class='table table-bordered table-striped'>\n";
             print "<thead><tr><th align='left' colspan='2'>csf - ConfigServer Firewall options for $ENV{REMOTE_USER}</th></tr></thead>";
             if ( $rprivs{ $ENV{REMOTE_USER} }{ALLOW} ) {
@@ -233,20 +324,41 @@ sub main {
     return;
 }
 
-# end main
-###############################################################################
-# start printcmd
-sub printcmd {
+sub _printcmd {
     my @command = @_;
     my $text;
     my ( $childin, $childout );
-    my $pid = open3( $childin, $childout, $childout, @command );
+    my $pid = IPC::Open3::open3( $childin, $childout, $childout, @command );
     while (<$childout>) { print $_; $text .= $_ }
     waitpid( $pid, 0 );
     return $text;
 }
 
-# end printcmd
-###############################################################################
-
 1;
+
+=head1 VERSION
+
+1.01
+
+=head1 AUTHOR
+
+Jonathan Michaelson
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (C) 2006-2025 Jonathan Michaelson
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation; either version 3 of the License, or (at your option) any later
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+details.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, see L<https://www.gnu.org/licenses>.
+
+=cut
