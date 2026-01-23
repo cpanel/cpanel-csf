@@ -1,14 +1,11 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: N/A (initial) → 1.0.0
-Modified principles: N/A (initial constitution)
-Added sections:
-  - Core Principles (I-V)
-  - Security & Compliance Requirements
-  - Development Workflow
-  - Governance
-Removed sections: N/A (initial)
+Version change: 1.0.5 → 1.0.6 (PATCH)
+Modified principles: 
+  - Test-First & Isolation: Clarified that copyright headers are optional; standardized structure applies after any optional copyright
+Added sections: None
+Removed sections: None
 Templates requiring updates:
   ✅ plan-template.md - Constitution Check section compatible
   ✅ spec-template.md - Requirements alignment verified
@@ -17,6 +14,10 @@ Follow-up TODOs: None
 -->
 
 # CSF (ConfigServer Security & Firewall) Constitution
+
+**Version:** 1.0.6  
+**Ratified:** 2026-01-22  
+**Last Amended:** 2026-01-23
 
 ## Core Principles
 
@@ -59,7 +60,26 @@ All new code and bug fixes MUST have corresponding unit tests using the Test2 fr
 
 **Non-Negotiable Rules:**
 - Test files MUST use shebang: `#!/usr/local/cpanel/3rdparty/bin/perl`
+- Test files MUST use `use cPstrict;` (NOT separate `use strict;` and `use warnings;`)
 - Test files MUST include `Test2::V0` and `Test2::Plugin::NoWarnings`
+- Test files MUST use `Test2::Tools::Explain` for complex data structure output
+- Test files MUST use `use lib 't/lib';` to load test utilities
+- Test files MUST use `MockConfig` when testing modules that depend on ConfigServer::Config
+- Copyright headers are optional; when present, the standardized structure follows immediately after
+- Test files MUST follow this standardized structure (starting after any optional copyright header):
+  ```perl
+  #!/usr/local/cpanel/3rdparty/bin/perl
+
+  use cPstrict;
+
+  use Test2::V0;
+  use Test2::Tools::Explain;
+  use Test2::Plugin::NoWarnings;
+
+  use lib 't/lib';
+  use MockConfig;
+  ```
+- NEVER load `Test2::Mock` or `Test2::Tools::Mock` separately - automatically included in `Test2::V0`
 - Tests MUST NOT depend on system configuration files - use `MockConfig` for isolation
 - NEVER use `require_ok()` or `use_ok()` - use regular `use Module;` statements
 - Configuration loading MUST NOT occur at module load time (outside subroutines)
@@ -68,7 +88,7 @@ All new code and bug fixes MUST have corresponding unit tests using the Test2 fr
 - Module mocking MUST use `Test2::Mock` - NEVER use `BEGIN` blocks with `$INC` manipulation
 - Module under test MUST be loaded FIRST, then create mocks for dependencies
 
-**Rationale:** Isolated, reproducible tests enable confident refactoring and prevent regressions in security-critical code.
+**Rationale:** Isolated, reproducible tests enable confident refactoring and prevent regressions in security-critical code. Using `cPstrict` ensures consistency with cPanel coding standards. The `mock()` function from Test2::Mock is automatically available via Test2::V0, eliminating redundant imports. Standardized test file headers ensure consistency and completeness across the test suite.
 
 ### IV. Configuration Discipline
 
@@ -158,6 +178,9 @@ Changelog: Customer-facing description in active voice (wrap with leading space 
 
 - Run `perl -cw -Ilib t/YourTest.t` before committing test files
 - Run `make test` after any changes to verify no regressions
+- All unit tests MUST pass before committing any work
+- `make test` MUST return successful exit status before committing
+- Unit tests MUST NOT emit warnings from code under test.
 - Test naming: `t/ConfigServer-ModuleName.t` or `t/ConfigServer-ModuleName_description.t`
 
 ## Governance
@@ -188,4 +211,4 @@ This constitution supersedes all other practices. When conflicts arise between t
 - Test Standards: `.github/instructions/tests-perl.instructions.md`
 - Code Formatting: `.perltidyrc`
 
-**Version**: 1.0.0 | **Ratified**: 2026-01-22 | **Last Amended**: 2026-01-22
+**Version**: 1.0.6 | **Ratified**: 2026-01-22 | **Last Amended**: 2026-01-23
