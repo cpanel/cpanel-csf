@@ -5,6 +5,8 @@ Auto-generated from all feature plans. Last updated: 2026-01-22
 ## Active Technologies
 - Perl 5.36+ (cPanel-provided at `/usr/local/cpanel/3rdparty/bin/perl`) + Fcntl, File::Find, File::Copy, IPC::Open3 (002-modernize-cseui)
 - File system operations (read/write/copy/delete files and directories) (002-modernize-cseui)
+- Perl 5.36+ (cPanel-provided at `/usr/local/cpanel/3rdparty/bin/perl`) + ConfigServer::Config, Cpanel::Slurp, Fcntl (004-modernize-ports)
+- N/A (reads from /proc filesystem) (004-modernize-ports)
 
 - Perl 5.36+ (cPanel-provided at `/usr/local/cpanel/3rdparty/bin/perl`) Net::IP, Fcntl (001-modernize-rblcheck)
 
@@ -24,6 +26,7 @@ tests/
 Perl 5.36+ (cPanel-provided at `/usr/local/cpanel/3rdparty/bin/perl`): Follow standard conventions
 
 ## Recent Changes
+- 004-modernize-ports: Added Perl 5.36+ (cPanel-provided at `/usr/local/cpanel/3rdparty/bin/perl`) + ConfigServer::Config, Cpanel::Slurp, Fcntl
 - 002-modernize-cseui: Added Perl 5.36+ (cPanel-provided at `/usr/local/cpanel/3rdparty/bin/perl`) + Fcntl, File::Find, File::Copy, IPC::Open3
 
 - 001-modernize-rblcheck: Added Perl 5.36+ (cPanel-provided at `/usr/local/cpanel/3rdparty/bin/perl`) + Net::IP, Fcntl

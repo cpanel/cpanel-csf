@@ -79,7 +79,7 @@ All Perl code MUST follow cPanel Perl conventions and modern idiomatic Perl prac
 
 **Non-Negotiable Rules:**
 - Target Perl version: 5.36+ (cPanel-provided at `/usr/local/cpanel/3rdparty/bin/perl`)
-- Every module MUST begin with `use strict;` and `use warnings;`
+- Every module and script MUST use `use cPstrict;` (provides strict, warnings, and other cPanel standards)
 - MUST disable imports: use `use Module ();` instead of `use Module;` (exception: `Data::Dumper`)
 - MUST use fully qualified names when referencing functions/variables from other packages
 - NEVER use Perl 4 style subroutine calls (`&function` or `&function($arg)`)
