@@ -16,37 +16,113 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, see <https://www.gnu.org/licenses>.
 ###############################################################################
-## no critic (RequireUseWarnings, ProhibitExplicitReturnUndef, ProhibitMixedBooleanOperators, RequireBriefOpen)
 package ConfigServer::cseUI;
 
-use strict;
-use Fcntl qw(:DEFAULT :flock);
-use File::Find;
-use File::Copy;
-use IPC::Open3;
+=head1 NAME
 
-use Exporter qw(import);
-our $VERSION   = 2.03;
-our @ISA       = qw(Exporter);
-our @EXPORT_OK = qw();
+ConfigServer::cseUI - ConfigServer Explorer web-based file manager interface
+
+=head1 SYNOPSIS
+
+    use ConfigServer::cseUI ();
+
+    # Called from CGI context with form data
+    ConfigServer::cseUI::main(\%FORM, $fileinc, $script, $script_da, $images, $version);
+
+=head1 DESCRIPTION
+
+ConfigServer Explorer (CSE) provides a web-based file manager interface for
+cPanel/WHM environments. It allows administrators to browse, view, edit,
+copy, move, and delete files and directories through a web interface.
+
+This module handles the UI rendering and file operations for the CSE tool.
+It is designed to be called from a CGI script with appropriate authentication
+and authorization already verified.
+
+=head1 VERSION
+
+Version 2.03
+
+=cut
+
+use cPstrict;
+use ConfigServer::Config ();
+use Fcntl                ();
+use File::Find           ();
+use File::Copy           ();
+use IPC::Open3           ();
+
+our $VERSION = 2.03;
 
 umask(0177);
 
 our (
-    $chart, $ipscidr6, $ipv6reg,   $ipv4reg, %config, %ips, $mobile,
-    %FORM,  $script,   $script_da, $images,  $myv
-);
-
-our (
-    $act,       $destpath, $element, $extramessage, $fieldname, $fileinc,
-    $filetemp,  $message,  $name,    $origpath,     $storepath, $tgid,     $thisdir,
-    $tuid,      $value,    $webpath, %ele,          %header,    @bits,     @dirs, @filebodies,
-    @filenames, @files,    @months,  @parts,        @passrecs,  @thisdirs, @thisfiles,
+    %FORM,      $script,   $script_da, $images,       $myv,
+    $act,       $destpath, $element,   $extramessage, $fieldname, $fileinc,
+    $filetemp,  $message,  $name,      $origpath,     $tgid,      $thisdir,
+    $tuid,      $value,    $webpath,   %ele,          %header,    @bits,     @dirs, @filebodies,
+    @filenames, @files,    @months,    @parts,        @passrecs,  @thisdirs, @thisfiles,
     $files
 );
-#
-###############################################################################
-# start main
+
+# Storage path for htpasswd files - empty by default (feature disabled)
+our $storepath = '';
+
+=head1 FUNCTIONS
+
+=head2 main
+
+    ConfigServer::cseUI::main(\%FORM, $fileinc, $script, $script_da, $images, $version);
+
+Main entry point for the ConfigServer Explorer UI. Processes form input and
+dispatches to appropriate action handlers.
+
+=head3 Parameters
+
+=over 4
+
+=item C<\%FORM>
+
+Hash reference containing form input data. Key fields include:
+
+=over 8
+
+=item C<do> - Action to perform (b=browse, view, edit, save, del, etc.)
+
+=item C<p> - Current path
+
+=item C<f> - Current file
+
+=back
+
+=item C<$fileinc>
+
+File upload data reference (if any).
+
+=item C<$script>
+
+URL path to the CGI script.
+
+=item C<$script_da>
+
+URL path to the direct access script.
+
+=item C<$images>
+
+URL path to the images directory.
+
+=item C<$version>
+
+Version string for display.
+
+=back
+
+=head3 Returns
+
+This function outputs HTML directly to STDOUT and does not return a value.
+
+=cut
+
 sub main {
     my $FORM_ref = shift;
     %FORM      = %{$FORM_ref};
@@ -57,13 +133,11 @@ sub main {
     $myv       = shift;
     $|         = 1;
 
-    &loadconfig;
-
     $webpath = '/';
 
     if ( $FORM{do} eq "view" ) {
-        &view;
-        exit;
+        _view();
+        return 0;
     }
 
     print "Content-type: text/html\r\n\r\n";
@@ -91,10 +165,12 @@ EOF
     unless ( $FORM{do} eq "console" ) {
         print "<div class='container-fluid'>\n";
         print "<div class='pull-right' style='margin:8px'>\n";
-        if ( $config{UI_CXS} or $config{UI_CSE} ) {
+        my $ui_cxs = ConfigServer::Config->get_config('UI_CXS');
+        my $ui_cse = ConfigServer::Config->get_config('UI_CSE');
+        if ( $ui_cxs or $ui_cse ) {
             print "<form action='$script' method='post'><select name='csfapp'><option>csf</option>";
-            if ( $config{UI_CXS} ) { print "<option>cxs</option>" }
-            if ( $config{UI_CSE} ) { print "<option selected>cse</option>" }
+            if ($ui_cxs) { print "<option>cxs</option>" }
+            if ($ui_cse) { print "<option selected>cse</option>" }
             print "<", "/select> <input class='btn btn-default' type='submit' value='Switch'></form>\n";
         }
         print " <a class='btn btn-default' href='$script?csfaction=csflogout'>cse Logout</a>\n";
@@ -108,32 +184,32 @@ EOF
 
     $message = "";
 
-    if    ($fileinc)                 { &uploadfile }
-    elsif ( $FORM{do} eq "" )        { &browse }
-    elsif ( $FORM{quit} == 2 )       { &browse }
-    elsif ( $FORM{do} eq "b" )       { &browse }
-    elsif ( $FORM{do} eq "p" )       { &browse }
-    elsif ( $FORM{do} eq "o" )       { &browse }
-    elsif ( $FORM{do} eq "c" )       { &browse }
-    elsif ( $FORM{do} eq "m" )       { &browse }
-    elsif ( $FORM{do} eq "pw" )      { &browse }
-    elsif ( $FORM{do} eq "r" )       { &browse }
-    elsif ( $FORM{do} eq "newf" )    { &browse }
-    elsif ( $FORM{do} eq "newd" )    { &browse }
-    elsif ( $FORM{do} eq "cnewf" )   { &cnewf }
-    elsif ( $FORM{do} eq "cnewd" )   { &cnewd }
-    elsif ( $FORM{do} eq "ren" )     { &ren }
-    elsif ( $FORM{do} eq "del" )     { &del }
-    elsif ( $FORM{do} eq "setp" )    { &setp }
-    elsif ( $FORM{do} eq "seto" )    { &seto }
-    elsif ( $FORM{do} eq "cd" )      { &cd }
-    elsif ( $FORM{do} eq "console" ) { &console }
-    elsif ( $FORM{do} eq "edit" )    { &edit }
-    elsif ( $FORM{do} eq "Cancel" )  { &browse }
-    elsif ( $FORM{do} eq "Save" )    { &save }
-    elsif ( $FORM{do} eq "copyit" )  { &copyit }
-    elsif ( $FORM{do} eq "moveit" )  { &moveit }
-    else                             { print "Invalid action" }
+    if    ($fileinc)                    { _uploadfile() }
+    elsif ( $FORM{do} eq "" )           { _browse() }
+    elsif ( ( $FORM{quit} // 0 ) == 2 ) { _browse() }
+    elsif ( $FORM{do} eq "b" )          { _browse() }
+    elsif ( $FORM{do} eq "p" )          { _browse() }
+    elsif ( $FORM{do} eq "o" )          { _browse() }
+    elsif ( $FORM{do} eq "c" )          { _browse() }
+    elsif ( $FORM{do} eq "m" )          { _browse() }
+    elsif ( $FORM{do} eq "pw" )         { _browse() }
+    elsif ( $FORM{do} eq "r" )          { _browse() }
+    elsif ( $FORM{do} eq "newf" )       { _browse() }
+    elsif ( $FORM{do} eq "newd" )       { _browse() }
+    elsif ( $FORM{do} eq "cnewf" )      { _cnewf() }
+    elsif ( $FORM{do} eq "cnewd" )      { _cnewd() }
+    elsif ( $FORM{do} eq "ren" )        { _ren() }
+    elsif ( $FORM{do} eq "del" )        { _del() }
+    elsif ( $FORM{do} eq "setp" )       { _setp() }
+    elsif ( $FORM{do} eq "seto" )       { _seto() }
+    elsif ( $FORM{do} eq "cd" )         { _cd() }
+    elsif ( $FORM{do} eq "console" )    { _console() }
+    elsif ( $FORM{do} eq "edit" )       { _edit() }
+    elsif ( $FORM{do} eq "Cancel" )     { _browse() }
+    elsif ( $FORM{do} eq "Save" )       { _save() }
+    elsif ( $FORM{do} eq "copyit" )     { _copyit() }
+    elsif ( $FORM{do} eq "moveit" )     { _moveit() }
+    else                                { print "Invalid action" }
 
     unless ( $FORM{do} eq "console" ) {
         print "<p>&copy;2006-2023, <a href='http://www.configserver.com' target='_blank'>ConfigServer Services</a> (Jonathan Michaelson)</p>\n";
@@ -149,14 +225,13 @@ EOF
 </body>
 </html>
 EOF
-    exit;
+    return 0;
 }
 
-# end main
-###############################################################################
-# start browse
-sub browse {
-    my $extra;
+sub _browse {
+    my $extra = '';
+    $FORM{c} //= '';
+    $FORM{m} //= '';
     if ( $FORM{c} ) {
         if ( -e "$webpath$FORM{c}" ) {
             $extra = "&c=$FORM{c}";
@@ -248,6 +323,7 @@ sub browse {
                 next;
             }
             my ( $dev, $ino, $mode, $nlink, $uid, $gid, $rdev, $size, $atime, $mtime, $ctime, $blksize, $blocks ) = stat("$thisdir/$dir");
+            next unless defined $size;
             if ( $size < 1024 ) {
             }
             elsif ( $size < ( 1024 * 1024 ) ) {
@@ -276,7 +352,7 @@ sub browse {
 
             if ( -e "$storepath/$passfile.htpasswd" ) {
                 open( my $PASSFILE, "<", "$storepath/$passfile.htpasswd" ) or die $!;
-                flock( $PASSFILE, LOCK_SH );
+                flock( $PASSFILE, Fcntl::LOCK_SH );
                 @passrecs = <$PASSFILE>;
                 close($PASSFILE);
                 chomp @passrecs;
@@ -422,6 +498,7 @@ sub browse {
                 next;
             }
             my ( $dev, $ino, $mode, $nlink, $uid, $gid, $rdev, $size, $atime, $mtime, $ctime, $blksize, $blocks ) = stat("$thisdir/$file");
+            next unless defined $size;
             if ( $size < 1024 ) {
             }
             elsif ( $size < ( 1024 * 1024 ) ) {
@@ -573,9 +650,11 @@ sub browse {
 
     print "<div class='bs-callout bs-callout-warning'>All the following actions apply to the current directory</div>\n";
     print "<form action='$script' method='post'>\n";
+    my $form_c = $FORM{c} // '';
+    my $form_m = $FORM{m} // '';
     print "<input type='hidden' name='p' value='$FORM{p}'>\n";
-    print "<input type='hidden' name='c' value='$FORM{c}'>\n";
-    print "<input type='hidden' name='m' value='$FORM{m}'>\n";
+    print "<input type='hidden' name='c' value='$form_c'>\n";
+    print "<input type='hidden' name='m' value='$form_m'>\n";
     print "<input type='hidden' name='do' value='search'>\n";
     print "<table class='table table-bordered table-striped table-condensed'>\n";
     print "<thead><tr><th colspan='2'>Search for filenames or directories</th></tr></thead>\n";
@@ -632,22 +711,16 @@ sub browse {
     return;
 }
 
-# end browse
-###############################################################################
-# start setp
-sub setp {
+sub _setp {
     my $status = 0;
     chmod( oct("0$FORM{newp}"), "$webpath$FORM{p}/$FORM{f}" ) or $status = $!;
     if   ($status) { $message = "Operation Failed - $status" }
     else           { $message = "" }
-    &browse;
+    _browse();
     return;
 }
 
-# end setp
-###############################################################################
-# start seto
-sub seto {
+sub _seto {
     my $status = "";
     my ( $uid, $gid ) = split( /\:/, $FORM{newo} );
     if ( $uid !~ /^\d/ ) { $uid = ( getpwnam($uid) )[2] }
@@ -660,26 +733,20 @@ sub seto {
         if   ($status) { $message = "Operation Failed - $status" }
         else           { $message = "" }
     }
-    &browse;
+    _browse();
     return;
 }
 
-# end seto
-###############################################################################
-# start ren
-sub ren {
+sub _ren {
     my $status = 0;
     rename( "$webpath$FORM{p}/$FORM{f}", "$webpath$FORM{p}/$FORM{newf}" ) or $status = $!;
     if   ($status) { $message = "Operation Failed - $status" }
     else           { $message = "" }
-    &browse;
+    _browse();
     return;
 }
 
-# end ren
-###############################################################################
-# start moveit
-sub moveit {
+sub _moveit {
     if ( "$webpath$FORM{m}" eq "$webpath$FORM{p}/$FORM{newf}" ) {
         $message = "Move Failed - Cannot overwrite original";
     }
@@ -693,14 +760,11 @@ sub moveit {
         else           { $message = "" }
     }
     if ( $message eq "" ) { $FORM{m} = "" }
-    &browse;
+    _browse();
     return;
 }
 
-# end moveit
-###############################################################################
-# start copyit
-sub copyit {
+sub _copyit {
     if ( "$webpath$FORM{c}" eq "$webpath$FORM{p}/$FORM{newf}" ) {
         $message = "Copy Failed - Cannot overwrite original";
     }
@@ -711,10 +775,10 @@ sub copyit {
         if ( -d "$webpath$FORM{c}" ) {
             $origpath = "$webpath$FORM{c}";
             $destpath = "$webpath$FORM{p}/$FORM{newf}";
-            find( \&mycopy, $origpath );
+            File::Find::find( \&_mycopy, $origpath );
         }
         else {
-            copy( "$webpath$FORM{c}", "$webpath$FORM{p}/$FORM{newf}" ) or $message = "Copy Failed - $!";
+            File::Copy::copy( "$webpath$FORM{c}", "$webpath$FORM{p}/$FORM{newf}" ) or $message = "Copy Failed - $!";
             if ( $message eq "" ) {
                 my $mode = sprintf "%04o", ( stat("$webpath$FORM{c}") )[2] & oct("00777");
                 chmod( oct($mode), "$webpath$FORM{p}/$FORM{newf}" ) or $message = "Permission Change Failed - $!";
@@ -722,14 +786,11 @@ sub copyit {
         }
     }
     if ( $message eq "" ) { $FORM{c} = "" }
-    &browse;
+    _browse();
     return;
 }
 
-# end copyit
-###############################################################################
-# start mycopy
-sub mycopy {
+sub _mycopy {
     my $file = $File::Find::name;
     ( my $dest = $file ) =~ s/^\Q$origpath/$destpath/;
     my $status = "";
@@ -739,7 +800,7 @@ sub mycopy {
     }
     elsif ( -f $file ) {
         my $err = ( split( /\//, $file ) )[-1];
-        copy( $file, $dest ) or $status = "Copy Failed [$err] - $!<br>\n";
+        File::Copy::copy( $file, $dest ) or $status = "Copy Failed [$err] - $!<br>\n";
     }
     if ( $status eq "" ) {
         my $err  = ( split( /\//, $file ) )[-1];
@@ -752,24 +813,18 @@ sub mycopy {
     return;
 }
 
-# end mycopy
-###############################################################################
-# start cnewd
-sub cnewd {
+sub _cnewd {
     my $status = 0;
     if ( $FORM{newf} ne "" ) {
         mkdir( "$webpath$FORM{p}/$FORM{newf}", 0777 ) or $status = $!;
     }
     if   ($status) { $message = "Operation Failed - $status" }
     else           { $message = "" }
-    &browse;
+    _browse();
     return;
 }
 
-# end cnewd
-###############################################################################
-# start cnewf
-sub cnewf {
+sub _cnewf {
     my $status = 0;
     if ( $FORM{newf} ne "" ) {
         if ( -f "$webpath$FORM{p}/$FORM{newf}" ) {
@@ -777,20 +832,17 @@ sub cnewf {
         }
         else {
             open( my $OUT, ">", "$webpath$FORM{p}/$FORM{newf}" ) or $status = $!;
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX );
             close($OUT);
         }
     }
     if   ($status) { $message = "Operation Failed - $status" }
     else           { $message = "" }
-    &browse;
+    _browse();
     return;
 }
 
-# end cnewf
-###############################################################################
-# start del
-sub del {
+sub _del {
     my $status = 0;
     if ( -d "$webpath$FORM{p}/$FORM{f}" ) {
         rmtree( "$webpath$FORM{p}/$FORM{f}", 0, 0 ) or $status = $!;
@@ -800,14 +852,11 @@ sub del {
     }
     if   ($status) { $message = "Operation Failed - $status" }
     else           { $message = "" }
-    &browse;
+    _browse();
     return;
 }
 
-# end del
-###############################################################################
-# start view
-sub view {
+sub _view {
     if ( -e "$webpath$FORM{p}/$FORM{f}" ) {
         if ( -T "$webpath$FORM{p}/$FORM{f}" ) {
             print "content-type: text/plain\r\n";
@@ -818,7 +867,7 @@ sub view {
         print "content-disposition: attachment; filename=$FORM{f}\r\n\r\n";
 
         open( my $IN, "<", "$webpath$FORM{p}/$FORM{f}" ) or die $!;
-        flock( $IN, LOCK_SH );
+        flock( $IN, Fcntl::LOCK_SH );
         while (<$IN>) { print }
         close($IN);
     }
@@ -829,10 +878,7 @@ sub view {
     return;
 }
 
-# end view
-###############################################################################
-# start console
-sub console {
+sub _console {
     my $thisdir = "$webpath$FORM{p}";
     $thisdir =~ s/\/+/\//g;
 
@@ -842,7 +888,7 @@ sub console {
 
     $| = 1;
     my ( $childin, $childout );
-    my $cmdpid = open3( $childin, $childout, $childout, $FORM{cmd} );
+    my $cmdpid = IPC::Open3::open3( $childin, $childout, $childout, $FORM{cmd} );
     while ( my $line = <$childout> ) {
         $line =~ s/\</\&lt\;/g;
         $line =~ s/\>/\&gt\;/g;
@@ -854,10 +900,7 @@ sub console {
     return;
 }
 
-# end console
-###############################################################################
-# start cd
-sub cd {
+sub _cd {
     if ( -d $FORM{directory} ) {
         $FORM{p} = $FORM{directory};
     }
@@ -865,16 +908,13 @@ sub cd {
         $message = "No such directory [$FORM{directory}]";
     }
 
-    &browse;
+    _browse();
     return;
 }
 
-# end cd
-###############################################################################
-# start edit
-sub edit {
+sub _edit {
     open( my $IN, "<", "$webpath$FORM{p}/$FORM{f}" ) or die $!;
-    flock( $IN, LOCK_SH );
+    flock( $IN, Fcntl::LOCK_SH );
     my @data = <$IN>;
     close($IN);
 
@@ -908,27 +948,21 @@ sub edit {
     return;
 }
 
-# end edit
-###############################################################################
-# start save
-sub save {
+sub _save {
     unless ( $FORM{lf} ) { $FORM{newf} =~ s/\r//g }
     my $status = 0;
     open( my $OUT, ">", "$webpath$FORM{p}/$FORM{f}" ) or $status = $!;
-    flock( $OUT, LOCK_EX );
+    flock( $OUT, Fcntl::LOCK_EX );
     print $OUT $FORM{newf};
     close($OUT);
 
     if   ($status) { $message = "Operation Failed - $status" }
     else           { $message = "" }
-    &browse;
+    _browse();
     return;
 }
 
-# end save
-###############################################################################
-# start uploadfile
-sub uploadfile {
+sub _uploadfile {
     my $crlf = "\r\n";
     my @data = split( /$crlf/, $fileinc );
 
@@ -1039,8 +1073,8 @@ sub uploadfile {
             $fileno--;
             next;
         }
-        sysopen( my $OUT, "$webpath$FORM{p}/$filenames[$x]", O_WRONLY | O_CREAT );
-        flock( $OUT, LOCK_EX );
+        sysopen( my $OUT, "$webpath$FORM{p}/$filenames[$x]", Fcntl::O_WRONLY | Fcntl::O_CREAT );
+        flock( $OUT, Fcntl::LOCK_EX );
         print $OUT $filebodies[$x];
         close($OUT);
         $extramessage .= "<br>$filenames[$x] - Uploaded";
@@ -1048,46 +1082,31 @@ sub uploadfile {
 
     $message = "$fileno File(s) Uploaded" . $extramessage;
 
-    &browse;
+    _browse();
     return;
 }
 
-# end uploadfile
-###############################################################################
-# start countfiles
-sub countfiles {
+sub _countfiles {
     if   ( -d $File::Find::name ) { push( @dirs,  $File::Find::name ) }
     else                          { push( @files, $File::Find::name ) }
     return;
 }
 
-# end countfiles
-###############################################################################
-# loadconfig
-sub loadconfig {
-    sysopen( my $IN, "/etc/csf/csf.conf", O_RDWR | O_CREAT ) or die "Unable to open file: $!";
-    flock( $IN, LOCK_SH );
-    my @config = <$IN>;
-    close($IN);
-    chomp @config;
-
-    foreach my $line (@config) {
-        if ( $line =~ /^\#/ ) { next }
-        if ( $line !~ /=/ )   { next }
-        my ( $name, $value ) = split( /=/, $line, 2 );
-        $name =~ s/\s//g;
-        if ( $value =~ /\"(.*)\"/ ) {
-            $value = $1;
-        }
-        else {
-            &error( __LINE__, "Invalid configuration line" );
-        }
-        $config{$name} = $value;
-    }
-    return;
-}
-
-# end loadconfig
-###############################################################################
-
 1;
+
+__END__
+
+=head1 AUTHOR
+
+Jonathan Michaelson, Way to the Web Limited, L<https://www.configserver.com>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (C) 2006-2025 Jonathan Michaelson
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation; either version 3 of the License, or (at your option) any later
+version.
+
+=cut
