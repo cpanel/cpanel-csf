@@ -16,21 +16,40 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, see <https://www.gnu.org/licenses>.
 ###############################################################################
-## no critic (RequireUseWarnings, ProhibitExplicitReturnUndef, ProhibitMixedBooleanOperators, RequireBriefOpen)
-# start main
+
+=head1 NAME
+
+ConfigServer::Ports - Network port inspection and configuration utilities
+
+=head1 SYNOPSIS
+
+    use ConfigServer::Ports;
+
+    # Get hash of listening ports with process information
+    my %listening = ConfigServer::Ports::listening();
+
+    # Get hash of configured open ports from CSF config
+    my %open = ConfigServer::Ports::openports();
+
+=head1 DESCRIPTION
+
+This module provides utilities for inspecting network ports on Linux systems.
+It reads from the /proc filesystem to determine which ports are listening and
+which processes own them. It also reads CSF configuration to determine which
+ports are configured as open.
+
+=cut
+
 package ConfigServer::Ports;
 
-use strict;
-use lib '/usr/local/csf/lib';
-use Fcntl qw(:DEFAULT :flock);
-use ConfigServer::Config;
+use cPstrict;
 
-use Exporter qw(import);
-our $VERSION   = 1.02;
-our @ISA       = qw(Exporter);
-our @EXPORT_OK = qw();
+use Fcntl                ();
+use ConfigServer::Config ();
 
-my %printable = ( ( map { chr($_), unpack( 'H2', chr($_) ) } ( 0 .. 255 ) ), "\\" => '\\', "\r" => 'r', "\n" => 'n', "\t" => 't', "\"" => '"' );    ##no critic
+our $VERSION = 1.02;
+
+my %printable = ( ( map { chr($_), unpack( 'H2', chr($_) ) } ( 0 .. 255 ) ), "\\" => '\\', "\r" => 'r', "\n" => 'n', "\t" => 't', "\"" => '"' );
 my %tcpstates = (
     "01" => "ESTABLISHED",
     "02" => "SYN_SENT",
@@ -45,17 +64,48 @@ my %tcpstates = (
     "0B" => "CLOSING"
 );
 
-# end main
-###############################################################################
-# start listening
+=head2 listening
+
+    my %listen = ConfigServer::Ports::listening();
+
+Reads /proc/net/tcp, /proc/net/udp, /proc/net/tcp6, and /proc/net/udp6 to
+determine which ports are listening. For each listening port, retrieves
+process information from /proc/<pid>.
+
+=head3 Returns
+
+A hash with the following structure:
+
+    {
+        protocol => {
+            port => {
+                pid => {
+                    user => 'username',
+                    exe  => '/path/to/executable',
+                    cmd  => 'full command line',
+                    conn => connection_count,
+                },
+            },
+        },
+    }
+
+Where C<protocol> is 'tcp' or 'udp' (IPv6 ports are mapped to their IPv4
+protocol equivalent).
+
+=cut
+
 sub listening {
     my %net;
     my %conn;
     my %listen;
 
     foreach my $proto ( "tcp", "udp", "tcp6", "udp6" ) {
-        open( my $IN, "<", "/proc/net/$proto" );
-        flock( $IN, LOCK_SH );
+        my $path = "/proc/net/$proto";
+        open( my $IN, "<", $path ) or do {
+            warn "Cannot open $path: $!" unless $proto =~ /6$/;    # IPv6 may not exist
+            next;
+        };
+        flock( $IN, Fcntl::LOCK_SH );
         while (<$IN>) {
             my @rec = split();
             if ( $rec[9] =~ /uid/ ) { next }
@@ -66,8 +116,8 @@ sub listening {
             my ( $sip, $sport ) = split( /:/, $rec[2] );
             $sport = hex($sport);
 
-            $dip = &hex2ip($dip);
-            $sip = &hex2ip($sip);
+            $dip = _hex2ip($dip);
+            $sip = _hex2ip($sip);
 
             my $inode    = $rec[9];
             my $state    = $tcpstates{ $rec[3] };
@@ -84,8 +134,11 @@ sub listening {
         close($IN);
     }
 
-    opendir( PROCDIR, "/proc" );
-    while ( my $pid = readdir(PROCDIR) ) {
+    opendir( my $procdir, "/proc" ) or do {
+        warn "Cannot open /proc: $!";
+        return %listen;
+    };
+    while ( my $pid = readdir($procdir) ) {
         if ( $pid !~ /^\d+$/ ) { next }
         my $exe = readlink("/proc/$pid/exe") || "";
         my $cwd = readlink("/proc/$pid/cwd") || "";
@@ -94,7 +147,7 @@ sub listening {
 
         if ( defined $exe ) { $exe =~ s/([\r\n\t\"\\\x00-\x1f\x7F-\xFF])/\\$printable{$1}/sg }
         open( my $CMDLINE, "<", "/proc/$pid/cmdline" );
-        flock( $CMDLINE, LOCK_SH );
+        flock( $CMDLINE, Fcntl::LOCK_SH );
         my $cmdline = <$CMDLINE>;
         close($CMDLINE);
         if ( defined $cmdline ) {
@@ -107,14 +160,14 @@ sub listening {
         }
         if ( $exe eq "" ) { next }
         my @fd;
-        opendir( DIR, "/proc/$pid/fd" ) or next;
-        while ( my $file = readdir(DIR) ) {
+        opendir( my $fddir, "/proc/$pid/fd" ) or next;
+        while ( my $file = readdir($fddir) ) {
             if ( $file =~ /^\./ ) { next }
             push( @fd, readlink("/proc/$pid/fd/$file") );
         }
-        closedir(DIR);
+        closedir($fddir);
         open( my $STATUS, "<", "/proc/$pid/status" ) or next;
-        flock( $STATUS, LOCK_SH );
+        flock( $STATUS, Fcntl::LOCK_SH );
         my @status = <$STATUS>;
         close($STATUS);
         chomp @status;
@@ -141,28 +194,49 @@ sub listening {
                         $listen{$protocol}{ $net{$ino}{$protocol} }{$pid}{user} = $user;
                         $listen{$protocol}{ $net{$ino}{$protocol} }{$pid}{exe}  = $exe;
                         $listen{$protocol}{ $net{$ino}{$protocol} }{$pid}{cmd}  = $cmdline;
-                        $listen{$protocol}{ $net{$ino}{$protocol} }{$pid}{cmd}  = $cmdline;
-                        $listen{$protocol}{ $net{$ino}{$protocol} }{$pid}{conn} = $conn{ $net{$ino}{$protocol} }{$protocol} | "-";
+                        $listen{$protocol}{ $net{$ino}{$protocol} }{$pid}{conn} = $conn{ $net{$ino}{$protocol} }{$protocol} // "-";
                     }
                 }
             }
         }
 
     }
-    closedir(PROCDIR);
+    closedir($procdir);
     return %listen;
 }
 
-# end listening
-###############################################################################
-# start openports
+=head2 openports
+
+    my %ports = ConfigServer::Ports::openports();
+
+Reads CSF configuration (TCP_IN, TCP6_IN, UDP_IN, UDP6_IN) to determine
+which ports are configured as open.
+
+=head3 Returns
+
+A hash with the following structure:
+
+    {
+        tcp   => { port => 1, ... },
+        tcp6  => { port => 1, ... },
+        udp   => { port => 1, ... },
+        udp6  => { port => 1, ... },
+    }
+
+Port ranges (e.g., "1000:2000") are expanded to individual port entries.
+
+=cut
+
 sub openports {
-    my $config = ConfigServer::Config->loadconfig();
-    my %config = $config->config();
     my %ports;
 
-    $config{TCP_IN} =~ s/\s//g;
-    foreach my $entry ( split( /,/, $config{TCP_IN} ) ) {
+    my $tcp_in  = ConfigServer::Config->get_config('TCP_IN')  // '';
+    my $tcp6_in = ConfigServer::Config->get_config('TCP6_IN') // '';
+    my $udp_in  = ConfigServer::Config->get_config('UDP_IN')  // '';
+    my $udp6_in = ConfigServer::Config->get_config('UDP6_IN') // '';
+
+    $tcp_in =~ s/\s//g;
+    foreach my $entry ( split( /,/, $tcp_in ) ) {
         if ( $entry =~ /^(\d+):(\d+)$/ ) {
             my $from = $1;
             my $to   = $2;
@@ -174,8 +248,8 @@ sub openports {
             $ports{tcp}{$entry} = 1;
         }
     }
-    $config{TCP6_IN} =~ s/\s//g;
-    foreach my $entry ( split( /,/, $config{TCP6_IN} ) ) {
+    $tcp6_in =~ s/\s//g;
+    foreach my $entry ( split( /,/, $tcp6_in ) ) {
         if ( $entry =~ /^(\d+):(\d+)$/ ) {
             my $from = $1;
             my $to   = $2;
@@ -187,8 +261,8 @@ sub openports {
             $ports{tcp6}{$entry} = 1;
         }
     }
-    $config{UDP_IN} =~ s/\s//g;
-    foreach my $entry ( split( /,/, $config{UDP_IN} ) ) {
+    $udp_in =~ s/\s//g;
+    foreach my $entry ( split( /,/, $udp_in ) ) {
         if ( $entry =~ /^(\d+):(\d+)$/ ) {
             my $from = $1;
             my $to   = $2;
@@ -200,8 +274,8 @@ sub openports {
             $ports{udp}{$entry} = 1;
         }
     }
-    $config{UDP6_IN} =~ s/\s//g;
-    foreach my $entry ( split( /,/, $config{UDP6_IN} ) ) {
+    $udp6_in =~ s/\s//g;
+    foreach my $entry ( split( /,/, $udp6_in ) ) {
         if ( $entry =~ /^(\d+):(\d+)$/ ) {
             my $from = $1;
             my $to   = $2;
@@ -216,20 +290,42 @@ sub openports {
     return %ports;
 }
 
-# end openports
-###############################################################################
-## start hex2ip
-sub hex2ip {
-    my $bin = pack "C*" => map hex, $_[0] =~ /../g;
+sub _hex2ip {
+    my ($hex) = @_;
+
+    # Return empty string for invalid input
+    return '' if !defined $hex || $hex eq '' || $hex !~ /^[0-9A-Fa-f]+$/;
+
+    my $bin = pack "C*" => map { hex } $hex =~ /../g;
     my @l   = unpack "L*", $bin;
+
     if ( @l == 4 ) {
         return join ':', map { sprintf "%x:%x", $_ >> 16, $_ & 0xffff } @l;
     }
     elsif ( @l == 1 ) {
         return join '.', map { $_ >> 24, ( $_ >> 16 ) & 0xff, ( $_ >> 8 ) & 0xff, $_ & 0xff } @l;
     }
+
+    return '';
 }
-## end hex2ip
-###############################################################################
+
+=head1 VERSION
+
+1.02
+
+=head1 AUTHOR
+
+Jonathan Michaelson
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (C) 2006-2025 Jonathan Michaelson
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation; either version 3 of the License, or (at your option) any later
+version.
+
+=cut
 
 1;
