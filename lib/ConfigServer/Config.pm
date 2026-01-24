@@ -451,10 +451,7 @@ sub loadconfig {
     }
 
     if ( $config{IPV6} and $config{IPV6_SPI} ) {
-        open( my $FH, "<", "/proc/sys/kernel/osrelease" );
-        Fcntl::flock( $FH, Fcntl::LOCK_SH );
-        my @data = <$FH>;
-        close($FH);
+        my @data = ConfigServer::Slurp::slurp("/proc/sys/kernel/osrelease");
         chomp @data;
         if ( $data[0] =~ /^(\d+)\.(\d+)\.(\d+)/ ) {
             my $maj = $1;

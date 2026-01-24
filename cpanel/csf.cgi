@@ -29,7 +29,7 @@ use lib '/usr/local/csf/lib';
 use ConfigServer::DisplayUI;
 use ConfigServer::DisplayResellerUI;
 use ConfigServer::Config;
-use ConfigServer::Slurp qw(slurp);
+use ConfigServer::Slurp qw(slurp slurpee);
 
 use lib '/usr/local/cpanel';
 require Cpanel::Form;
@@ -81,31 +81,16 @@ if ( !Whostmgr::ACLS::hasroot() ) {
         exit();
     }
 }
-
-open( my $IN, "<", "/etc/csf/version.txt" ) or die $!;
-$myv = <$IN>;
-close($IN);
-chomp $myv;
+($myv) = slurpee( '/etc/csf/version.txt', 'fatal' => 1 );
 
 my @header;
 my @footer;
-my $htmltag = "data-post='$FORM{action}'";
-if ( -e "/etc/csf/csf.header" ) {
-    open( my $HEADER, "<", "/etc/csf/csf.header" );
-    flock( $HEADER, LOCK_SH );
-    @header = <$HEADER>;
-    close($HEADER);
-}
-if ( -e "/etc/csf/csf.footer" ) {
-    open( my $FOOTER, "<", "/etc/csf/csf.footer" );
-    flock( $FOOTER, LOCK_SH );
-    @footer = <$FOOTER>;
-    close($FOOTER);
-}
-unless ( $config{STYLE_CUSTOM} ) {
-    undef @header;
-    undef @footer;
-    $htmltag = "";
+my $htmltag = '';
+
+if ( $config{STYLE_CUSTOM} ) {
+    @header = slurpee('/etc/csf/csf.header', 'warn' => 0 );
+    @footer = slurpee('/etc/csf/csf.footer', 'warn' => 0 );
+    $htmltag = "data-post='$FORM{action}'";
 }
 
 my $thisapp = "csf";

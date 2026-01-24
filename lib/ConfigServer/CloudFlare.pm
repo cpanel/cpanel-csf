@@ -560,10 +560,7 @@ sub getscope {
         my %accounts;
         my %creds;
 
-        open( my $IN, "<", "/etc/userdomains" );
-        flock( $IN, Fcntl::LOCK_SH );
-        my @localusers = <$IN>;
-        close($IN);
+        my @localusers = ConfigServer::Slurp::slurp("/etc/userdomains");
         chomp @localusers;
         foreach my $line (@localusers) {
             my ( $domain, $user ) = split( /\:\s*/, $line, 2 );
