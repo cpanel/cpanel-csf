@@ -88,8 +88,8 @@ my @footer;
 my $htmltag = '';
 
 if ( $config{STYLE_CUSTOM} ) {
-    @header = slurpee('/etc/csf/csf.header', 'warn' => 0 );
-    @footer = slurpee('/etc/csf/csf.footer', 'warn' => 0 );
+    @header  = slurpee( '/etc/csf/csf.header', 'warn' => 0 );
+    @footer  = slurpee( '/etc/csf/csf.footer', 'warn' => 0 );
     $htmltag = "data-post='$FORM{action}'";
 }
 
@@ -169,11 +169,15 @@ EOF
     if ( $reregister ne "" ) { print $reregister }
 }
 
+my $ui_status;
 if ($reseller) {
-    ConfigServer::DisplayResellerUI::main( \%FORM, $script, 0, $images, $myv );
+    $ui_status = ConfigServer::DisplayResellerUI::main( \%FORM, $script, 0, $images, $myv, 0 );
 }
 else {
-    ConfigServer::DisplayUI::main( \%FORM, $script, 0, $images, $myv );
+    $ui_status = ConfigServer::DisplayUI::main( \%FORM, $script, 0, $images, $myv, 0 );
+}
+if ( defined $ui_status and $ui_status =~ /^\d+$/ ) {
+    exit($ui_status);
 }
 
 unless ( $FORM{action} eq "tailcmd" or $FORM{action} =~ /^cf/ or $FORM{action} eq "logtailcmd" or $FORM{action} eq "loggrepcmd" ) {
@@ -190,7 +194,7 @@ unless ( $FORM{action} eq "tailcmd" or $FORM{action} =~ /^cf/ or $FORM{action} e
             "print"             => 1,
             'config'            => \%config,
             'reseller'          => $reseller,
-            'app_key'           => 'csf', # Both this and icon work around failures of Whostmgr's templates/appconfig code to do the right thing.
+            'app_key'           => 'csf',               # Both this and icon work around failures of Whostmgr's templates/appconfig code to do the right thing.
             'icon'              => 'csf_small.png',
         }
     );

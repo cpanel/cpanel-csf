@@ -21,6 +21,45 @@ description: "Perl development standards, module patterns, and Perl conventions"
 - The first package it should then include is `warnings` using `use warnings;`.
 - All other packages (with a few exceptions) included after should not import any functions and prefer the syntax `use Package ();`
 
+### cPstrict Module
+
+The `use cPstrict;` pragma is a cPanel-specific module that provides a convenient way to enable modern Perl features. When you see `use cPstrict;` in code, it is equivalent to:
+
+```perl
+use strict;
+use warnings;
+use v5.30;
+use feature 'signatures';
+no warnings 'experimental::signatures';
+```
+
+**What `cPstrict` enables:**
+- **`strict`**: Enforces strict variable declarations and references
+- **`warnings`**: Enables all standard Perl warnings
+- **`v5.30` features**: Enables Perl 5.30 feature bundle (includes `say`, `state`, `current_sub`, `fc`, etc.)
+- **Function signatures**: Enables the `signatures` feature for subroutine parameter declarations
+- **Disables signature warnings**: Suppresses the experimental warnings for signatures
+
+**Usage:**
+```perl
+package My::Module;
+use cPstrict;
+
+sub greet ($name) {    # Function signatures are enabled
+    say "Hello, $name!";
+    return;
+}
+```
+
+**Requirements:**
+- Requires Perl 5.30 or higher (will `confess` if loaded from an older Perl)
+- Available at `/usr/local/cpanel/cPstrict.pm`
+
+**When to use:**
+- `use cPstrict;` is preferred for new cPanel modules that want modern Perl features
+- It is a drop-in replacement for `use strict; use warnings;` with additional modern features
+- Existing code using `use strict; use warnings;` is still acceptable
+
 ## Perl Standards
 
 - Prefer idiomatic Perl over least common denominator Perl.
