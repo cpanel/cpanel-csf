@@ -40,6 +40,8 @@ use ConfigServer::Logger qw(logfile);
 use ConfigServer::KillSSH;
 use ConfigServer::LookUpIP qw(iplookup);
 
+use Cpanel::Encoder::Tiny ();
+
 umask(0177);
 
 our (
@@ -9973,7 +9975,7 @@ sub ui {
                         my ( $name, $value ) = split( /=/, $pair );
                         $value =~ tr/+/ /;
                         $value =~ s/%([a-fA-F0-9][a-fA-F0-9])/pack("C", hex($1))/eg;
-                        $FORM{$name} = $value;
+                        $FORM{$name} = Cpanel::Encoder::Tiny::safe_html_encode_str($value);
                     }
                     if ( $header{cookie} =~ /csfsession=(\w+)/ ) { $cookie = $1 }
 
