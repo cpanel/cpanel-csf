@@ -28,13 +28,13 @@ if [ ! `id -u` = 0 ]; then
 	echo
 	echo "FAILED: You have to be logged in as root (UID:0) to install csf"
     echo
-	exit
+	exit 1
 fi
 echo
 
 if [ ! -e "install.sh" ]; then
 	echo "You must cd to the package directory that you expanded"
-	exit
+	exit 1
 fi
 
 mkdir -v -m 0600 /etc/csf
@@ -46,7 +46,7 @@ RETURN=`./os.pl`
 if [ "$RETURN" = 1 ]; then
 	echo
 	echo "FAILED: You MUST install the missing perl modules above before you can install csf. See /etc/csf/install.txt for installation details."
-	exit
+	exit 1
 else
     echo "...Perl modules OK"
 fi
