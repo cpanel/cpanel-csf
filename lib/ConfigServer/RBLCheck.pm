@@ -51,7 +51,9 @@ skipped. IPv6 checking is not currently implemented.
 =cut
 
 use cPstrict;
-use lib '/usr/local/csf/lib';
+
+use Cpanel::Encoder::Tiny ();
+
 use Fcntl ();
 use ConfigServer::Config;
 use ConfigServer::CheckIP   qw(checkip);
@@ -216,11 +218,11 @@ sub report {
                         my ( $rbl, $rblurl ) = split( /:/, $line, 2 );
                         if ( $rbl eq "" ) { next }
 
-                        my ( $rblhit, $rbltxt ) = ConfigServer::RBLLookup::rbllookup( $ip, $rbl );
-                        my @tmptxt = $rbltxt;
-                        $rbltxt = "";
+                        my ( $rblhit, @tmptxt ) = ConfigServer::RBLLookup::rbllookup( $ip, $rbl );
+                        my $rbltxt = "";
                         foreach my $line (@tmptxt) {
-                            next unless defined $line;
+                            next unless length $line;
+                            $line = Cpanel::Encoder::Tiny::safe_html_encode_str($line);
                             $line =~ s/(http(\S+))/<a target="_blank" href="$1">$1<\/a>/g;
                             $rbltxt .= "${line}\n";
                         }
