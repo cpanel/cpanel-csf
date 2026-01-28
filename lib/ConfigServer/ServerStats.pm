@@ -16,36 +16,119 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, see <https://www.gnu.org/licenses>.
 ###############################################################################
-## no critic (RequireUseWarnings, ProhibitExplicitReturnUndef, ProhibitMixedBooleanOperators, RequireBriefOpen)
-# start main
 package ConfigServer::ServerStats;
 
-use strict;
-use lib '/usr/local/csf/lib';
-use Fcntl qw(:DEFAULT :flock);
+=head1 NAME
 
-use Exporter qw(import);
-our $VERSION   = 1.02;
-our @ISA       = qw(Exporter);
-our @EXPORT_OK = qw();
+ConfigServer::ServerStats - Generate system statistics graphs and charts for CSF/LFD
+
+=head1 SYNOPSIS
+
+    use ConfigServer::ServerStats ();
+
+    # Generate system statistics graphs (CPU, memory, load, network, etc.)
+    ConfigServer::ServerStats::graphs($type, $maxdays, $imgdir);
+
+    # Generate block/allow charts
+    ConfigServer::ServerStats::charts($cc_lookups, $imgdir);
+
+    # Get HTML output for graphs
+    my $html = ConfigServer::ServerStats::graphs_html($imgdir);
+
+    # Get HTML output for charts
+    my $html = ConfigServer::ServerStats::charts_html($cc_lookups, $imgdir);
+
+=head1 DESCRIPTION
+
+This module generates GIF graphs and charts for system statistics displayed
+in the CSF/LFD web interface. It reads statistics data from files maintained
+by lfd and creates visual representations using GD::Graph.
+
+The module produces graphs for:
+
+=over 4
+
+=item * CPU usage
+
+=item * System load (1min, 5min, 15min load averages)
+
+=item * Memory usage (physical, swap, virtual)
+
+=item * Network I/O
+
+=item * Disk I/O
+
+=item * Apache connections
+
+=item * MySQL connections
+
+=item * Email statistics
+
+=back
+
+Charts are produced for blocked/allowed IP addresses by country.
+
+=cut
+
+use cPstrict;
+
+use Fcntl            ();
+use GD::Graph::bars  ();
+use GD::Graph::pie   ();
+use GD::Graph::lines ();
+
+our $VERSION    = 1.02;
+our $STATS_FILE = '/var/lib/csf/stats/system';
 
 my %minmaxavg;
 
-# end main
-###############################################################################
-# start init
-sub init {
-    eval('use GD::Graph::bars;');     ##no critic
-    if ($@) { return undef }
-    eval('use GD::Graph::pie;');      ##no critic
-    if ($@) { return undef }
-    eval('use GD::Graph::lines;');    ##no critic
-    if ($@) { return undef }
-}
+=head1 FUNCTIONS
 
-# end init
-###############################################################################
-# start graphs
+=head2 graphs($type, $maxdays, $imgdir)
+
+Generate system statistics graphs as GIF images.
+
+    ConfigServer::ServerStats::graphs('system', 7, '/path/to/images/');
+
+=over 4
+
+=item C<$type>
+
+The type of statistics to graph. Common values include:
+
+=over 4
+
+=item *
+
+C<'system'> – generate the standard set of graphs (CPU, memory, load,
+network, disk, etc.)
+
+=item *
+
+Specific metric types such as C<'cpu'>, C<'mem'>, C<'load'>, C<'net'>,
+C<'disk'> and other service-specific types.
+
+=back
+
+For the complete list of supported graph types, see the C<dographs>
+implementation in C<csf.pl>.
+=item C<$maxdays>
+
+Maximum number of days of historical data to include in the graphs.
+
+=item C<$imgdir>
+
+Directory path where generated GIF images will be written.
+
+=back
+
+Creates hourly, daily, weekly, and monthly graph files for CPU, memory,
+load averages, network I/O, disk I/O, and service-specific metrics.
+
+Returns nothing.
+
+=cut
+
 sub graphs {
     my $type           = shift;
     my $system_maxdays = shift;
@@ -53,15 +136,8 @@ sub graphs {
     my $img;
     $| = 1;
 
-    require GD::Graph::bars;
-    import GD::Graph::bars;
-    require GD::Graph::pie;
-    import GD::Graph::pie;
-    require GD::Graph::lines;
-    import GD::Graph::lines;
-
-    sysopen( my $STATS, "/var/lib/csf/stats/system", O_RDWR | O_CREAT );
-    flock( $STATS, LOCK_SH );
+    sysopen( my $STATS, $STATS_FILE, Fcntl::O_RDWR() | Fcntl::O_CREAT() );
+    flock( $STATS, Fcntl::LOCK_SH() );
     my @stats = <$STATS>;
     chomp @stats;
     close($STATS);
@@ -113,8 +189,8 @@ sub graphs {
                     push @p, $idle_use;
                     push @t, $iowait_use;
 
-                    &minmaxavg( "HOUR", "1Idle",   $idle_use );
-                    &minmaxavg( "HOUR", "2IOWAIT", $iowait_use );
+                    _minmaxavg( "HOUR", "1Idle",   $idle_use );
+                    _minmaxavg( "HOUR", "2IOWAIT", $iowait_use );
                 }
             }
             if ( $minmaxavg{HOUR}{"1Idle"}{CNT} > 0 )   { $minmaxavg{HOUR}{"1Idle"}{AVG}   /= $minmaxavg{HOUR}{"1Idle"}{CNT} }
@@ -135,7 +211,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemhour.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -177,8 +253,8 @@ sub graphs {
                     push @p, $idle_use;
                     push @t, $iowait_use;
 
-                    &minmaxavg( "DAY", "1Idle",   $idle_use );
-                    &minmaxavg( "DAY", "2IOWAIT", $iowait_use );
+                    _minmaxavg( "DAY", "1Idle",   $idle_use );
+                    _minmaxavg( "DAY", "2IOWAIT", $iowait_use );
                 }
             }
             if ( $minmaxavg{DAY}{"1Idle"}{CNT} > 0 )   { $minmaxavg{DAY}{"1Idle"}{AVG}   /= $minmaxavg{DAY}{"1Idle"}{CNT} }
@@ -198,7 +274,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemday.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -255,8 +331,8 @@ sub graphs {
                     if ( $cnt_avg == 0 ) { $cnt_avg = 1 }
                     push @p, $idle_avg / $cnt_avg;
                     push @t, $iowait_avg / $cnt_avg;
-                    &minmaxavg( "WEEK", "1Idle", ( $idle_avg / $cnt_avg ) );
-                    &minmaxavg( "WEEK", "2IOWAIT", ( $iowait_avg / $cnt_avg ) );
+                    _minmaxavg( "WEEK", "1Idle", ( $idle_avg / $cnt_avg ) );
+                    _minmaxavg( "WEEK", "2IOWAIT", ( $iowait_avg / $cnt_avg ) );
                 }
             }
             if ( $minmaxavg{WEEK}{"1Idle"}{CNT} > 0 )   { $minmaxavg{WEEK}{"1Idle"}{AVG}   /= $minmaxavg{WEEK}{"1Idle"}{CNT} }
@@ -276,7 +352,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemweek.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -333,8 +409,8 @@ sub graphs {
                     if ( $cnt_avg == 0 ) { $cnt_avg = 1 }
                     push @p, $idle_avg / $cnt_avg;
                     push @t, $iowait_avg / $cnt_avg;
-                    &minmaxavg( "MONTH", "1Idle", ( $idle_avg / $cnt_avg ) );
-                    &minmaxavg( "MONTH", "2IOWAIT", ( $iowait_avg / $cnt_avg ) );
+                    _minmaxavg( "MONTH", "1Idle", ( $idle_avg / $cnt_avg ) );
+                    _minmaxavg( "MONTH", "2IOWAIT", ( $iowait_avg / $cnt_avg ) );
                 }
             }
             if ( $minmaxavg{MONTH}{"1Idle"}{CNT} > 0 )   { $minmaxavg{MONTH}{"1Idle"}{AVG}   /= $minmaxavg{MONTH}{"1Idle"}{CNT} }
@@ -354,7 +430,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemmonth.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -382,9 +458,9 @@ sub graphs {
                     push @a, $memswaptotal;
                     push @b, $memswapfree;
 
-                    &minmaxavg( "HOUR", "1Used",     $memfree );
-                    &minmaxavg( "HOUR", "2Cached",   $memcached );
-                    &minmaxavg( "HOUR", "3SwapUsed", $memswapfree );
+                    _minmaxavg( "HOUR", "1Used",     $memfree );
+                    _minmaxavg( "HOUR", "2Cached",   $memcached );
+                    _minmaxavg( "HOUR", "3SwapUsed", $memswapfree );
                 }
             }
             if ( $minmaxavg{HOUR}{"1Used"}{CNT} > 0 )     { $minmaxavg{HOUR}{"1Used"}{AVG}     /= $minmaxavg{HOUR}{"1Used"}{CNT} }
@@ -405,7 +481,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemhour.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -433,9 +509,9 @@ sub graphs {
                     push @a, $memswaptotal;
                     push @b, $memswapfree;
 
-                    &minmaxavg( "DAY", "1Used",     $memfree );
-                    &minmaxavg( "DAY", "2Cached",   $memcached );
-                    &minmaxavg( "DAY", "3SwapUsed", $memswapfree );
+                    _minmaxavg( "DAY", "1Used",     $memfree );
+                    _minmaxavg( "DAY", "2Cached",   $memcached );
+                    _minmaxavg( "DAY", "3SwapUsed", $memswapfree );
                 }
             }
             if ( $minmaxavg{DAY}{"1Used"}{CNT} > 0 )     { $minmaxavg{DAY}{"1Used"}{AVG}     /= $minmaxavg{DAY}{"1Used"}{CNT} }
@@ -456,7 +532,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemday.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -502,9 +578,9 @@ sub graphs {
                     push @a, $memswaptotal_avg / $cnt_avg;
                     push @b, $memswapfree_avg / $cnt_avg;
 
-                    &minmaxavg( "WEEK", "1Used", ( $memfree_avg / $cnt_avg ) );
-                    &minmaxavg( "WEEK", "2Cached", ( $memcached_avg / $cnt_avg ) );
-                    &minmaxavg( "WEEK", "3SwapUsed", ( $memswapfree_avg / $cnt_avg ) );
+                    _minmaxavg( "WEEK", "1Used", ( $memfree_avg / $cnt_avg ) );
+                    _minmaxavg( "WEEK", "2Cached", ( $memcached_avg / $cnt_avg ) );
+                    _minmaxavg( "WEEK", "3SwapUsed", ( $memswapfree_avg / $cnt_avg ) );
                 }
             }
             if ( $minmaxavg{WEEK}{"1Used"}{CNT} > 0 )     { $minmaxavg{WEEK}{"1Used"}{AVG}     /= $minmaxavg{WEEK}{"1Used"}{CNT} }
@@ -525,7 +601,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemweek.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -571,9 +647,9 @@ sub graphs {
                     push @a, $memswaptotal_avg / $cnt_avg;
                     push @b, $memswapfree_avg / $cnt_avg;
 
-                    &minmaxavg( "MONTH", "1Used", ( $memfree_avg / $cnt_avg ) );
-                    &minmaxavg( "MONTH", "2Cached", ( $memcached_avg / $cnt_avg ) );
-                    &minmaxavg( "MONTH", "3SwapUsed", ( $memswapfree_avg / $cnt_avg ) );
+                    _minmaxavg( "MONTH", "1Used", ( $memfree_avg / $cnt_avg ) );
+                    _minmaxavg( "MONTH", "2Cached", ( $memcached_avg / $cnt_avg ) );
+                    _minmaxavg( "MONTH", "3SwapUsed", ( $memswapfree_avg / $cnt_avg ) );
                 }
             }
             if ( $minmaxavg{MONTH}{"1Used"}{CNT} > 0 )     { $minmaxavg{MONTH}{"1Used"}{AVG}     /= $minmaxavg{MONTH}{"1Used"}{CNT} }
@@ -594,7 +670,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemmonth.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -616,9 +692,9 @@ sub graphs {
                     push @t, $load5;
                     push @a, $load15;
 
-                    &minmaxavg( "HOUR", "1Load_1",  $load1 );
-                    &minmaxavg( "HOUR", "2Load_5",  $load5 );
-                    &minmaxavg( "HOUR", "3Load_15", $load15 );
+                    _minmaxavg( "HOUR", "1Load_1",  $load1 );
+                    _minmaxavg( "HOUR", "2Load_5",  $load5 );
+                    _minmaxavg( "HOUR", "3Load_15", $load15 );
                 }
             }
             if ( $minmaxavg{HOUR}{"1Load_1"}{CNT} > 0 )  { $minmaxavg{HOUR}{"1Load_1"}{AVG}  /= $minmaxavg{HOUR}{"1Load_1"}{CNT} }
@@ -639,7 +715,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemhour.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -661,9 +737,9 @@ sub graphs {
                     push @t, $load5;
                     push @a, $load15;
 
-                    &minmaxavg( "DAY", "1Load_1",  $load1 );
-                    &minmaxavg( "DAY", "2Load_5",  $load5 );
-                    &minmaxavg( "DAY", "3Load_15", $load15 );
+                    _minmaxavg( "DAY", "1Load_1",  $load1 );
+                    _minmaxavg( "DAY", "2Load_5",  $load5 );
+                    _minmaxavg( "DAY", "3Load_15", $load15 );
                 }
             }
             if ( $minmaxavg{DAY}{"1Load_1"}{CNT} > 0 )  { $minmaxavg{DAY}{"1Load_1"}{AVG}  /= $minmaxavg{DAY}{"1Load_1"}{CNT} }
@@ -684,7 +760,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemday.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -719,9 +795,9 @@ sub graphs {
                     push @t, $load5_avg / $cnt_avg;
                     push @a, $load15_avg / $cnt_avg;
 
-                    &minmaxavg( "WEEK", "1Load_1", ( $load1_avg / $cnt_avg ) );
-                    &minmaxavg( "WEEK", "2Load_5", ( $load5_avg / $cnt_avg ) );
-                    &minmaxavg( "WEEK", "3Load_15", ( $load15_avg / $cnt_avg ) );
+                    _minmaxavg( "WEEK", "1Load_1", ( $load1_avg / $cnt_avg ) );
+                    _minmaxavg( "WEEK", "2Load_5", ( $load5_avg / $cnt_avg ) );
+                    _minmaxavg( "WEEK", "3Load_15", ( $load15_avg / $cnt_avg ) );
                 }
             }
             if ( $minmaxavg{WEEK}{"1Load_1"}{CNT} > 0 )  { $minmaxavg{WEEK}{"1Load_1"}{AVG}  /= $minmaxavg{WEEK}{"1Load_1"}{CNT} }
@@ -742,7 +818,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemweek.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -777,9 +853,9 @@ sub graphs {
                     push @t, $load5_avg / $cnt_avg;
                     push @a, $load15_avg / $cnt_avg;
 
-                    &minmaxavg( "MONTH", "1Load_1", ( $load1_avg / $cnt_avg ) );
-                    &minmaxavg( "MONTH", "2Load_5", ( $load5_avg / $cnt_avg ) );
-                    &minmaxavg( "MONTH", "3Load_15", ( $load15_avg / $cnt_avg ) );
+                    _minmaxavg( "MONTH", "1Load_1", ( $load1_avg / $cnt_avg ) );
+                    _minmaxavg( "MONTH", "2Load_5", ( $load5_avg / $cnt_avg ) );
+                    _minmaxavg( "MONTH", "3Load_15", ( $load15_avg / $cnt_avg ) );
                 }
             }
             if ( $minmaxavg{MONTH}{"1Load_1"}{CNT} > 0 )  { $minmaxavg{MONTH}{"1Load_1"}{AVG}  /= $minmaxavg{MONTH}{"1Load_1"}{CNT} }
@@ -800,7 +876,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemmonth.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -829,7 +905,7 @@ sub graphs {
                         my $netin_val = ( $netin_prev - $netin ) / 60;
                         push @p, $netin_val;
                         $netin_prev = $netin;
-                        &minmaxavg( "HOUR", "1Inbound", $netin_val );
+                        _minmaxavg( "HOUR", "1Inbound", $netin_val );
                     }
                     if ( $netout_prev < $netout or $netout eq "" ) {
                         push @t, undef;
@@ -839,7 +915,7 @@ sub graphs {
                         my $netout_val = ( $netout_prev - $netout ) / 60;
                         push @t, $netout_val;
                         $netout_prev = $netout;
-                        &minmaxavg( "HOUR", "2Outbound", $netout_val );
+                        _minmaxavg( "HOUR", "2Outbound", $netout_val );
                     }
                 }
             }
@@ -860,7 +936,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemhour.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -889,7 +965,7 @@ sub graphs {
                         my $netin_val = ( $netin_prev - $netin ) / 60;
                         push @p, $netin_val;
                         $netin_prev = $netin;
-                        &minmaxavg( "DAY", "1Inbound", $netin_val );
+                        _minmaxavg( "DAY", "1Inbound", $netin_val );
                     }
                     if ( $netout_prev < $netout or $netout eq "" ) {
                         push @t, undef;
@@ -899,7 +975,7 @@ sub graphs {
                         my $netout_val = ( $netout_prev - $netout ) / 60;
                         push @t, $netout_val;
                         $netout_prev = $netout;
-                        &minmaxavg( "DAY", "2Outbound", $netout_val );
+                        _minmaxavg( "DAY", "2Outbound", $netout_val );
                     }
                 }
             }
@@ -920,7 +996,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemday.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -965,14 +1041,14 @@ sub graphs {
                 }
                 else {
                     push @p, ( $netin_avg / 60 );
-                    &minmaxavg( "WEEK", "1Inbound", ( $netin_avg / 60 ) );
+                    _minmaxavg( "WEEK", "1Inbound", ( $netin_avg / 60 ) );
                 }
                 unless ( defined $netout_avg ) {
                     push @t, undef;
                 }
                 else {
                     push @t, ( $netout_avg / 60 );
-                    &minmaxavg( "WEEK", "2Outbound", ( $netout_avg / 60 ) );
+                    _minmaxavg( "WEEK", "2Outbound", ( $netout_avg / 60 ) );
                 }
             }
             if ( $minmaxavg{WEEK}{"1Inbound"}{CNT} > 0 )  { $minmaxavg{WEEK}{"1Inbound"}{AVG}  /= $minmaxavg{WEEK}{"1Inbound"}{CNT} }
@@ -992,7 +1068,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemweek.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -1037,14 +1113,14 @@ sub graphs {
                 }
                 else {
                     push @p, ( $netin_avg / 60 );
-                    &minmaxavg( "MONTH", "1Inbound", ( $netin_avg / 60 ) );
+                    _minmaxavg( "MONTH", "1Inbound", ( $netin_avg / 60 ) );
                 }
                 unless ( defined $netout_avg ) {
                     push @t, undef;
                 }
                 else {
                     push @t, ( $netout_avg / 60 );
-                    &minmaxavg( "MONTH", "2Outbound", ( $netout_avg / 60 ) );
+                    _minmaxavg( "MONTH", "2Outbound", ( $netout_avg / 60 ) );
                 }
             }
             if ( $minmaxavg{MONTH}{"1Inbound"}{CNT} > 0 )  { $minmaxavg{MONTH}{"1Inbound"}{AVG}  /= $minmaxavg{MONTH}{"1Inbound"}{CNT} }
@@ -1064,7 +1140,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemmonth.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -1093,7 +1169,7 @@ sub graphs {
                         my $diskread_val = ( $diskread_prev - $diskread ) / 60;
                         push @p, $diskread_val;
                         $diskread_prev = $diskread;
-                        &minmaxavg( "HOUR", "1Reads", $diskread_val );
+                        _minmaxavg( "HOUR", "1Reads", $diskread_val );
                     }
                     if ( $diskwrite_prev < $diskwrite or $diskwrite eq "" ) {
                         push @t, undef;
@@ -1103,7 +1179,7 @@ sub graphs {
                         my $diskwrite_val = ( $diskwrite_prev - $diskwrite ) / 60;
                         push @t, $diskwrite_val;
                         $diskwrite_prev = $diskwrite;
-                        &minmaxavg( "HOUR", "2Writes", $diskwrite_val );
+                        _minmaxavg( "HOUR", "2Writes", $diskwrite_val );
                     }
                 }
             }
@@ -1124,7 +1200,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemhour.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -1153,7 +1229,7 @@ sub graphs {
                         my $diskread_val = ( $diskread_prev - $diskread ) / 60;
                         push @p, $diskread_val;
                         $diskread_prev = $diskread;
-                        &minmaxavg( "DAY", "1Reads", $diskread_val );
+                        _minmaxavg( "DAY", "1Reads", $diskread_val );
                     }
                     if ( $diskwrite_prev < $diskwrite or $diskwrite eq "" ) {
                         push @t, undef;
@@ -1163,7 +1239,7 @@ sub graphs {
                         my $diskwrite_val = ( $diskwrite_prev - $diskwrite ) / 60;
                         push @t, $diskwrite_val;
                         $diskwrite_prev = $diskwrite;
-                        &minmaxavg( "DAY", "2Writes", $diskwrite_val );
+                        _minmaxavg( "DAY", "2Writes", $diskwrite_val );
                     }
                 }
             }
@@ -1184,7 +1260,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemday.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -1227,14 +1303,14 @@ sub graphs {
                 }
                 else {
                     push @p, ( $diskread_avg / 60 );
-                    &minmaxavg( "WEEK", "1Reads", ( $diskread_avg / 60 ) );
+                    _minmaxavg( "WEEK", "1Reads", ( $diskread_avg / 60 ) );
                 }
                 unless ( defined $diskwrite_avg ) {
                     push @t, undef;
                 }
                 else {
                     push @t, ( $diskwrite_avg / 60 );
-                    &minmaxavg( "WEEK", "2Writes", ( $diskwrite_avg / 60 ) );
+                    _minmaxavg( "WEEK", "2Writes", ( $diskwrite_avg / 60 ) );
                 }
             }
             if ( $minmaxavg{WEEK}{"1Reads"}{CNT} > 0 )  { $minmaxavg{WEEK}{"1Reads"}{AVG}  /= $minmaxavg{WEEK}{"1Reads"}{CNT} }
@@ -1254,7 +1330,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemweek.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -1297,14 +1373,14 @@ sub graphs {
                 }
                 else {
                     push @p, ( $diskread_avg / 60 );
-                    &minmaxavg( "MONTH", "1Reads", ( $diskread_avg / 60 ) );
+                    _minmaxavg( "MONTH", "1Reads", ( $diskread_avg / 60 ) );
                 }
                 unless ( defined $diskwrite_avg ) {
                     push @t, undef;
                 }
                 else {
                     push @t, ( $diskwrite_avg / 60 );
-                    &minmaxavg( "MONTH", "2Writes", ( $diskwrite_avg / 60 ) );
+                    _minmaxavg( "MONTH", "2Writes", ( $diskwrite_avg / 60 ) );
                 }
             }
             if ( $minmaxavg{MONTH}{"1Reads"}{CNT} > 0 )  { $minmaxavg{MONTH}{"1Reads"}{AVG}  /= $minmaxavg{MONTH}{"1Reads"}{CNT} }
@@ -1324,7 +1400,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemmonth.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -1344,8 +1420,8 @@ sub graphs {
                     push @p, $mailin;
                     push @t, $mailout;
 
-                    &minmaxavg( "HOUR", "1Received", $mailin );
-                    &minmaxavg( "HOUR", "2Sent",     $mailout );
+                    _minmaxavg( "HOUR", "1Received", $mailin );
+                    _minmaxavg( "HOUR", "2Sent",     $mailout );
                 }
             }
             if ( $minmaxavg{HOUR}{"1Received"}{CNT} > 0 ) { $minmaxavg{HOUR}{"1Received"}{AVG} /= $minmaxavg{HOUR}{"1Received"}{CNT} }
@@ -1365,7 +1441,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemhour.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -1385,8 +1461,8 @@ sub graphs {
                     push @p, $mailin;
                     push @t, $mailout;
 
-                    &minmaxavg( "DAY", "1Received", $mailin );
-                    &minmaxavg( "DAY", "2Sent",     $mailout );
+                    _minmaxavg( "DAY", "1Received", $mailin );
+                    _minmaxavg( "DAY", "2Sent",     $mailout );
                 }
             }
             if ( $minmaxavg{DAY}{"1Received"}{CNT} > 0 ) { $minmaxavg{DAY}{"1Received"}{AVG} /= $minmaxavg{DAY}{"1Received"}{CNT} }
@@ -1406,7 +1482,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemday.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -1437,8 +1513,8 @@ sub graphs {
                     push @p, $mailin_avg / $cnt_avg;
                     push @t, $mailout_avg / $cnt_avg;
 
-                    &minmaxavg( "WEEK", "1Received", ( $mailin_avg / $cnt_avg ) );
-                    &minmaxavg( "WEEK", "2Sent", ( $mailout_avg / $cnt_avg ) );
+                    _minmaxavg( "WEEK", "1Received", ( $mailin_avg / $cnt_avg ) );
+                    _minmaxavg( "WEEK", "2Sent", ( $mailout_avg / $cnt_avg ) );
                 }
             }
             if ( $minmaxavg{WEEK}{"1Received"}{CNT} > 0 ) { $minmaxavg{WEEK}{"1Received"}{AVG} /= $minmaxavg{WEEK}{"1Received"}{CNT} }
@@ -1458,7 +1534,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemweek.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -1489,8 +1565,8 @@ sub graphs {
                     push @p, $mailin_avg / $cnt_avg;
                     push @t, $mailout_avg / $cnt_avg;
 
-                    &minmaxavg( "MONTH", "1Received", ( $mailin_avg / $cnt_avg ) );
-                    &minmaxavg( "MONTH", "2Sent", ( $mailout_avg / $cnt_avg ) );
+                    _minmaxavg( "MONTH", "1Received", ( $mailin_avg / $cnt_avg ) );
+                    _minmaxavg( "MONTH", "2Sent", ( $mailout_avg / $cnt_avg ) );
                 }
             }
             if ( $minmaxavg{MONTH}{"1Received"}{CNT} > 0 ) { $minmaxavg{MONTH}{"1Received"}{AVG} /= $minmaxavg{MONTH}{"1Received"}{CNT} }
@@ -1510,7 +1586,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemmonth.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -1528,7 +1604,7 @@ sub graphs {
                 else {
                     push @p, $cputemp;
 
-                    &minmaxavg( "HOUR", "1CPU", $cputemp );
+                    _minmaxavg( "HOUR", "1CPU", $cputemp );
                 }
             }
             if ( $minmaxavg{HOUR}{"1CPU"}{CNT} > 0 ) { $minmaxavg{HOUR}{"1CPU"}{AVG} /= $minmaxavg{HOUR}{"1CPU"}{CNT} }
@@ -1547,7 +1623,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemhour.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -1565,7 +1641,7 @@ sub graphs {
                 else {
                     push @p, $cputemp;
 
-                    &minmaxavg( "DAY", "1CPU", $cputemp );
+                    _minmaxavg( "DAY", "1CPU", $cputemp );
                 }
             }
             if ( $minmaxavg{DAY}{"1CPU"}{CNT} > 0 ) { $minmaxavg{DAY}{"1CPU"}{AVG} /= $minmaxavg{DAY}{"1CPU"}{CNT} }
@@ -1584,7 +1660,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemday.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -1611,7 +1687,7 @@ sub graphs {
                     if ( $cnt_avg == 0 ) { $cnt_avg = 1 }
                     push @p, $cputemp_avg / $cnt_avg;
 
-                    &minmaxavg( "WEEK", "1CPU", ( $cputemp_avg / $cnt_avg ) );
+                    _minmaxavg( "WEEK", "1CPU", ( $cputemp_avg / $cnt_avg ) );
                 }
             }
             if ( $minmaxavg{WEEK}{"1CPU"}{CNT} > 0 ) { $minmaxavg{WEEK}{"1CPU"}{AVG} /= $minmaxavg{WEEK}{"1CPU"}{CNT} }
@@ -1630,7 +1706,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemweek.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -1657,7 +1733,7 @@ sub graphs {
                     if ( $cnt_avg == 0 ) { $cnt_avg = 1 }
                     push @p, $cputemp_avg / $cnt_avg;
 
-                    &minmaxavg( "MONTH", "1CPU", ( $cputemp_avg / $cnt_avg ) );
+                    _minmaxavg( "MONTH", "1CPU", ( $cputemp_avg / $cnt_avg ) );
                 }
             }
             if ( $minmaxavg{MONTH}{"1CPU"}{CNT} > 0 ) { $minmaxavg{MONTH}{"1CPU"}{AVG} /= $minmaxavg{MONTH}{"1CPU"}{CNT} }
@@ -1676,7 +1752,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemmonth.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -1705,7 +1781,7 @@ sub graphs {
                         my $mysqlin_val = ( $mysqlin_prev - $mysqlin ) / 60;
                         push @p, $mysqlin_val;
                         $mysqlin_prev = $mysqlin;
-                        &minmaxavg( "HOUR", "1Inbound", $mysqlin_val );
+                        _minmaxavg( "HOUR", "1Inbound", $mysqlin_val );
                     }
                     if ( $mysqlout_prev < $mysqlout or $mysqlout eq "" ) {
                         push @t, undef;
@@ -1715,7 +1791,7 @@ sub graphs {
                         my $mysqlout_val = ( $mysqlout_prev - $mysqlout ) / 60;
                         push @t, $mysqlout_val;
                         $mysqlout_prev = $mysqlout;
-                        &minmaxavg( "HOUR", "2Outbound", $mysqlout_val );
+                        _minmaxavg( "HOUR", "2Outbound", $mysqlout_val );
                     }
                 }
             }
@@ -1736,7 +1812,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemhour.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -1765,7 +1841,7 @@ sub graphs {
                         my $mysqlin_val = ( $mysqlin_prev - $mysqlin ) / 60;
                         push @p, $mysqlin_val;
                         $mysqlin_prev = $mysqlin;
-                        &minmaxavg( "DAY", "1Inbound", $mysqlin_val );
+                        _minmaxavg( "DAY", "1Inbound", $mysqlin_val );
                     }
                     if ( $mysqlout_prev < $mysqlout or $mysqlout eq "" ) {
                         push @t, undef;
@@ -1775,7 +1851,7 @@ sub graphs {
                         my $mysqlout_val = ( $mysqlout_prev - $mysqlout ) / 60;
                         push @t, $mysqlout_val;
                         $mysqlout_prev = $mysqlout;
-                        &minmaxavg( "DAY", "2Outbound", $mysqlout_val );
+                        _minmaxavg( "DAY", "2Outbound", $mysqlout_val );
                     }
                 }
             }
@@ -1796,7 +1872,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemday.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -1841,14 +1917,14 @@ sub graphs {
                 }
                 else {
                     push @p, ( $mysqlin_avg / 60 );
-                    &minmaxavg( "WEEK", "1Inbound", ( $mysqlin_avg / 60 ) );
+                    _minmaxavg( "WEEK", "1Inbound", ( $mysqlin_avg / 60 ) );
                 }
                 unless ( defined $mysqlout_avg ) {
                     push @t, undef;
                 }
                 else {
                     push @t, ( $mysqlout_avg / 60 );
-                    &minmaxavg( "WEEK", "2Outbound", ( $mysqlout_avg / 60 ) );
+                    _minmaxavg( "WEEK", "2Outbound", ( $mysqlout_avg / 60 ) );
                 }
             }
             if ( $minmaxavg{WEEK}{"1Inbound"}{CNT} > 0 )  { $minmaxavg{WEEK}{"1Inbound"}{AVG}  /= $minmaxavg{WEEK}{"1Inbound"}{CNT} }
@@ -1868,7 +1944,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemweek.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -1913,14 +1989,14 @@ sub graphs {
                 }
                 else {
                     push @p, ( $mysqlin_avg / 60 );
-                    &minmaxavg( "MONTH", "1Inbound", ( $mysqlin_avg / 60 ) );
+                    _minmaxavg( "MONTH", "1Inbound", ( $mysqlin_avg / 60 ) );
                 }
                 unless ( defined $mysqlout_avg ) {
                     push @t, undef;
                 }
                 else {
                     push @t, ( $mysqlout_avg / 60 );
-                    &minmaxavg( "MONTH", "2Outbound", ( $mysqlout_avg / 60 ) );
+                    _minmaxavg( "MONTH", "2Outbound", ( $mysqlout_avg / 60 ) );
                 }
             }
             if ( $minmaxavg{MONTH}{"1Inbound"}{CNT} > 0 ) { $minmaxavg{MONTH}{"1Inbound"}{AVG}  /= $minmaxavg{MONTH}{"1Inbound"}{CNT} }
@@ -1940,7 +2016,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemmonth.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -1967,7 +2043,7 @@ sub graphs {
                         my $mysqlq_val = ( $mysqlq_prev - $mysqlq );
                         push @p, $mysqlq_val;
                         $mysqlq_prev = $mysqlq;
-                        &minmaxavg( "HOUR", "1Queries", $mysqlq_val );
+                        _minmaxavg( "HOUR", "1Queries", $mysqlq_val );
                     }
                 }
             }
@@ -1987,7 +2063,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemhour.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -2014,7 +2090,7 @@ sub graphs {
                         my $mysqlq_val = ( $mysqlq_prev - $mysqlq );
                         push @p, $mysqlq_val;
                         $mysqlq_prev = $mysqlq;
-                        &minmaxavg( "DAY", "1Queries", $mysqlq_val );
+                        _minmaxavg( "DAY", "1Queries", $mysqlq_val );
                     }
                 }
             }
@@ -2034,7 +2110,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemday.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -2068,7 +2144,7 @@ sub graphs {
                 }
                 else {
                     push @p, ( $mysqlq_avg / 60 );
-                    &minmaxavg( "WEEK", "1Queries", ( $mysqlq_avg / 60 ) );
+                    _minmaxavg( "WEEK", "1Queries", ( $mysqlq_avg / 60 ) );
                 }
             }
             if ( $minmaxavg{WEEK}{"1Queries"}{CNT} > 0 ) { $minmaxavg{WEEK}{"1Queries"}{AVG} /= $minmaxavg{WEEK}{"1Queries"}{CNT} }
@@ -2087,7 +2163,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemweek.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -2121,7 +2197,7 @@ sub graphs {
                 }
                 else {
                     push @p, ( $mysqlq_avg / 60 );
-                    &minmaxavg( "MONTH", "1Queries", ( $mysqlq_avg / 60 ) );
+                    _minmaxavg( "MONTH", "1Queries", ( $mysqlq_avg / 60 ) );
                 }
             }
             if ( $minmaxavg{MONTH}{"1Queries"}{CNT} > 0 ) { $minmaxavg{MONTH}{"1Queries"}{AVG} /= $minmaxavg{MONTH}{"1Queries"}{CNT} }
@@ -2140,7 +2216,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemmonth.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -2166,7 +2242,7 @@ sub graphs {
                         my $mysqlsq_val = ( $mysqlsq_prev - $mysqlsq );
                         push @t, $mysqlsq_val;
                         $mysqlsq_prev = $mysqlsq;
-                        &minmaxavg( "HOUR", "1Slow_Queries", $mysqlsq_val );
+                        _minmaxavg( "HOUR", "1Slow_Queries", $mysqlsq_val );
                     }
                 }
             }
@@ -2186,7 +2262,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemhour.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -2212,7 +2288,7 @@ sub graphs {
                         my $mysqlsq_val = ( $mysqlsq_prev - $mysqlsq );
                         push @t, $mysqlsq_val;
                         $mysqlsq_prev = $mysqlsq;
-                        &minmaxavg( "DAY", "1Slow_Queries", $mysqlsq_val );
+                        _minmaxavg( "DAY", "1Slow_Queries", $mysqlsq_val );
                     }
                 }
             }
@@ -2232,7 +2308,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemday.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -2266,7 +2342,7 @@ sub graphs {
                 }
                 else {
                     push @t, ( $mysqlsq_avg / 60 );
-                    &minmaxavg( "WEEK", "1Slow_Queries", ( $mysqlsq_avg / 60 ) );
+                    _minmaxavg( "WEEK", "1Slow_Queries", ( $mysqlsq_avg / 60 ) );
                 }
             }
             if ( $minmaxavg{WEEK}{"1Slow_Queries"}{CNT} > 0 ) { $minmaxavg{WEEK}{"1Slow_Queries"}{AVG} /= $minmaxavg{WEEK}{"1Slow_Queries"}{CNT} }
@@ -2285,7 +2361,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemweek.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -2319,7 +2395,7 @@ sub graphs {
                 }
                 else {
                     push @t, ( $mysqlsq_avg / 60 );
-                    &minmaxavg( "MONTH", "1Slow_Queries", ( $mysqlsq_avg / 60 ) );
+                    _minmaxavg( "MONTH", "1Slow_Queries", ( $mysqlsq_avg / 60 ) );
                 }
             }
             if ( $minmaxavg{MONTH}{"1Slow_Queries"}{CNT} > 0 ) { $minmaxavg{MONTH}{"1Slow_Queries"}{AVG} /= $minmaxavg{MONTH}{"1Slow_Queries"}{CNT} }
@@ -2338,7 +2414,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemmonth.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -2365,14 +2441,14 @@ sub graphs {
                         my $mysqlcn_val = ( $mysqlcn_prev - $mysqlcn );
                         push @p, $mysqlcn_val;
                         $mysqlcn_prev = $mysqlcn;
-                        &minmaxavg( "HOUR", "1Connections", $mysqlcn_val );
+                        _minmaxavg( "HOUR", "1Connections", $mysqlcn_val );
                     }
                     if ( $mysqlth eq "" ) {
                         push @t, undef;
                     }
                     else {
                         push @t, $mysqlth;
-                        &minmaxavg( "HOUR", "2Threads", $mysqlth );
+                        _minmaxavg( "HOUR", "2Threads", $mysqlth );
                     }
                 }
             }
@@ -2393,7 +2469,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemhour.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -2420,14 +2496,14 @@ sub graphs {
                         my $mysqlcn_val = ( $mysqlcn_prev - $mysqlcn );
                         push @p, $mysqlcn_val;
                         $mysqlcn_prev = $mysqlcn;
-                        &minmaxavg( "DAY", "1Connections", $mysqlcn_val );
+                        _minmaxavg( "DAY", "1Connections", $mysqlcn_val );
                     }
                     if ( $mysqlth eq "" ) {
                         push @t, undef;
                     }
                     else {
                         push @t, $mysqlth;
-                        &minmaxavg( "DAY", "2Threads", $mysqlth );
+                        _minmaxavg( "DAY", "2Threads", $mysqlth );
                     }
                 }
             }
@@ -2448,7 +2524,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemday.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -2484,14 +2560,14 @@ sub graphs {
                 }
                 else {
                     push @p, ( $mysqlcn_avg / 60 );
-                    &minmaxavg( "WEEK", "1Connections", ( $mysqlcn_avg / 60 ) );
+                    _minmaxavg( "WEEK", "1Connections", ( $mysqlcn_avg / 60 ) );
                 }
                 unless ( defined $mysqlth_avg ) {
                     push @t, undef;
                 }
                 else {
                     push @t, ( $mysqlth_avg / 60 );
-                    &minmaxavg( "WEEK", "2Threads", ( $mysqlth_avg / 60 ) );
+                    _minmaxavg( "WEEK", "2Threads", ( $mysqlth_avg / 60 ) );
                 }
             }
             if ( $minmaxavg{WEEK}{"1Connections"}{CNT} > 0 ) { $minmaxavg{WEEK}{"1Connections"}{AVG} /= $minmaxavg{WEEK}{"1Connections"}{CNT} }
@@ -2511,7 +2587,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemweek.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -2547,14 +2623,14 @@ sub graphs {
                 }
                 else {
                     push @p, ( $mysqlcn_avg / 60 );
-                    &minmaxavg( "MONTH", "1Connections", ( $mysqlcn_avg / 60 ) );
+                    _minmaxavg( "MONTH", "1Connections", ( $mysqlcn_avg / 60 ) );
                 }
                 unless ( defined $mysqlth_avg ) {
                     push @t, undef;
                 }
                 else {
                     push @t, ( $mysqlth_avg / 60 );
-                    &minmaxavg( "MONTH", "2Threads", ( $mysqlth_avg / 60 ) );
+                    _minmaxavg( "MONTH", "2Threads", ( $mysqlth_avg / 60 ) );
                 }
             }
             if ( $minmaxavg{MONTH}{"1Connections"}{CNT} > 0 ) { $minmaxavg{MONTH}{"1Connections"}{AVG} /= $minmaxavg{MONTH}{"1Connections"}{CNT} }
@@ -2574,7 +2650,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemmonth.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -2592,7 +2668,7 @@ sub graphs {
                 else {
                     push @p, $apachecpu;
 
-                    &minmaxavg( "HOUR", "1Apache_CPU", $apachecpu );
+                    _minmaxavg( "HOUR", "1Apache_CPU", $apachecpu );
                 }
             }
             if ( $minmaxavg{HOUR}{"1Apache_CPU"}{CNT} > 0 ) { $minmaxavg{HOUR}{"1Apache_CPU"}{AVG} /= $minmaxavg{HOUR}{"1Apache_CPU"}{CNT} }
@@ -2611,7 +2687,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemhour.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -2629,7 +2705,7 @@ sub graphs {
                 else {
                     push @p, $apachecpu;
 
-                    &minmaxavg( "DAY", "1Apache_CPU", $apachecpu );
+                    _minmaxavg( "DAY", "1Apache_CPU", $apachecpu );
                 }
             }
             if ( $minmaxavg{DAY}{"1Apache_CPU"}{CNT} > 0 ) { $minmaxavg{DAY}{"1Apache_CPU"}{AVG} /= $minmaxavg{DAY}{"1Apache_CPU"}{CNT} }
@@ -2648,7 +2724,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemday.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -2675,7 +2751,7 @@ sub graphs {
                     if ( $cnt_avg == 0 ) { $cnt_avg = 1 }
                     push @p, $apachecpu_avg / $cnt_avg;
 
-                    &minmaxavg( "WEEK", "1Apache_CPU", ( $apachecpu_avg / $cnt_avg ) );
+                    _minmaxavg( "WEEK", "1Apache_CPU", ( $apachecpu_avg / $cnt_avg ) );
                 }
             }
             if ( $minmaxavg{WEEK}{"1Apache_CPU"}{CNT} > 0 ) { $minmaxavg{WEEK}{"1Apache_CPU"}{AVG} /= $minmaxavg{WEEK}{"1Apache_CPU"}{CNT} }
@@ -2694,7 +2770,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemweek.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -2721,7 +2797,7 @@ sub graphs {
                     if ( $cnt_avg == 0 ) { $cnt_avg = 1 }
                     push @p, $apachecpu_avg / $cnt_avg;
 
-                    &minmaxavg( "MONTH", "1Apache_CPU", ( $apachecpu_avg / $cnt_avg ) );
+                    _minmaxavg( "MONTH", "1Apache_CPU", ( $apachecpu_avg / $cnt_avg ) );
                 }
             }
             if ( $minmaxavg{MONTH}{"1Apache_CPU"}{CNT} > 0 ) { $minmaxavg{MONTH}{"1Apache_CPU"}{AVG} /= $minmaxavg{MONTH}{"1Apache_CPU"}{CNT} }
@@ -2740,7 +2816,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemmonth.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -2766,7 +2842,7 @@ sub graphs {
                         my $apacheacc_val = ( $apacheacc_prev - $apacheacc );
                         push @p, $apacheacc_val;
                         $apacheacc_prev = $apacheacc;
-                        &minmaxavg( "HOUR", "1Connections", $apacheacc_val );
+                        _minmaxavg( "HOUR", "1Connections", $apacheacc_val );
                     }
                 }
             }
@@ -2786,7 +2862,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemhour.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -2812,7 +2888,7 @@ sub graphs {
                         my $apacheacc_val = ( $apacheacc_prev - $apacheacc );
                         push @p, $apacheacc_val;
                         $apacheacc_prev = $apacheacc;
-                        &minmaxavg( "DAY", "1Connections", $apacheacc_val );
+                        _minmaxavg( "DAY", "1Connections", $apacheacc_val );
                     }
                 }
             }
@@ -2832,7 +2908,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemday.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -2866,7 +2942,7 @@ sub graphs {
                 }
                 else {
                     push @p, ( $apacheacc_avg / 60 );
-                    &minmaxavg( "WEEK", "1Connections", ( $apacheacc_avg / 60 ) );
+                    _minmaxavg( "WEEK", "1Connections", ( $apacheacc_avg / 60 ) );
                 }
             }
             if ( $minmaxavg{WEEK}{"1Connections"}{CNT} > 0 ) { $minmaxavg{WEEK}{"1Connections"}{AVG} /= $minmaxavg{WEEK}{"1Connections"}{CNT} }
@@ -2885,7 +2961,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemweek.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -2919,7 +2995,7 @@ sub graphs {
                 }
                 else {
                     push @p, ( $apacheacc_avg / 60 );
-                    &minmaxavg( "MONTH", "1Connections", ( $apacheacc_avg / 60 ) );
+                    _minmaxavg( "MONTH", "1Connections", ( $apacheacc_avg / 60 ) );
                 }
             }
             if ( $minmaxavg{MONTH}{"1Connections"}{CNT} > 0 ) { $minmaxavg{MONTH}{"1Connections"}{AVG} /= $minmaxavg{MONTH}{"1Connections"}{CNT} }
@@ -2938,7 +3014,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemmonth.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -2958,8 +3034,8 @@ sub graphs {
                     push @p, $apachebwork;
                     push @t, $apacheiwork;
 
-                    &minmaxavg( "HOUR", "1Busy", $apachebwork );
-                    &minmaxavg( "HOUR", "2Idle", $apacheiwork );
+                    _minmaxavg( "HOUR", "1Busy", $apachebwork );
+                    _minmaxavg( "HOUR", "2Idle", $apacheiwork );
                 }
             }
             if ( $minmaxavg{HOUR}{"1Busy"}{CNT} > 0 ) { $minmaxavg{HOUR}{"1Busy"}{AVG} /= $minmaxavg{HOUR}{"1Busy"}{CNT} }
@@ -2979,7 +3055,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemhour.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -2999,8 +3075,8 @@ sub graphs {
                     push @p, $apachebwork;
                     push @t, $apacheiwork;
 
-                    &minmaxavg( "DAY", "1Busy", $apachebwork );
-                    &minmaxavg( "DAY", "2Idle", $apacheiwork );
+                    _minmaxavg( "DAY", "1Busy", $apachebwork );
+                    _minmaxavg( "DAY", "2Idle", $apacheiwork );
                 }
             }
             if ( $minmaxavg{DAY}{"1Busy"}{CNT} > 0 ) { $minmaxavg{DAY}{"1Busy"}{AVG} /= $minmaxavg{DAY}{"1Busy"}{CNT} }
@@ -3020,7 +3096,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemday.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -3051,8 +3127,8 @@ sub graphs {
                     push @p, $apachebwork_avg / $cnt_avg;
                     push @t, $apacheiwork_avg / $cnt_avg;
 
-                    &minmaxavg( "WEEK", "1Busy", ( $apachebwork_avg / $cnt_avg ) );
-                    &minmaxavg( "WEEK", "2Idle", ( $apacheiwork_avg / $cnt_avg ) );
+                    _minmaxavg( "WEEK", "1Busy", ( $apachebwork_avg / $cnt_avg ) );
+                    _minmaxavg( "WEEK", "2Idle", ( $apacheiwork_avg / $cnt_avg ) );
                 }
             }
             if ( $minmaxavg{WEEK}{"1Busy"}{CNT} > 0 ) { $minmaxavg{WEEK}{"1Busy"}{AVG} /= $minmaxavg{WEEK}{"1Busy"}{CNT} }
@@ -3072,7 +3148,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemweek.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -3103,8 +3179,8 @@ sub graphs {
                     push @p, $apachebwork_avg / $cnt_avg;
                     push @t, $apacheiwork_avg / $cnt_avg;
 
-                    &minmaxavg( "MONTH", "1Busy", ( $apachebwork_avg / $cnt_avg ) );
-                    &minmaxavg( "MONTH", "2Idle", ( $apacheiwork_avg / $cnt_avg ) );
+                    _minmaxavg( "MONTH", "1Busy", ( $apachebwork_avg / $cnt_avg ) );
+                    _minmaxavg( "MONTH", "2Idle", ( $apacheiwork_avg / $cnt_avg ) );
                 }
             }
             if ( $minmaxavg{MONTH}{"1Busy"}{CNT} > 0 ) { $minmaxavg{MONTH}{"1Busy"}{AVG} /= $minmaxavg{MONTH}{"1Busy"}{CNT} }
@@ -3124,7 +3200,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemmonth.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -3141,7 +3217,7 @@ sub graphs {
                 else {
                     push @p, $diskw;
 
-                    &minmaxavg( "HOUR", "1Disk_Write", $diskw );
+                    _minmaxavg( "HOUR", "1Disk_Write", $diskw );
                 }
             }
             if ( $minmaxavg{HOUR}{"1Disk_Write"}{CNT} > 0 ) { $minmaxavg{HOUR}{"1Disk_Write"}{AVG} /= $minmaxavg{HOUR}{"1Disk_Write"}{CNT} }
@@ -3160,7 +3236,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemhour.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -3178,7 +3254,7 @@ sub graphs {
                 else {
                     push @p, $diskw;
 
-                    &minmaxavg( "DAY", "1Disk_Write", $diskw );
+                    _minmaxavg( "DAY", "1Disk_Write", $diskw );
                 }
             }
             if ( $minmaxavg{DAY}{"1Disk_Write"}{CNT} > 0 ) { $minmaxavg{DAY}{"1Disk_Write"}{AVG} /= $minmaxavg{DAY}{"1Disk_Write"}{CNT} }
@@ -3197,7 +3273,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemday.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -3224,7 +3300,7 @@ sub graphs {
                     if ( $cnt_avg == 0 ) { $cnt_avg = 1 }
                     push @p, $diskw_avg / $cnt_avg;
 
-                    &minmaxavg( "WEEK", "1Disk_Write", ( $diskw_avg / $cnt_avg ) );
+                    _minmaxavg( "WEEK", "1Disk_Write", ( $diskw_avg / $cnt_avg ) );
                 }
             }
             if ( $minmaxavg{WEEK}{"1Disk_Write"}{CNT} > 0 ) { $minmaxavg{WEEK}{"1Disk_Write"}{AVG} /= $minmaxavg{WEEK}{"1Disk_Write"}{CNT} }
@@ -3243,7 +3319,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemweek.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -3270,7 +3346,7 @@ sub graphs {
                     if ( $cnt_avg == 0 ) { $cnt_avg = 1 }
                     push @p, $diskw_avg / $cnt_avg;
 
-                    &minmaxavg( "MONTH", "1Disk_Write", ( $diskw_avg / $cnt_avg ) );
+                    _minmaxavg( "MONTH", "1Disk_Write", ( $diskw_avg / $cnt_avg ) );
                 }
             }
             if ( $minmaxavg{MONTH}{"1Disk_Write"}{CNT} > 0 ) { $minmaxavg{MONTH}{"1Disk_Write"}{AVG} /= $minmaxavg{MONTH}{"1Disk_Write"}{CNT} }
@@ -3289,7 +3365,7 @@ sub graphs {
             $hour_graph->plot( \@data );
             $img = $imghddir . "lfd_systemmonth.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $hour_graph->gd->gif();
             close($OUT);
@@ -3299,24 +3375,39 @@ sub graphs {
     return;
 }
 
-# end graphs
-###############################################################################
-# start charts
+=head2 charts($cc_lookups, $imgdir)
+
+Generate block/allow charts as GIF images.
+
+    ConfigServer::ServerStats::charts(1, '/path/to/images/');
+
+=over 4
+
+=item C<$cc_lookups>
+
+Boolean flag indicating whether to perform country code lookups for IP addresses.
+
+=item C<$imgdir>
+
+Directory path where generated GIF images will be written.
+
+=back
+
+Creates pie and bar charts showing blocked and allowed IP addresses
+categorized by country.
+
+Returns nothing.
+
+=cut
+
 sub charts {
     my $cc_lookups = shift;
     my $imghddir   = shift;
     my $img;
     $| = 1;
 
-    require GD::Graph::bars;
-    import GD::Graph::bars;
-    require GD::Graph::pie;
-    import GD::Graph::pie;
-    require GD::Graph::lines;
-    import GD::Graph::lines;
-
-    sysopen( my $STATS, "/var/lib/csf/stats/lfdstats", O_RDWR | O_CREAT );
-    flock( $STATS, LOCK_SH );
+    sysopen( my $STATS, "/var/lib/csf/stats/lfdstats", Fcntl::O_RDWR() | Fcntl::O_CREAT() );
+    flock( $STATS, Fcntl::LOCK_SH() );
     my @stats = <$STATS>;
     chomp @stats;
     close($STATS);
@@ -3367,7 +3458,7 @@ sub charts {
         $hour_graph->plot( \@data );
         $img = $imghddir . "lfd_hour.gif";
         open( my $OUT, ">", "$img" );
-        flock( $OUT, LOCK_EX );
+        flock( $OUT, Fcntl::LOCK_EX() );
         binmode($OUT);
         print $OUT $hour_graph->gd->gif();
         close($OUT);
@@ -3391,7 +3482,7 @@ sub charts {
         $hour_pie_graph->plot( \@piedata );
         $img = $imghddir . "lfd_pie_hour.gif";
         open( my $OUT2, ">", "$img" );
-        flock( $OUT2, LOCK_EX );
+        flock( $OUT2, Fcntl::LOCK_EX() );
         binmode($OUT2);
         print $OUT2 $hour_pie_graph->gd->gif();
         close($OUT2);
@@ -3445,7 +3536,7 @@ sub charts {
         $day_graph->plot( \@datah );
         $img = $imghddir . "lfd_month.gif";
         open( my $OUT3, ">", "$img" );
-        flock( $OUT3, LOCK_EX );
+        flock( $OUT3, Fcntl::LOCK_EX() );
         binmode($OUT3);
         print $OUT3 $day_graph->gd->gif();
         close($OUT3);
@@ -3469,7 +3560,7 @@ sub charts {
         $day_pie_graph->plot( \@hpiedata );
         $img = $imghddir . "lfd_pie_day.gif";
         open( my $OUT4, ">", "$img" );
-        flock( $OUT4, LOCK_EX );
+        flock( $OUT4, Fcntl::LOCK_EX() );
         binmode($OUT4);
         print $OUT4 $day_pie_graph->gd->gif();
         close($OUT4);
@@ -3516,7 +3607,7 @@ sub charts {
         $year_graph->plot( \@datay );
         $img = $imghddir . "lfd_year.gif";
         open( my $OUT5, ">", "$img" );
-        flock( $OUT5, LOCK_EX );
+        flock( $OUT5, Fcntl::LOCK_EX() );
         binmode($OUT5);
         print $OUT5 $year_graph->gd->gif();
         close($OUT5);
@@ -3540,7 +3631,7 @@ sub charts {
         $year_pie_graph->plot( \@ypiedata );
         $img = $imghddir . "lfd_pie_year.gif";
         open( my $OUT6, ">", "$img" );
-        flock( $OUT6, LOCK_EX );
+        flock( $OUT6, Fcntl::LOCK_EX() );
         binmode($OUT6);
         print $OUT6 $year_pie_graph->gd->gif();
         close($OUT6);
@@ -3579,7 +3670,7 @@ sub charts {
             $cc_graph->plot( \@datacc );
             $img = $imghddir . "lfd_cc.gif";
             open( my $OUT, ">", "$img" );
-            flock( $OUT, LOCK_EX );
+            flock( $OUT, Fcntl::LOCK_EX() );
             binmode($OUT);
             print $OUT $cc_graph->gd->gif();
             close($OUT);
@@ -3589,10 +3680,7 @@ sub charts {
     return;
 }
 
-# end charts
-###############################################################################
-# start minmaxavg
-sub minmaxavg {
+sub _minmaxavg {
     my $graph = shift;
     my $name  = shift;
     my $value = shift;
@@ -3607,9 +3695,30 @@ sub minmaxavg {
     return;
 }
 
-# end minmaxavg
-###############################################################################
-# start graphs_html
+sub _reset_stats {
+    %minmaxavg = ();
+    return;
+}
+
+=head2 graphs_html($imgdir)
+
+Generate HTML markup displaying system statistics graphs.
+
+    my $html = ConfigServer::ServerStats::graphs_html('/images/stats/');
+
+=over 4
+
+=item C<$imgdir>
+
+URL path to the directory containing generated graph images.
+
+=back
+
+Returns an HTML string containing tables with embedded graph images
+and min/max/avg statistics for each metric.
+
+=cut
+
 sub graphs_html {
     my $imgdir = shift;
     my $html;
@@ -3617,7 +3726,7 @@ sub graphs_html {
     $html .= "<table class='table table-bordered'>\n";
     $html .= "<tr><td>\n";
     $html .= "<p align='center'><img class='img-responsive' src='" . $imgdir . "lfd_systemhour.gif?text=" . time . "'><br><table border='0' align='center'>\n";
-    foreach my $key ( sort keys %{ $minmaxavg{HOUR} } ) {
+    foreach my $key ( sort keys %{ $minmaxavg{HOUR} // {} } ) {
         my $item = $key;
         if ( $key =~ /^\d(.*)$/ ) { $item = $1 }
         $html .= "<tr><td><b>$item</b></td>";
@@ -3627,7 +3736,7 @@ sub graphs_html {
     }
     $html .= "</table></p><div class='bs-callout bs-callout-info'>Note: This graph displays per minute statistics unless otherwise stated</div></td></tr><tr><td>\n";
     $html .= "<p align='center'><img class='img-responsive' src='" . $imgdir . "lfd_systemday.gif?text=" . time . "'><br><table border='0' align='center'>\n";
-    foreach my $key ( sort keys %{ $minmaxavg{DAY} } ) {
+    foreach my $key ( sort keys %{ $minmaxavg{DAY} // {} } ) {
         my $item = $key;
         if ( $key =~ /^\d(.*)$/ ) { $item = $1 }
         $html .= "<tr><td><b>$item</b></td>";
@@ -3637,7 +3746,7 @@ sub graphs_html {
     }
     $html .= "</table></p><div class='bs-callout bs-callout-info'>Note: This graph displays per minute statistics unless otherwise stated</div></td></tr><tr><td>\n";
     $html .= "<p align='center'><img class='img-responsive' src='" . $imgdir . "lfd_systemweek.gif?text=" . time . "'><br><table border='0' align='center'>\n";
-    foreach my $key ( sort keys %{ $minmaxavg{WEEK} } ) {
+    foreach my $key ( sort keys %{ $minmaxavg{WEEK} // {} } ) {
         my $item = $key;
         if ( $key =~ /^\d(.*)$/ ) { $item = $1 }
         $html .= "<tr><td><b>$item</b></td>";
@@ -3647,7 +3756,7 @@ sub graphs_html {
     }
     $html .= "</table></p><div class='bs-callout bs-callout-info'>Note: This graph displays an hourly average of the per minute statistics, so you will not see the peak minute values</div></td></tr><tr><td>\n";
     $html .= "<p align='center'><img class='img-responsive' src='" . $imgdir . "lfd_systemmonth.gif?text=" . time . "'><br><table border='0' align='center'>\n";
-    foreach my $key ( sort keys %{ $minmaxavg{MONTH} } ) {
+    foreach my $key ( sort keys %{ $minmaxavg{MONTH} // {} } ) {
         my $item = $key;
         if ( $key =~ /^\d(.*)$/ ) { $item = $1 }
         $html .= "<tr><td><b>$item</b></td>";
@@ -3659,9 +3768,28 @@ sub graphs_html {
     return $html;
 }
 
-# end graphs_html
-###############################################################################
-# start charts_html
+=head2 charts_html($cc_lookups, $imgdir)
+
+Generate HTML markup displaying block/allow charts.
+
+    my $html = ConfigServer::ServerStats::charts_html(1, '/images/stats/');
+
+=over 4
+
+=item C<$cc_lookups>
+
+Boolean flag indicating whether country code charts should be included.
+
+=item C<$imgdir>
+
+URL path to the directory containing generated chart images.
+
+=back
+
+Returns an HTML string containing tables with embedded pie and bar charts.
+
+=cut
+
 sub charts_html {
     my $cc_lookups = shift;
     my $imgdir     = shift;
@@ -3691,7 +3819,17 @@ sub charts_html {
     return $html;
 }
 
-# end charts_html
-###############################################################################
+=head1 AUTHOR
+
+Jonathan Michaelson - L<https://github.com/waytotheweb/scripts>
+
+=head1 LICENSE
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation; either version 3 of the License, or (at your option) any later
+version.
+
+=cut
 
 1;
