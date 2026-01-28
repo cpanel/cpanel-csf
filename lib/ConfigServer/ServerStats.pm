@@ -94,8 +94,24 @@ Generate system statistics graphs as GIF images.
 
 =item C<$type>
 
-The type of statistics to graph. Currently only 'system' is supported.
+The type of statistics to graph. Common values include:
 
+=over 4
+
+=item *
+
+C<'system'> – generate the standard set of graphs (CPU, memory, load,
+network, disk, etc.)
+
+=item *
+
+Specific metric types such as C<'cpu'>, C<'mem'>, C<'load'>, C<'net'>,
+C<'disk'> and other service-specific types.
+
+=back
+
+For the complete list of supported graph types, see the C<dographs>
+implementation in C<csf.pl>.
 =item C<$maxdays>
 
 Maximum number of days of historical data to include in the graphs.
