@@ -57,7 +57,7 @@ use ConfigServer::Config;
 use ConfigServer::CheckIP   qw(checkip);
 use ConfigServer::Slurp     qw(slurp);
 use ConfigServer::GetIPs    qw(getips);
-use ConfigServer::RBLLookup qw(rbllookup);
+use ConfigServer::RBLLookup ();
 use Net::IP;
 use ConfigServer::GetEthDev;
 
@@ -216,7 +216,7 @@ sub report {
                         my ( $rbl, $rblurl ) = split( /:/, $line, 2 );
                         if ( $rbl eq "" ) { next }
 
-                        my ( $rblhit, $rbltxt ) = rbllookup( $ip, $rbl );
+                        my ( $rblhit, $rbltxt ) = ConfigServer::RBLLookup::rbllookup( $ip, $rbl );
                         my @tmptxt = $rbltxt;
                         $rbltxt = "";
                         foreach my $line (@tmptxt) {
