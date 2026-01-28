@@ -85,9 +85,9 @@ subtest 'Invalid IP returns empty strings without DNS query' => sub {
 
     my ( $hit, $txt ) = ConfigServer::RBLLookup::rbllookup( 'not-an-ip', 'zen.spamhaus.org' );
 
-    is( $hit,                '',    'rblhit is empty string for invalid IP' );
-    is( $txt,                undef, 'rblhittxt is undef for invalid IP' );
-    is( scalar @open3_calls, 0,     'No DNS queries made for invalid IP' );
+    is( $hit,                '', 'rblhit is empty string for invalid IP' );
+    is( $txt,                '', 'rblhittxt is empty string for invalid IP' );
+    is( scalar @open3_calls, 0,  'No DNS queries made for invalid IP' );
 };
 
 subtest 'Valid IPv4 address triggers DNS lookup' => sub {
@@ -130,9 +130,9 @@ subtest 'RBL not listed returns empty strings' => sub {
 
     my ( $hit, $txt ) = ConfigServer::RBLLookup::rbllookup( '192.0.2.1', 'zen.spamhaus.org' );
 
-    is( $hit,                '',    'rblhit is empty string when not listed' );
-    is( $txt,                undef, 'rblhittxt is undef when not listed' );
-    is( scalar @open3_calls, 1,     'Only A query made (no TXT query when not listed)' );
+    is( $hit,                '', 'rblhit is empty string when not listed' );
+    is( $txt,                '', 'rblhittxt is empty string when not listed' );
+    is( scalar @open3_calls, 1,  'Only A query made (no TXT query when not listed)' );
 };
 
 subtest 'RBL hit without TXT record returns hit with empty txt' => sub {
@@ -148,7 +148,7 @@ subtest 'RBL hit without TXT record returns hit with empty txt' => sub {
     my ( $hit, $txt ) = ConfigServer::RBLLookup::rbllookup( '192.0.2.1', 'zen.spamhaus.org' );
 
     is( $hit, '127.0.0.3', 'rblhit contains response IP' );
-    is( $txt, undef,       'rblhittxt is undef when no TXT record' );
+    is( $txt, '',          'rblhittxt is empty string when no TXT record' );
 };
 
 subtest 'HOST config value is used for command' => sub {
@@ -226,7 +226,7 @@ subtest 'Timeout returns timeout string' => sub {
     is( $hit, 'timeout', 'rblhit is "timeout" when DNS query times out' );
 
     # When timeout occurs, TXT is not fetched
-    is( $txt, undef, 'rblhittxt is undef on timeout' );
+    is( $txt, '', 'rblhittxt is empty string on timeout' );
 };
 
 done_testing();

@@ -146,10 +146,12 @@ sub listening {
         my $user;
 
         if ( defined $exe ) { $exe =~ s/([\r\n\t\"\\\x00-\x1f\x7F-\xFF])/\\$printable{$1}/sg }
-        open( my $CMDLINE, "<", "/proc/$pid/cmdline" );
-        flock( $CMDLINE, Fcntl::LOCK_SH );
-        my $cmdline = <$CMDLINE>;
-        close($CMDLINE);
+        my $cmdline;
+        if ( open( my $CMDLINE, "<", "/proc/$pid/cmdline" ) ) {
+            flock( $CMDLINE, Fcntl::LOCK_SH );
+            $cmdline = <$CMDLINE>;
+            close($CMDLINE);
+        }
         if ( defined $cmdline ) {
             chomp $cmdline;
             $cmdline =~ s/\0$//g;
@@ -163,7 +165,8 @@ sub listening {
         opendir( my $fddir, "/proc/$pid/fd" ) or next;
         while ( my $file = readdir($fddir) ) {
             if ( $file =~ /^\./ ) { next }
-            push( @fd, readlink("/proc/$pid/fd/$file") );
+            my $link = readlink("/proc/$pid/fd/$file");
+            if ( defined $link ) { push( @fd, $link ) }
         }
         closedir($fddir);
         open( my $STATUS, "<", "/proc/$pid/status" ) or next;
