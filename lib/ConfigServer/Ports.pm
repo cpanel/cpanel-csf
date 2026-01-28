@@ -182,7 +182,7 @@ sub listening {
                     if ( $bit =~ /^(\d*)$/ ) { push @uids, $1 }
                 }
                 $uid  = $uids[-1];
-                $user = getpwuid($uid);
+                $user = getpwuid($uid) || '';
                 if ( $user eq "" ) { $user = $uid }
             }
         }
