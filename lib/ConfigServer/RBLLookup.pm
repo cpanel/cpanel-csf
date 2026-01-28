@@ -131,14 +131,13 @@ use ConfigServer::CheckIP ();
 
 our $VERSION = 1.01;
 
-sub rbllookup {
-    my $ip  = shift;
-    my $rbl = shift;
+sub rbllookup ($ip, $rbl) {
+    my %rblhits;
     my $netip;
     my $reversed_ip = '';
     my $timeout     = 4;
     my $rblhit      = '';
-    my $rblhittxt   = '';
+    my @rblhittxt;
 
     if ( ConfigServer::CheckIP::checkip( \$ip ) ) {
         eval {
@@ -190,7 +189,9 @@ sub rbllookup {
                         chomp @results;
 
                         foreach my $line (@results) {
-                            if ( $line =~ /^${reversed_ip}.+ "([^\"]+)"$/ ) { $rblhittxt .= "$1\n" }
+                            if ( $line =~ /^${reversed_ip}.+ "([^\"]+)"$/ ) {
+                                push @rblhittxt, $1;
+                            }
                         }
                         alarm(0);
                     };
@@ -200,7 +201,7 @@ sub rbllookup {
             }
         }
     }
-    return ( $rblhit, $rblhittxt );
+    return ( $rblhit, @rblhittxt );
 }
 
 1;
