@@ -83,10 +83,10 @@ subtest 'Invalid IP returns empty strings without DNS query' => sub {
     reset_test_state();
     $mock_checkip_result = 0;    # checkip fails
 
-    my ( $hit, $txt ) = ConfigServer::RBLLookup::rbllookup( 'not-an-ip', 'zen.spamhaus.org' );
+    my ( $hit, @txt ) = ConfigServer::RBLLookup::rbllookup( 'not-an-ip', 'zen.spamhaus.org' );
 
     is( $hit,                '', 'rblhit is empty string for invalid IP' );
-    is( $txt,                '', 'rblhittxt is empty string for invalid IP' );
+    is( scalar @txt,         0,  'rblhittxt is empty array for invalid IP' );
     is( scalar @open3_calls, 0,  'No DNS queries made for invalid IP' );
 };
 
@@ -128,10 +128,10 @@ subtest 'RBL not listed returns empty strings' => sub {
     # Mock empty A record response (not listed)
     $mock_a_output = "Host 1.2.0.192.zen.spamhaus.org not found: 3(NXDOMAIN)\n";
 
-    my ( $hit, $txt ) = ConfigServer::RBLLookup::rbllookup( '192.0.2.1', 'zen.spamhaus.org' );
+    my ( $hit, @txt ) = ConfigServer::RBLLookup::rbllookup( '192.0.2.1', 'zen.spamhaus.org' );
 
     is( $hit,                '', 'rblhit is empty string when not listed' );
-    is( $txt,                '', 'rblhittxt is empty string when not listed' );
+    is( scalar @txt,         0,  'rblhittxt is empty array when not listed' );
     is( scalar @open3_calls, 1,  'Only A query made (no TXT query when not listed)' );
 };
 
@@ -145,10 +145,10 @@ subtest 'RBL hit without TXT record returns hit with empty txt' => sub {
     # Mock empty TXT response
     $mock_txt_output = "Host 1.2.0.192.zen.spamhaus.org not found: 3(NXDOMAIN)\n";
 
-    my ( $hit, $txt ) = ConfigServer::RBLLookup::rbllookup( '192.0.2.1', 'zen.spamhaus.org' );
+    my ( $hit, @txt ) = ConfigServer::RBLLookup::rbllookup( '192.0.2.1', 'zen.spamhaus.org' );
 
-    is( $hit, '127.0.0.3', 'rblhit contains response IP' );
-    is( $txt, '',          'rblhittxt is empty string when no TXT record' );
+    is( $hit,        '127.0.0.3', 'rblhit contains response IP' );
+    is( scalar @txt, 0,           'rblhittxt is empty array when no TXT record' );
 };
 
 subtest 'HOST config value is used for command' => sub {
@@ -221,12 +221,12 @@ subtest 'Timeout returns timeout string' => sub {
     $mock_checkip_result   = 1;
     $mock_simulate_timeout = 1;
 
-    my ( $hit, $txt ) = ConfigServer::RBLLookup::rbllookup( '192.0.2.1', 'zen.spamhaus.org' );
+    my ( $hit, @txt ) = ConfigServer::RBLLookup::rbllookup( '192.0.2.1', 'zen.spamhaus.org' );
 
     is( $hit, 'timeout', 'rblhit is "timeout" when DNS query times out' );
 
     # When timeout occurs, TXT is not fetched
-    is( $txt, '', 'rblhittxt is empty string on timeout' );
+    is( scalar @txt, 0, 'rblhittxt is empty array on timeout' );
 };
 
 done_testing();
