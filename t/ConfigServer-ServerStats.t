@@ -106,8 +106,10 @@ subtest '_minmaxavg() tracks min/max/avg correctly' => sub {
     like( $html, qr/testmetric/, 'graphs_html output includes test metric' );
     like( $html, qr/Min:<b>10\.00<\/b>/, 'Min value is tracked correctly' );
     like( $html, qr/Max:<b>30\.00<\/b>/, 'Max value is tracked correctly' );
-    # Note: AVG in %minmaxavg is accumulated sum, divided by CNT in output
-    # The raw AVG is 60 (10+20+30), CNT is 3, but displayed value is formatted
+    like( $html, qr/Avg:<b>60\.00<\/b>/, 'Avg value is the accumulated sum in this test path' );
+    # Note: In this test we call _minmaxavg() directly and then graphs_html(),
+    # so the AVG stored in %minmaxavg is the accumulated sum (10+20+30 == 60),
+    # and graphs_html() prints that value without dividing by CNT.
 
     # Clean up
     ConfigServer::ServerStats::_reset_stats();
