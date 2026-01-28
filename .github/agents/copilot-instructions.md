@@ -11,7 +11,8 @@ Auto-generated from all feature plans. Last updated: 2026-01-22
 - File-based configuration at `/etc/csf/csf.conf` (003-modernize-displayui)
 - Perl 5.36+ (cPanel-provided at `/usr/local/cpanel/3rdparty/bin/perl`) + ConfigServer::Config, ConfigServer::Slurp, Carp, POSIX, Net::SMTP (conditional) (006-modernize-sendmail)
 - N/A (sends email via SMTP or sendmail binary) (006-modernize-sendmail)
-
+- Perl 5.36+ (cPanel-provided at `/usr/local/cpanel/3rdparty/bin/perl`) + GD::Graph::bars, GD::Graph::pie, GD::Graph::lines, Fcntl (006-modernize-serverstats)
+- Reads from `/var/lib/csf/stats/system`, writes GIF images to configurable directory (006-modernize-serverstats)
 - Perl 5.36+ (cPanel-provided at `/usr/local/cpanel/3rdparty/bin/perl`) Net::IP, Fcntl (001-modernize-rblcheck)
 
 ## Project Structure
@@ -30,6 +31,7 @@ tests/
 Perl 5.36+ (cPanel-provided at `/usr/local/cpanel/3rdparty/bin/perl`): Follow standard conventions
 
 ## Recent Changes
+- 006-modernize-serverstats: Added Perl 5.36+ (cPanel-provided at `/usr/local/cpanel/3rdparty/bin/perl`) + GD::Graph::bars, GD::Graph::pie, GD::Graph::lines, Fcntl
 - 006-modernize-sendmail: Added Perl 5.36+ (cPanel-provided at `/usr/local/cpanel/3rdparty/bin/perl`) + ConfigServer::Config, ConfigServer::Slurp, Carp, POSIX, Net::SMTP (conditional)
 - 004-modernize-ports: Added Perl 5.36+ (cPanel-provided at `/usr/local/cpanel/3rdparty/bin/perl`) + ConfigServer::Config, Cpanel::Slurp, Fcntl
 - 003-modernize-displayui: Added Perl 5.36+ (cPanel-provided at `/usr/local/cpanel/3rdparty/bin/perl`) + Net::CIDR::Lite, Fcntl, File::Copy, IPC::Open3

@@ -144,9 +144,8 @@ sub main {
     if ( $FORM{mobi} ) { $mobile = 1 }
 
     $chart = 1;
-    if ( $config{ST_ENABLE} ) {
-        if ( !defined ConfigServer::ServerStats::init() ) { $chart = 0 }
-    }
+
+    # GD::Graph availability is now verified at ServerStats compile time
 
     $urlget = ConfigServer::URLGet->new( $config{URLGET}, "csf/$myv", $config{URLPROXY} );
     unless ( defined $urlget ) {

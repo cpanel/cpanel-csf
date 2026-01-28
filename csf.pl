@@ -5525,7 +5525,7 @@ sub doprofile {
                 }
 
                 if ( $profile2 eq "" or $profile2 eq "current" ) {
-                    $profile2 = "current";
+                    $profile2   = "current";
                     @configdata = slurpee( "/etc/csf/csf.conf", 'fatal' => 1 );
                 }
                 else {
@@ -5728,10 +5728,8 @@ sub dographs {
         print "ST_SYSTEM is disabled\n";
         exit 1;
     }
-    if ( !defined ConfigServer::ServerStats::init() ) {
-        print "Perl module GD::Graph is not installed/working\n";
-        exit 1;
-    }
+
+    # GD::Graph availability is now verified at ServerStats compile time
 
     if ( $type eq "" and $dir eq "" ) {
         print "Valid graph types:\n";
