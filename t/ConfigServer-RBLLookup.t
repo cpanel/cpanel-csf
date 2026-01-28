@@ -6,7 +6,7 @@ use Test2::V0;
 use Test2::Tools::Explain;
 use Test2::Plugin::NoWarnings;
 
-use lib 't/lib';
+use FindBin::libs;
 use MockConfig;
 
 # Load the module under test FIRST (which loads its dependencies)
