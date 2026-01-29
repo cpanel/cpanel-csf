@@ -20,3 +20,4 @@ tmp/*
 # Universal
 .DS_Store
 Thumbs.db
+.test_info.*.json
