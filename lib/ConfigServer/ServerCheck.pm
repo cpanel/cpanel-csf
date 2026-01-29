@@ -66,22 +66,49 @@ The report includes checks for:
 
 =back
 
+=head1 SEE ALSO
+
+L<ConfigServer::Config>, L<ConfigServer::Slurp>, L<ConfigServer::Sanity>,
+L<ConfigServer::Service>, L<ConfigServer::GetIPs>, L<ConfigServer::CheckIP>
+
+=head1 AUTHOR
+
+Originally written by Jonathan Michaelson.
+
+Contributions by the cPanel development community.
+
+=head1 LICENSE
+
+Copyright (C) 2006-2025 Jonathan Michaelson
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation; either version 3 of the License, or (at your option) any later
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+details.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, see <https://www.gnu.org/licenses>.
+
 =cut
 
 use cPstrict;
-use Carp  ();
-use Fcntl qw(:DEFAULT :flock);
-use File::Basename;
-use IPC::Open3;
+use Carp           ();
+use Fcntl          ();
+use File::Basename ();
+use IPC::Open3     ();
 
-use lib '/usr/local/csf/lib';
-use ConfigServer::Slurp  qw(slurp);
-use ConfigServer::Sanity ();
-use ConfigServer::Config;
-use ConfigServer::GetIPs  qw(getips);
-use ConfigServer::CheckIP qw(checkip);
-use ConfigServer::Service;
-use ConfigServer::GetEthDev;
+use ConfigServer::Slurp     ();
+use ConfigServer::Sanity    ();
+use ConfigServer::Config    ();
+use ConfigServer::GetIPs    ();
+use ConfigServer::CheckIP   ();
+use ConfigServer::Service   ();
+use ConfigServer::GetEthDev ();
 use ConfigServer::Messenger ();
 
 use Cpanel::Config ();
@@ -89,13 +116,10 @@ use Cpanel::Config ();
 our $VERSION = 1.05;
 
 my (
-    %config,  $cpconf,  %daconfig,  $cleanreg, $mypid,    $childin, $childout,
-    $verbose, $cpurl,   @processes, $total,    $failures, $current, $DEBIAN,
-    $output,  $sysinit, %g_ifaces,  %g_ipv4,   %g_ipv6
+    %config,  $cpconf,  $cleanreg,  $mypid,  $childin,  $childout,
+    $verbose, $cpurl,   @processes, $total,  $failures, $current, $DEBIAN,
+    $output,  $sysinit, %g_ifaces,  %g_ipv4, %g_ipv6
 );
-
-my $ipv4reg = ConfigServer::Config->ipv4reg;
-my $ipv6reg = ConfigServer::Config->ipv6reg;
 
 =head2 report
 
@@ -165,6 +189,7 @@ B<Example:>
 
 sub report {
     $verbose = shift;
+
     my $config = ConfigServer::Config->loadconfig();
     %config   = $config->config();
     $cleanreg = ConfigServer::Slurp->cleanreg;
@@ -197,10 +222,12 @@ sub report {
     _firewallcheck();
     _servercheck();
     _sshtelnetcheck();
-    _mailcheck()   unless $config{DNSONLY};
-    _apachecheck() unless $config{DNSONLY};
-    _phpcheck()    unless $config{DNSONLY};
-    _whmcheck()    unless $config{DNSONLY};
+    if ( !$config{DNSONLY} ) {
+        _mailcheck();
+        _apachecheck();
+        _phpcheck();
+        _whmcheck();
+    }
     _servicescheck();
 
     _endoutput();
@@ -321,7 +348,7 @@ Checks include:
 sub _firewallcheck {
     _addtitle("Firewall Check");
     my $status = 0;
-    my @config = slurp("/etc/csf/csf.conf");
+    my @config = ConfigServer::Slurp::slurp("/etc/csf/csf.conf");
     chomp @config;
 
     foreach my $line (@config) {
@@ -344,7 +371,7 @@ sub _firewallcheck {
 
     if ( -x $config{IPTABLES} ) {
         my ( $childin, $childout );
-        my $mypid     = open3( $childin, $childout, $childout, "$config{IPTABLES} $config{IPTABLESWAIT} -L INPUT -n" );
+        my $mypid     = IPC::Open3::open3( $childin, $childout, $childout, "$config{IPTABLES} $config{IPTABLESWAIT} -L INPUT -n" );
         my @iptstatus = <$childout>;
         waitpid( $mypid, 0 );
         chomp @iptstatus;
@@ -432,8 +459,8 @@ sub _firewallcheck {
         _addline( $status, "PT_ALL_USERS option check", "This option ensures that almost all Linux accounts are checked with Process Tracking, not just the cPanel ones" );
     }
 
-    sysopen( my $CONF, "/etc/csf/csf.conf", O_RDWR | O_CREAT );
-    flock( $CONF, LOCK_SH );
+    sysopen( my $CONF, "/etc/csf/csf.conf", Fcntl::O_RDWR() | Fcntl::O_CREAT() );
+    flock( $CONF, Fcntl::LOCK_SH() );
     my @confdata = <$CONF>;
     close($CONF);
     chomp @confdata;
@@ -541,7 +568,7 @@ sub _servercheck {
         foreach my $file (@files) {
             if ( -e $file ) {
                 $hit = 1;
-                my @conf = slurp($file);
+                my @conf = ConfigServer::Slurp::slurp($file);
                 chomp @conf;
                 if ( my @ls = grep { $_ =~ /^\s*include\s+(.*)\;\s*$/i } @conf ) {
                     foreach my $more (@ls) {
@@ -553,7 +580,7 @@ sub _servercheck {
         }
         foreach my $file (@morefiles) {
             if ( -e $file ) {
-                my @conf = slurp($file);
+                my @conf = ConfigServer::Slurp::slurp($file);
                 chomp @conf;
                 @namedconf = ( @namedconf, @conf );
             }
@@ -574,7 +601,7 @@ sub _servercheck {
 
     if ( !$DEBIAN and $sysinit eq "init" and -x "/sbin/runlevel" ) {
         $status = 0;
-        $mypid  = open3( $childin, $childout, $childout, "/sbin/runlevel" );
+        $mypid  = IPC::Open3::open3( $childin, $childout, $childout, "/sbin/runlevel" );
         my @conf = <$childout>;
         waitpid( $mypid, 0 );
         chomp @conf;
@@ -590,12 +617,12 @@ sub _servercheck {
     $status = 0;
     my ( $isfedora, $isrh, $version, $conf ) = 0;
     if ( -e "/etc/fedora-release" ) {
-        ($conf) = slurp("/etc/fedora-release");
+        ($conf) = ConfigServer::Slurp::slurp("/etc/fedora-release");
         $isfedora = 1;
         if ( $conf =~ /release (\d+)/i ) { $version = $1 }
     }
     elsif ( -e "/etc/redhat-release" ) {
-        ($conf) = slurp("/etc/redhat-release");
+        ($conf) = ConfigServer::Slurp::slurp("/etc/redhat-release");
         $isrh = 1;
         if ( $conf =~ /release (\d+)/i ) { $version = $1 }
     }
@@ -648,7 +675,7 @@ sub _servercheck {
             }
             else {
                 open( my $IN, "<", "/etc/rsyslog.conf" );
-                flock( $IN, LOCK_SH );
+                flock( $IN, Fcntl::LOCK_SH() );
                 my @conf = <$IN>;
                 close($IN);
                 chomp @conf;
@@ -673,7 +700,7 @@ sub _servercheck {
     unless ( $config{VPS} ) {
         $status = 1;
         open( my $IN, "<", "/proc/swaps" );
-        flock( $IN, LOCK_SH );
+        flock( $IN, Fcntl::LOCK_SH() );
         my @swaps = <$IN>;
         close($IN);
         if ( scalar(@swaps) > 1 ) { $status = 0 }
@@ -681,7 +708,7 @@ sub _servercheck {
 
         if ( -e "/etc/redhat-release" ) {
             open( my $IN, "<", "/etc/redhat-release" );
-            flock( $IN, LOCK_SH );
+            flock( $IN, Fcntl::LOCK_SH() );
             $conf = <$IN>;
             close($IN);
             chomp $conf;
@@ -695,7 +722,7 @@ sub _servercheck {
 
                 unless ($status) {
                     $status = 0;
-                    $mypid  = open3( $childin, $childout, $childout, "/usr/sbin/cagefsctl", "--cagefs-status" );
+                    $mypid  = IPC::Open3::open3( $childin, $childout, $childout, "/usr/sbin/cagefsctl", "--cagefs-status" );
                     my @conf = <$childout>;
                     waitpid( $mypid, 0 );
                     chomp @conf;
@@ -705,7 +732,7 @@ sub _servercheck {
 
                 $status = 0;
                 open( my $ENFORCE_SYMLINKSIFOWNER, "<", "/proc/sys/fs/enforce_symlinksifowner" );
-                flock( $ENFORCE_SYMLINKSIFOWNER, LOCK_SH );
+                flock( $ENFORCE_SYMLINKSIFOWNER, Fcntl::LOCK_SH() );
                 $conf = <$ENFORCE_SYMLINKSIFOWNER>;
                 close($ENFORCE_SYMLINKSIFOWNER);
                 chomp $conf;
@@ -714,7 +741,7 @@ sub _servercheck {
 
                 $status = 0;
                 open( my $PROC_CAN_SEE_OTHER_UID, "<", "/proc/sys/fs/proc_can_see_other_uid" );
-                flock( $PROC_CAN_SEE_OTHER_UID, LOCK_SH );
+                flock( $PROC_CAN_SEE_OTHER_UID, Fcntl::LOCK_SH() );
                 $conf = <$PROC_CAN_SEE_OTHER_UID>;
                 close($PROC_CAN_SEE_OTHER_UID);
                 chomp $conf;
@@ -723,7 +750,7 @@ sub _servercheck {
 
                 $status = 0;
                 open( my $USER_PTRACE, "<", "/proc/sys/kernel/user_ptrace" );
-                flock( $USER_PTRACE, LOCK_SH );
+                flock( $USER_PTRACE, Fcntl::LOCK_SH() );
                 $conf = <$USER_PTRACE>;
                 close($USER_PTRACE);
                 chomp $conf;
@@ -821,7 +848,7 @@ sub _whmcheck {
 
     foreach my $openid ( glob "/var/cpanel/authn/openid_connect/*" ) {
         open( my $IN, "<", $openid );
-        flock( $IN, LOCK_SH );
+        flock( $IN, Fcntl::LOCK_SH() );
         my $line = <$IN>;
         close($IN);
         chomp $line;
@@ -851,7 +878,7 @@ sub _whmcheck {
     if ( -e "/etc/pure-ftpd.conf" and ( $cpconf->{ftpserver} eq "pure-ftpd" ) and !( -e "/etc/ftpddisable" ) ) {
         $status = 0;
         open( my $IN, "<", "/etc/pure-ftpd.conf" );
-        flock( $IN, LOCK_SH );
+        flock( $IN, Fcntl::LOCK_SH() );
         my @conf = <$IN>;
         close($IN);
         chomp @conf;
@@ -880,7 +907,7 @@ sub _whmcheck {
             else {
                 if ( -x "/usr/bin/openssl" ) {
                     my ( $childin, $childout );
-                    my $cmdpid  = open3( $childin, $childout, $childout, "/usr/bin/openssl", "ciphers", "-v", $ciphers );
+                    my $cmdpid  = IPC::Open3::open3( $childin, $childout, $childout, "/usr/bin/openssl", "ciphers", "-v", $ciphers );
                     my @openssl = <$childout>;
                     waitpid( $cmdpid, 0 );
                     chomp @openssl;
@@ -908,7 +935,7 @@ sub _whmcheck {
     if ( -e "/var/cpanel/conf/proftpd/main" and ( $cpconf->{ftpserver} eq "proftpd" ) and !( -e "/etc/ftpddisable" ) ) {
         $status = 0;
         open( my $IN, "<", "/var/cpanel/conf/proftpd/main" );
-        flock( $IN, LOCK_SH );
+        flock( $IN, Fcntl::LOCK_SH() );
         my @conf = <$IN>;
         close($IN);
         chomp @conf;
@@ -929,7 +956,7 @@ sub _whmcheck {
             else {
                 if ( -e "/usr/bin/openssl" ) {
                     my ( $childin, $childout );
-                    my $cmdpid  = open3( $childin, $childout, $childout, "/usr/bin/openssl", "ciphers", "-v", $ciphers );
+                    my $cmdpid  = IPC::Open3::open3( $childin, $childout, $childout, "/usr/bin/openssl", "ciphers", "-v", $ciphers );
                     my @openssl = <$childout>;
                     waitpid( $cmdpid, 0 );
                     chomp @openssl;
@@ -952,7 +979,7 @@ sub _whmcheck {
         if ( $config{VPS} ) {
             $status = 0;
             open( my $IN, "<", "/etc/proftpd.conf" );
-            flock( $IN, LOCK_SH );
+            flock( $IN, Fcntl::LOCK_SH() );
             my @conf = <$IN>;
             close($IN);
             chomp @conf;
@@ -990,7 +1017,7 @@ sub _whmcheck {
 
     if ( -e "/etc/cpupdate.conf" ) {
         open( my $IN, "<", "/etc/cpupdate.conf" );
-        flock( $IN, LOCK_SH );
+        flock( $IN, Fcntl::LOCK_SH() );
         my @conf = <$IN>;
         close($IN);
         chomp @conf;
@@ -1025,7 +1052,7 @@ sub _whmcheck {
     unless ($status) {
         $status = 0;
         open( my $IN, "<", "/usr/local/cpanel/3rdparty/etc/php.ini" );
-        flock( $IN, LOCK_SH );
+        flock( $IN, Fcntl::LOCK_SH() );
         my @conf = <$IN>;
         close($IN);
         chomp @conf;
@@ -1082,7 +1109,7 @@ sub _whmcheck {
     if ( -e "/etc/wwwacct.conf" ) {
         $status = 1;
         open( my $IN, "<", "/etc/wwwacct.conf" );
-        flock( $IN, LOCK_SH );
+        flock( $IN, Fcntl::LOCK_SH() );
         my @conf = <$IN>;
         close($IN);
         chomp @conf;
@@ -1103,12 +1130,12 @@ sub _whmcheck {
                     $allns++;
                     $nameservers .= "<b>$ns</b><br>\n";
                     my $ip;
-                    if ( checkip( \$ns ) ) {
+                    if ( ConfigServer::CheckIP::checkip( \$ns ) ) {
                         $ip = $ns;
                         if ( $ips{$ip} ) { $local++ }
                     }
                     else {
-                        my @ips = getips($ns);
+                        my @ips = ConfigServer::GetIPs::getips($ns);
                         unless ( scalar @ips ) { _addline( 1, "Check nameservers", "Unable to resolve nameserver [$ns]" ) }
                         my $hit = 0;
                         foreach my $oip (@ips) {
@@ -1190,7 +1217,7 @@ sub _mailcheck {
     if ( -e "/etc/exim.conf" and -x "/usr/sbin/exim" ) {
         $status = 0;
         my ( $childin, $childout );
-        my $cmdpid   = open3( $childin, $childout, $childout, "/usr/sbin/exim", "-bP" );
+        my $cmdpid   = IPC::Open3::open3( $childin, $childout, $childout, "/usr/sbin/exim", "-bP" );
         my @eximconf = <$childout>;
         waitpid( $cmdpid, 0 );
         chomp @eximconf;
@@ -1213,7 +1240,7 @@ sub _mailcheck {
             else {
                 if ( -x "/usr/bin/openssl" ) {
                     my ( $childin, $childout );
-                    my $cmdpid  = open3( $childin, $childout, $childout, "/usr/bin/openssl", "ciphers", "-v", $ciphers );
+                    my $cmdpid  = IPC::Open3::open3( $childin, $childout, $childout, "/usr/bin/openssl", "ciphers", "-v", $ciphers );
                     my @openssl = <$childout>;
                     waitpid( $cmdpid, 0 );
                     chomp @openssl;
@@ -1242,7 +1269,7 @@ sub _mailcheck {
     if ( -e "/etc/exim.conf.localopts" ) {
         $status = 0;
         open( my $IN, "<", "/etc/exim.conf.localopts" );
-        flock( $IN, LOCK_SH );
+        flock( $IN, Fcntl::LOCK_SH() );
         my @conf = <$IN>;
         close($IN);
         chomp @conf;
@@ -1256,7 +1283,7 @@ sub _mailcheck {
     if ( -e "/etc/dovecot/dovecot.conf" and ( $cpconf->{mailserver} eq "dovecot" ) ) {
         $status = 0;
         open( my $IN, "<", "/etc/dovecot/dovecot.conf" );
-        flock( $IN, LOCK_SH );
+        flock( $IN, Fcntl::LOCK_SH() );
         my @conf = <$IN>;
         close($IN);
         chomp @conf;
@@ -1270,7 +1297,7 @@ sub _mailcheck {
         foreach my $file (@morefiles) {
             if ( -e $file ) {
                 open( my $IN, "<", "$file" );
-                flock( $IN, LOCK_SH );
+                flock( $IN, Fcntl::LOCK_SH() );
                 my @moreconf = <$IN>;
                 close($IN);
                 chomp @conf;
@@ -1290,7 +1317,7 @@ sub _mailcheck {
             else {
                 if ( -x "/usr/bin/openssl" ) {
                     my ( $childin, $childout );
-                    my $cmdpid  = open3( $childin, $childout, $childout, "/usr/bin/openssl", "ciphers", "-v", $ciphers );
+                    my $cmdpid  = IPC::Open3::open3( $childin, $childout, $childout, "/usr/bin/openssl", "ciphers", "-v", $ciphers );
                     my @openssl = <$childout>;
                     waitpid( $cmdpid, 0 );
                     chomp @openssl;
@@ -1314,7 +1341,7 @@ sub _mailcheck {
     if ( -e "/usr/lib/courier-imap/etc/imapd-ssl" and ( $cpconf->{mailserver} eq "courier" ) ) {
         $status = 0;
         open( my $IN, "<", "/usr/lib/courier-imap/etc/imapd-ssl" );
-        flock( $IN, LOCK_SH );
+        flock( $IN, Fcntl::LOCK_SH() );
         my @conf = <$IN>;
         close($IN);
         chomp @conf;
@@ -1331,7 +1358,7 @@ sub _mailcheck {
             else {
                 if ( -x "/usr/bin/openssl" ) {
                     my ( $childin, $childout );
-                    my $cmdpid  = open3( $childin, $childout, $childout, "/usr/bin/openssl", "ciphers", "-v", $ciphers );
+                    my $cmdpid  = IPC::Open3::open3( $childin, $childout, $childout, "/usr/bin/openssl", "ciphers", "-v", $ciphers );
                     my @openssl = <$childout>;
                     waitpid( $cmdpid, 0 );
                     chomp @openssl;
@@ -1355,7 +1382,7 @@ sub _mailcheck {
     if ( -e "/usr/lib/courier-imap/etc/pop3d-ssl" and ( $cpconf->{mailserver} eq "courier" ) ) {
         $status = 0;
         open( my $IN, "<", "/usr/lib/courier-imap/etc/pop3d-ssl" );
-        flock( $IN, LOCK_SH );
+        flock( $IN, Fcntl::LOCK_SH() );
         my @conf = <$IN>;
         close($IN);
         chomp @conf;
@@ -1372,7 +1399,7 @@ sub _mailcheck {
             else {
                 if ( -x "/usr/bin/openssl" ) {
                     my ( $childin, $childout );
-                    my $cmdpid  = open3( $childin, $childout, $childout, "/usr/bin/openssl", "ciphers", "-v", $ciphers );
+                    my $cmdpid  = IPC::Open3::open3( $childin, $childout, $childout, "/usr/bin/openssl", "ciphers", "-v", $ciphers );
                     my @openssl = <$childout>;
                     waitpid( $cmdpid, 0 );
                     chomp @openssl;
@@ -1449,7 +1476,7 @@ sub _phpcheck {
         elsif ( $phpbin =~ /php51/ ) { $phpinis{"/opt/alt/php51/etc/php.ini"} = $phpbin }
         else {
             my ( $childin, $childout );
-            my $mypid = open3( $childin, $childout, $childout, $phpbin, "-d", "zlib.output_compression=Off", "--ini" );
+            my $mypid = IPC::Open3::open3( $childin, $childout, $childout, $phpbin, "-d", "zlib.output_compression=Off", "--ini" );
             my @conf  = <$childout>;
             waitpid( $mypid, 0 );
             chomp @conf;
@@ -1466,10 +1493,10 @@ sub _phpcheck {
         my ( $childin, $childout );
         my $mypid;
         if ( $phpbin =~ /php44|php51/ ) {
-            $mypid = open3( $childin, $childout, $childout, $phpbin, "-i" );
+            $mypid = IPC::Open3::open3( $childin, $childout, $childout, $phpbin, "-i" );
         }
         else {
-            $mypid = open3( $childin, $childout, $childout, $phpbin, "-d", "zlib.output_compression=Off", "-i" );
+            $mypid = IPC::Open3::open3( $childin, $childout, $childout, $phpbin, "-d", "zlib.output_compression=Off", "-i" );
         }
         my @conf = <$childout>;
         waitpid( $mypid, 0 );
@@ -1487,7 +1514,7 @@ sub _phpcheck {
                 if ( $mas == 8 and $maj < 1 ) { $status = 1 }
             }
             open( my $IN, "<", "/usr/local/apache/conf/php.conf.yaml" );
-            flock( $IN, LOCK_SH );
+            flock( $IN, Fcntl::LOCK_SH() );
             my @phpyamlconf = <$IN>;
             close($IN);
             chomp @phpyamlconf;
@@ -1613,7 +1640,7 @@ sub _apachecheck {
     my %ea4;
 
     if ( -e "/usr/local/cpanel/version" and -e "/etc/cpanel/ea4/is_ea4" and -e "/etc/cpanel/ea4/paths.conf" ) {
-        my @file = slurp("/etc/cpanel/ea4/paths.conf");
+        my @file = ConfigServer::Slurp::slurp("/etc/cpanel/ea4/paths.conf");
         $ea4{enabled} = 1;
         foreach my $line (@file) {
             $line =~ s/$cleanreg//g;
@@ -1634,10 +1661,10 @@ sub _apachecheck {
     }
 
     if ( $ea4{enabled} ) {
-        $mypid = open3( $childin, $childout, $childout, $ea4{bin_httpd}, "-v" );
+        $mypid = IPC::Open3::open3( $childin, $childout, $childout, $ea4{bin_httpd}, "-v" );
     }
     else {
-        $mypid = open3( $childin, $childout, $childout, "/usr/local/apache/bin/httpd", "-v" );
+        $mypid = IPC::Open3::open3( $childin, $childout, $childout, "/usr/local/apache/bin/httpd", "-v" );
     }
     my @version = <$childout>;
     waitpid( $mypid, 0 );
@@ -1651,10 +1678,10 @@ sub _apachecheck {
 
     my $ruid2 = 0;
     if ( $ea4{enabled} ) {
-        $mypid = open3( $childin, $childout, $childout, $ea4{bin_httpd}, "-M" );
+        $mypid = IPC::Open3::open3( $childin, $childout, $childout, $ea4{bin_httpd}, "-M" );
     }
     else {
-        $mypid = open3( $childin, $childout, $childout, "/usr/local/apache/bin/httpd", "-M" );
+        $mypid = IPC::Open3::open3( $childin, $childout, $childout, "/usr/local/apache/bin/httpd", "-M" );
     }
     my @modules = <$childout>;
     waitpid( $mypid, 0 );
@@ -1693,14 +1720,14 @@ sub _apachecheck {
     my @conf;
     if ( -e "/usr/local/apache/conf/httpd.conf" ) {
         open( my $IN, "<", "/usr/local/apache/conf/httpd.conf" );
-        flock( $IN, LOCK_SH );
+        flock( $IN, Fcntl::LOCK_SH() );
         @conf = <$IN>;
         close($IN);
         chomp @conf;
     }
     if ( -e "$ea4{file_conf}" ) {
         open( my $IN, "<", "$ea4{file_conf}" );
-        flock( $IN, LOCK_SH );
+        flock( $IN, Fcntl::LOCK_SH() );
         @conf = <$IN>;
         close($IN);
         chomp @conf;
@@ -1719,7 +1746,7 @@ sub _apachecheck {
             else {
                 if ( -x "/usr/bin/openssl" ) {
                     my ( $childin, $childout );
-                    my $cmdpid  = open3( $childin, $childout, $childout, "/usr/bin/openssl", "ciphers", "-v", $ciphers );
+                    my $cmdpid  = IPC::Open3::open3( $childin, $childout, $childout, "/usr/bin/openssl", "ciphers", "-v", $ciphers );
                     my @openssl = <$childout>;
                     waitpid( $cmdpid, 0 );
                     chomp @openssl;
@@ -1771,14 +1798,14 @@ sub _apachecheck {
     my @apacheconf;
     if ( -e "/usr/local/apache/conf/php.conf.yaml" ) {
         open( my $IN, "<", "/usr/local/apache/conf/php.conf.yaml" );
-        flock( $IN, LOCK_SH );
+        flock( $IN, Fcntl::LOCK_SH() );
         @apacheconf = <$IN>;
         close($IN);
         chomp @apacheconf;
     }
     if ( -e "$ea4{dir_conf}/php.conf.yaml" ) {
         open( my $IN, "<", "$ea4{dir_conf}/php.conf.yaml" );
-        flock( $IN, LOCK_SH );
+        flock( $IN, Fcntl::LOCK_SH() );
         @apacheconf = <$IN>;
         close($IN);
         chomp @apacheconf;
@@ -1843,7 +1870,7 @@ sub _sshtelnetcheck {
 
     if ( -e "/etc/ssh/sshd_config" ) {
         open( my $IN, "<", "/etc/ssh/sshd_config" );
-        flock( $IN, LOCK_SH );
+        flock( $IN, Fcntl::LOCK_SH() );
         my @sshconf = <$IN>;
         close($IN);
         chomp @sshconf;
@@ -1890,7 +1917,7 @@ sub _sshtelnetcheck {
         unless ( $config{VPS} ) {
             if ( -e "/etc/redhat-release" ) {
                 open( my $IN, "<", "/etc/redhat-release" );
-                flock( $IN, LOCK_SH );
+                flock( $IN, Fcntl::LOCK_SH() );
                 my $conf = <$IN>;
                 close($IN);
                 chomp $conf;
@@ -1899,7 +1926,7 @@ sub _sshtelnetcheck {
                     if ( -e "/etc/profile" ) {
                         $status = 0;
                         open( my $IN, "<", "/etc/profile" );
-                        flock( $IN, LOCK_SH );
+                        flock( $IN, Fcntl::LOCK_SH() );
                         my @profile = <$IN>;
                         close($IN);
                         chomp @profile;
@@ -1919,7 +1946,7 @@ sub _sshtelnetcheck {
         $status = 0;
         if ( -e "/var/cpanel/killproc.conf" ) {
             open( my $IN, "<", "/var/cpanel/killproc.conf" );
-            flock( $IN, LOCK_SH );
+            flock( $IN, Fcntl::LOCK_SH() );
             my @proc = <$IN>;
             close($IN);
             chomp @proc;
@@ -1962,11 +1989,11 @@ sub _servicescheck {
     my $mypid;
     if ( $sysinit eq "init" ) {
         $disable = "$servicebin [service] stop<br>$chkconfig [service] off";
-        $mypid   = open3( $childin, $childout, $childout, $chkconfig, "--list" );
+        $mypid   = IPC::Open3::open3( $childin, $childout, $childout, $chkconfig, "--list" );
     }
     else {
         $disable = "$systemctl stop [service]<br>$systemctl disable [service]";
-        $mypid   = open3( $childin, $childout, $childout, $systemctl, "list-unit-files", "--state=enabled", "--no-pager", "--no-legend" );
+        $mypid   = IPC::Open3::open3( $childin, $childout, $childout, $systemctl, "list-unit-files", "--state=enabled", "--no-pager", "--no-legend" );
     }
     my @chkconfig = <$childout>;
     waitpid( $mypid, 0 );
@@ -2009,7 +2036,7 @@ sub _getportinfo {
 
     foreach my $proto ( "udp", "tcp", "udp6", "tcp6" ) {
         open( my $IN, "<", "/proc/net/$proto" );
-        flock( $IN, LOCK_SH );
+        flock( $IN, Fcntl::LOCK_SH() );
         while (<$IN>) {
             my @rec = split();
             if ( $rec[9] =~ /uid/ ) { next }
