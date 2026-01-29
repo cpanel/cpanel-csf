@@ -32,7 +32,7 @@ use ConfigServer::CheckIP qw(checkip cccheckip);
 use ConfigServer::URLGet;
 use ConfigServer::GetIPs qw(getips);
 use ConfigServer::Service;
-use ConfigServer::AbuseIP qw(abuseip);
+use ConfigServer::AbuseIP ();
 use ConfigServer::GetEthDev;
 use ConfigServer::Sendmail;
 use ConfigServer::Logger qw(logfile);
@@ -2581,7 +2581,7 @@ sub block {
                 my $abusemsg = "";
 
                 if ($abuseip) {
-                    ( $abuseto, $abusemsg ) = abuseip($ip);
+                    ( $abuseto, $abusemsg ) = ConfigServer::AbuseIP::abuseip($ip);
                     if ( $abuseto eq "" ) {
                         $abusemsg = "";
                     }
@@ -3070,7 +3070,7 @@ sub portscans {
                     my $abuseto  = "";
                     my $abusemsg = "";
                     if ( $iptype eq "ipv4" and $abuseip ) {
-                        ( $abuseto, $abusemsg ) = abuseip($ip);
+                        ( $abuseto, $abusemsg ) = ConfigServer::AbuseIP::abuseip($ip);
                         if ( $abuseto eq "" ) {
                             $abusemsg = "";
                         }
@@ -3779,7 +3779,7 @@ sub connectiontracking {
                             my $abuseto  = "";
                             my $abusemsg = "";
                             if ( $iptype eq "ipv4" and $abuseip ) {
-                                ( $abuseto, $abusemsg ) = abuseip($ip);
+                                ( $abuseto, $abusemsg ) = ConfigServer::AbuseIP::abuseip($ip);
                                 if ( $abuseto eq "" ) {
                                     $abusemsg = "";
                                 }

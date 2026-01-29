@@ -25,9 +25,9 @@ ConfigServer::AbuseIP - Look up abuse contact information for IP addresses
 
 =head1 SYNOPSIS
 
-    use ConfigServer::AbuseIP qw(abuseip);
+    use ConfigServer::AbuseIP ();
 
-    my ($contact, $message) = abuseip('192.0.2.1');
+    my ($contact, $message) = ConfigServer::AbuseIP::abuseip('192.0.2.1');
 
     if ($contact) {
         print "Abuse contact: $contact\n";
@@ -43,18 +43,15 @@ database aggregates abuse contact information from Regional Internet Registries
 
 =cut
 
-use strict;
-use lib '/usr/local/csf/lib';
-use Carp;
-use IPC::Open3;
-use Net::IP;
-use ConfigServer::Config;
-use ConfigServer::CheckIP qw(checkip);
+use cPstrict;
 
-use Exporter qw(import);
-our $VERSION   = 1.03;
-our @ISA       = qw(Exporter);
-our @EXPORT_OK = qw(abuseip);
+use Carp                  ();
+use IPC::Open3            ();
+use Net::IP               ();
+use ConfigServer::Config  ();
+use ConfigServer::CheckIP ();
+
+our $VERSION = 1.03;
 
 my $abusemsg = 'Abuse Contact for [ip]: [[contact]]
 
@@ -97,7 +94,7 @@ external host command.
 
 =item B<Example>
 
-    my ($contact, $msg) = abuseip('8.8.8.8');
+    my ($contact, $msg) = ConfigServer::AbuseIP::abuseip('8.8.8.8');
     if ($contact) {
         print "Abuse contact: $contact\n";
     }
@@ -112,7 +109,7 @@ sub abuseip {
     my $netip;
     my $reversed_ip;
 
-    if ( checkip( \$ip ) ) {
+    if ( ConfigServer::CheckIP::checkip( \$ip ) ) {
         eval {
             local $SIG{__DIE__} = undef;
             $netip       = Net::IP->new($ip);
@@ -142,7 +139,7 @@ sub abuseip {
                 alarm(0);
             };
             alarm(0);
-            if ( $cmdpid =~ /\d+/ and $cmdpid > 1 and kill( 0, $cmdpid ) ) { kill( 9, $cmdpid ) }
+            if ( length $cmdpid && $cmdpid =~ /\d+/ && $cmdpid > 1 && kill( 0, $cmdpid ) ) { kill( 9, $cmdpid ) }
 
             if ( $abuse ne "" ) {
                 my $msg = $abusemsg;
@@ -152,6 +149,7 @@ sub abuseip {
             }
         }
     }
+    return;
 }
 
 1;
