@@ -18,7 +18,7 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, see <https://www.gnu.org/licenses>.
 ###############################################################################
-## no critic (RequireUseWarnings, ProhibitExplicitReturnUndef, ProhibitMixedBooleanOperators, RequireBriefOpen)
+
 use strict;
 use File::Find;
 use Fcntl         qw(:DEFAULT :flock);
@@ -38,8 +38,6 @@ require Whostmgr::ACLS;
 require Cpanel::Rlimit;
 require Cpanel::Template;
 require Cpanel::Version::Tiny;
-###############################################################################
-# start main
 
 our ( $reseller, $script, $images, %rprivs, $myv, %FORM );
 
@@ -200,9 +198,6 @@ unless ( $FORM{action} eq "tailcmd" or $FORM{action} =~ /^cf/ or $FORM{action} e
     );
 }
 
-# end main
-###############################################################################
-## start printcmd
 sub printcmd {
     my @command = @_;
     my ( $childin, $childout );
@@ -211,7 +206,5 @@ sub printcmd {
     waitpid( $pid, 0 );
     return;
 }
-## end printcmd
-###############################################################################
 
 1;

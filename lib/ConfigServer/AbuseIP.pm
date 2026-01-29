@@ -16,9 +16,32 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, see <https://www.gnu.org/licenses>.
 ###############################################################################
-## no critic (RequireUseWarnings, ProhibitExplicitReturnUndef, ProhibitMixedBooleanOperators, RequireBriefOpen)
-# start main
+
 package ConfigServer::AbuseIP;
+
+=head1 NAME
+
+ConfigServer::AbuseIP - Look up abuse contact information for IP addresses
+
+=head1 SYNOPSIS
+
+    use ConfigServer::AbuseIP qw(abuseip);
+    
+    my ($contact, $message) = abuseip('192.0.2.1');
+    
+    if ($contact) {
+        print "Abuse contact: $contact\n";
+        print "Message:\n$message\n";
+    }
+
+=head1 DESCRIPTION
+
+This module provides functionality to look up abuse contact information for 
+IP addresses using the Abuse Contact Database provided by abusix.com. The 
+database aggregates abuse contact information from Regional Internet Registries 
+(RIRs) and makes it available via DNS TXT record lookups.
+
+=cut
 
 use strict;
 use lib '/usr/local/csf/lib';
@@ -44,9 +67,45 @@ abusix.com is neither responsible nor liable for the content or accuracy of this
 my $config = ConfigServer::Config->loadconfig();
 my %config = $config->config();
 
-# end main
-###############################################################################
-# start abuseip
+=head2 abuseip
+
+Looks up the abuse contact information for the given IP address using the Abuse 
+Contact Database provided by abusix.com.
+
+=over 4
+
+=item B<Parameters>
+
+=over 4
+
+=item * C<$ip> - The IP address to look up (IPv4 or IPv6)
+
+=back
+
+=item B<Returns>
+
+In scalar context: the abuse contact email address (or undef if not found)
+
+In list context: a two-element list containing the abuse contact email address 
+and a formatted message explaining the source of the contact information
+
+=item B<Implementation>
+
+The function performs DNS TXT record lookups against abuse-contacts.abusix.org 
+after reversing the IP address format. It uses a 10-second timeout for the 
+external host command.
+
+=item B<Example>
+
+    my ($contact, $msg) = abuseip('8.8.8.8');
+    if ($contact) {
+        print "Abuse contact: $contact\n";
+    }
+
+=back
+
+=cut
+
 sub abuseip {
     my $ip    = shift;
     my $abuse = "";
@@ -95,7 +154,63 @@ sub abuseip {
     }
 }
 
-# end abuseip
-###############################################################################
-
 1;
+
+__END__
+
+=head1 DEPENDENCIES
+
+=over 4
+
+=item * L<Net::IP> - For IP address manipulation and reversal
+
+=item * L<IPC::Open3> - For executing external commands
+
+=item * L<ConfigServer::Config> - For system configuration
+
+=item * L<ConfigServer::CheckIP> - For IP address validation
+
+=back
+
+=head1 EXTERNAL SERVICES
+
+This module queries the Abuse Contact Database provided by abusix.com:
+
+=over 4
+
+=item * B<Service:> abusix.com Abuse Contact DB
+
+=item * B<Query Method:> DNS TXT record lookup
+
+=item * B<Domain:> abuse-contacts.abusix.org
+
+=item * B<Timeout:> 10 seconds
+
+=back
+
+=head1 SEE ALSO
+
+=over 4
+
+=item * L<https://abusix.com/global-reporting/abuse-contact-db>
+
+=item * L<ConfigServer::CheckIP>
+
+=item * L<Net::IP>
+
+=back
+
+=head1 AUTHOR
+
+Jonathan Michaelson
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (C) 2006-2025 Jonathan Michaelson
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation; either version 3 of the License, or (at your option) any later
+version.
+
+=cut

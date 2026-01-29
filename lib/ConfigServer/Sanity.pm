@@ -16,8 +16,6 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, see <https://www.gnu.org/licenses>.
 ###############################################################################
-## no critic (RequireUseWarnings, ProhibitExplicitReturnUndef, ProhibitMixedBooleanOperators, RequireBriefOpen)
-# start main
 package ConfigServer::Sanity;
 
 use strict;
@@ -54,9 +52,6 @@ if ( $config{IPSET} ) {
     delete $sanitydefault{"DENY_IP_LIMIT"};
 }
 
-# end main
-###############################################################################
-# start sanity
 sub sanity {
     my $sanity_item  = shift;
     my $sanity_value = shift;
@@ -81,8 +76,5 @@ sub sanity {
     }
     return ( $insane, $sanity{$sanity_item}, $sanitydefault{$sanity_item} );
 }
-
-# end sanity
-###############################################################################
 
 1;

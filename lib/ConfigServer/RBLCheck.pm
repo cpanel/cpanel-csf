@@ -16,7 +16,6 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, see <https://www.gnu.org/licenses>.
 ###############################################################################
-# start main
 package ConfigServer::RBLCheck;
 
 =head1 NAME
@@ -26,12 +25,12 @@ ConfigServer::RBLCheck - Check server IPs against Real-time Blackhole Lists
 =head1 SYNOPSIS
 
     use ConfigServer::RBLCheck;
-    
+
     # Get HTML output without printing
     my ($failures, $html) = ConfigServer::RBLCheck::report(1, "/images", 0);
     print "Found $failures IPs on blocklists\n";
     print $html;
-    
+
     # Print directly to STDOUT (UI mode)
     ConfigServer::RBLCheck::report(2, "/images", 1);
 
@@ -69,10 +68,6 @@ my (
     $ui,       $failures, $verbose, $cleanreg, $status, %ips, $images,
     $ipresult, $output
 );
-
-# end main
-###############################################################################
-# start report
 
 =head2 report($verbose, $images, $ui)
 
@@ -277,16 +272,10 @@ sub report {
     return ( $failures, $output );
 }
 
-# end report
-###############################################################################
-# start _startoutput
 sub _startoutput {
     return;
 }
 
-# end _startoutput
-###############################################################################
-# start _addline
 sub _addline {
     my $status  = shift;
     my $rbl     = shift;
@@ -316,9 +305,6 @@ sub _addline {
     return;
 }
 
-# end _addline
-###############################################################################
-# start _addtitle
 sub _addtitle {
     my $title = shift;
     my $text;
@@ -332,9 +318,6 @@ sub _addtitle {
     return;
 }
 
-# end _addtitle
-###############################################################################
-# start _endoutput
 sub _endoutput {
     if   ($ui) { print "<br>\n" }
     else       { $output .= "<br>\n" }
@@ -342,9 +325,6 @@ sub _endoutput {
     return;
 }
 
-# end _endoutput
-###############################################################################
-# start _getethdev
 sub _getethdev {
     my $ethdev = ConfigServer::GetEthDev->new();
     my %g_ipv4 = $ethdev->ipv4;
@@ -364,8 +344,5 @@ sub _getethdev {
 
     return;
 }
-
-# end getethdev
-###############################################################################
 
 1;

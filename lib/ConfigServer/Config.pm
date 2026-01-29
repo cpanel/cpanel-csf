@@ -16,8 +16,6 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, see <https://www.gnu.org/licenses>.
 ###############################################################################
-## no critic (RequireUseWarnings, ProhibitExplicitReturnUndef, ProhibitMixedBooleanOperators, RequireBriefOpen)
-# start main
 package ConfigServer::Config;
 
 =head1 NAME
@@ -102,10 +100,6 @@ my $warning;
 my $version;
 
 my $configfile = "/etc/csf/csf.conf";
-
-# end main
-###############################################################################
-# start loadconfig
 
 =head2 loadconfig
 
@@ -560,7 +554,6 @@ None.
 
 =cut
 
-# start config
 sub config {
     return %config;
 }
@@ -678,7 +671,6 @@ None.
 
 =cut
 
-# start configsetting
 sub configsetting {
     return %configsetting;
 }
@@ -732,7 +724,6 @@ sub ipv6reg {
     return $ipv6reg;
 }
 
-# start _systemcmd
 sub _systemcmd {
     my @command = @_;
     my @result;

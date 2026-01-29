@@ -17,8 +17,7 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, see <https://www.gnu.org/licenses>.
 ###############################################################################
-## no critic (RequireUseWarnings, ProhibitExplicitReturnUndef, ProhibitMixedBooleanOperators, RequireBriefOpen, RequireLocalizedPunctuationVars)
-# start main
+
 use strict;
 use lib '/usr/local/csf/lib';
 use Fcntl qw(:DEFAULT :flock);
@@ -1686,9 +1685,7 @@ while (1) {
 
 exit;
 
-# end main
-###############################################################################
-# start dochecks
+
 sub dochecks {
     my $line            = shift;
     my $lgfile          = shift;
@@ -2213,9 +2210,7 @@ sub dochecks {
     return;
 }
 
-# end dochecks
-###############################################################################
-# start getlogfile
+
 sub getlogfile {
     my $logfile  = shift;
     my $lfn      = shift;
@@ -2271,9 +2266,7 @@ sub getlogfile {
     return undef;
 }
 
-# end getlogfile
-###############################################################################
-# start openlogfile
+
 sub openlogfile {
     my $logfile = shift;
     my $lfn     = shift;
@@ -2299,9 +2292,7 @@ sub openlogfile {
     return 0;
 }
 
-# end openlogfile
-###############################################################################
-# start globlog
+
 sub globlog {
     my $setting = shift;
     if ( $config{$setting} =~ /\*|\?|\[/ ) {
@@ -2317,9 +2308,7 @@ sub globlog {
     return;
 }
 
-# end globlog
-###############################################################################
-# start lockhang
+
 sub lockhang {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
@@ -2365,9 +2354,7 @@ sub lockhang {
     return;
 }
 
-# end lockhang
-###############################################################################
-# start syslog_init
+
 sub syslog_init {
     local $SIG{CHLD} = 'DEFAULT';
     my %syslogusers;
@@ -2405,9 +2392,7 @@ sub syslog_init {
     return;
 }
 
-# end syslog_init
-###############################################################################
-# start syslog_perms
+
 sub syslog_perms {
     my $newpid = 1;
     my @socketids;
@@ -2489,9 +2474,7 @@ sub syslog_perms {
     return;
 }
 
-# end syslog_perms
-###############################################################################
-# start block
+
 sub block {
     my $ip      = shift;
     my $ipcount = shift;
@@ -2641,9 +2624,7 @@ sub block {
     return;
 }
 
-# end block
-###############################################################################
-# start blockaccount
+
 sub blockaccount {
     my $ipa     = shift;
     my @ips     = @$ipa;
@@ -2717,9 +2698,7 @@ sub blockaccount {
     return;
 }
 
-# end blockaccount
-###############################################################################
-# start blockdistftp
+
 sub blockdistftp {
     my $ipa     = shift;
     my @ips     = @$ipa;
@@ -2778,9 +2757,7 @@ sub blockdistftp {
     return;
 }
 
-# end blockdistftp
-###############################################################################
-# start blockdistsmtp
+
 sub blockdistsmtp {
     my $ipa     = shift;
     my @ips     = @$ipa;
@@ -2839,9 +2816,7 @@ sub blockdistsmtp {
     return;
 }
 
-# end blockdistsmtp
-###############################################################################
-# start disable404
+
 sub disable404 {
     my $ip   = shift;
     my $text = shift;
@@ -2888,9 +2863,7 @@ sub disable404 {
     return;
 }
 
-# end disable404
-###############################################################################
-# start disable403
+
 sub disable403 {
     my $ip   = shift;
     my $text = shift;
@@ -2937,9 +2910,7 @@ sub disable403 {
     return;
 }
 
-# end disable403
-###############################################################################
-# start disable401
+
 sub disable401 {
     my $ip   = shift;
     my $text = shift;
@@ -2986,9 +2957,7 @@ sub disable401 {
     return;
 }
 
-# end disable401
-###############################################################################
-# start logindisable
+
 sub logindisable {
     my $app     = shift;
     my $ip      = shift;
@@ -3044,9 +3013,7 @@ sub logindisable {
     return;
 }
 
-# end logindisable
-###############################################################################
-# start portscans
+
 sub portscans {
     my $ip     = shift;
     my $count  = shift;
@@ -3147,9 +3114,7 @@ sub portscans {
     return;
 }
 
-# end portscans
-###############################################################################
-# start uidscans
+
 sub uidscans {
     my $uid    = shift;
     my $count  = shift;
@@ -3188,9 +3153,7 @@ sub uidscans {
     return;
 }
 
-# end uidscans
-###############################################################################
-# start csfrestart
+
 sub csfrestart {
     my $timer = time;
     if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "csfrestart", $timer ) }
@@ -3205,9 +3168,7 @@ sub csfrestart {
     return;
 }
 
-# end csfrestart
-###############################################################################
-# start lfdrestart
+
 sub lfdrestart {
     $SIG{INT}  = 'IGNORE';
     $SIG{TERM} = 'IGNORE';
@@ -3226,9 +3187,7 @@ sub lfdrestart {
     exit 0;
 }
 
-# end lfdrestart
-###############################################################################
-# start csfcheck
+
 sub csfcheck {
     my $timer = time;
     if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "csfcheck", $timer ) }
@@ -3359,9 +3318,7 @@ sub csfcheck {
     return;
 }
 
-# end csfcheck
-###############################################################################
-# start loadcheck
+
 sub loadcheck {
     if ( -e "/var/lib/csf/csf.load" ) {
         open( my $IN, "<", "/var/lib/csf/csf.load" );
@@ -3488,9 +3445,7 @@ sub loadcheck {
     return;
 }
 
-# end loadcheck
-###############################################################################
-# start denycheck
+
 sub denycheck {
     my $ip       = shift;
     my $port     = shift;
@@ -3521,9 +3476,7 @@ sub denycheck {
     return $skip;
 }
 
-# end denycheck
-###############################################################################
-# start queuecheck
+
 sub queuecheck {
     if ( -e "/var/lib/csf/csf.queue" ) {
         open( my $IN, "<", "/var/lib/csf/csf.queue" );
@@ -3611,9 +3564,7 @@ sub queuecheck {
     return;
 }
 
-# end queuecheck
-###############################################################################
-# start modsecipdbcheck
+
 sub modsecipdbcheck {
     if ( -e "/var/lib/csf/csf.modsecipdbcheck" ) {
         open( my $IN, "<", "/var/lib/csf/csf.modsecipdbcheck" );
@@ -3673,9 +3624,7 @@ sub modsecipdbcheck {
     return;
 }
 
-# end modsecipdbcheck
-###############################################################################
-# start connectiontracking
+
 sub connectiontracking {
 
     $SIG{CHLD} = 'IGNORE';
@@ -3924,9 +3873,7 @@ sub connectiontracking {
     return;
 }
 
-# end connectiontracking
-###############################################################################
-# start accounttracking
+
 sub accounttracking {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
@@ -3995,9 +3942,7 @@ sub accounttracking {
     return;
 }
 
-# end accounttracking
-###############################################################################
-# start syslogcheck
+
 sub syslogcheck {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
@@ -4033,9 +3978,7 @@ sub syslogcheck {
     return;
 }
 
-# end syslogcheck
-###############################################################################
-# start processtracking
+
 sub processtracking {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
@@ -4536,9 +4479,7 @@ sub processtracking {
     return;
 }
 
-# end processtracking
-###############################################################################
-# start sshalert
+
 sub sshalert {
     my $account = shift;
     my $ip      = shift;
@@ -4576,9 +4517,7 @@ sub sshalert {
     return;
 }
 
-# end sshalert
-###############################################################################
-# start sualert
+
 sub sualert {
     my $suto   = shift;
     my $sufrom = shift;
@@ -4615,9 +4554,7 @@ sub sualert {
     return;
 }
 
-# end sualert
-###############################################################################
-# start sudoalert
+
 sub sudoalert {
     my $suto   = shift;
     my $sufrom = shift;
@@ -4654,9 +4591,7 @@ sub sudoalert {
     return;
 }
 
-# end sudoalert
-###############################################################################
-# start consolealert
+
 sub consolealert {
     my $logline = shift;
 
@@ -4687,9 +4622,7 @@ sub consolealert {
     return;
 }
 
-# end consolealert
-###############################################################################
-# start cpanelalert
+
 sub cpanelalert {
     my $ip   = shift;
     my $user = shift;
@@ -4730,9 +4663,7 @@ sub cpanelalert {
     return;
 }
 
-# end cpanelalert
-###############################################################################
-# start scriptalert
+
 sub scriptalert {
     my $path  = shift;
     my $count = shift;
@@ -4811,9 +4742,7 @@ sub scriptalert {
     return;
 }
 
-# end scriptalert
-###############################################################################
-# start relayalert
+
 sub relayalert {
     my $ip    = shift;
     my $cnt   = shift;
@@ -4889,9 +4818,7 @@ sub relayalert {
     return;
 }
 
-# end relayalert
-###############################################################################
-# start portknocking
+
 sub portknocking {
     my $ip   = shift;
     my $port = shift;
@@ -4925,9 +4852,7 @@ sub portknocking {
     return;
 }
 
-# end portknocking
-###############################################################################
-# start blocklist
+
 sub blocklist {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
@@ -5209,9 +5134,7 @@ sub blocklist {
     return;
 }
 
-# end blocklist
-###############################################################################
-# start countrycode
+
 sub countrycode {
     my $force = shift;
 
@@ -5953,9 +5876,7 @@ sub countrycode {
     return;
 }
 
-# end countrycode
-###############################################################################
-# start countrycodelookups
+
 sub countrycodelookups {
     my $force = shift;
     if ( $config{CC_LOOKUPS} == 4 ) { return }
@@ -6202,9 +6123,7 @@ sub countrycodelookups {
     return;
 }
 
-# end countrycodelookups
-###############################################################################
-# start countrycode6
+
 sub countrycode6 {
     my $force = shift;
     my $getgeo;
@@ -6663,9 +6582,7 @@ sub countrycode6 {
     return;
 }
 
-# end countrycode6
-###############################################################################
-# start global
+
 sub global {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
@@ -6950,9 +6867,7 @@ sub global {
     return;
 }
 
-# end global
-###############################################################################
-# start dyndns
+
 sub dyndns {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
@@ -7078,9 +6993,7 @@ sub dyndns {
     return;
 }
 
-# end dyndns
-###############################################################################
-# start globaldyndns
+
 sub globaldyndns {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
@@ -7212,9 +7125,7 @@ sub globaldyndns {
     return;
 }
 
-# end globaldyndns
-###############################################################################
-# start listlock
+
 my $listlock_fh;
 sub listlock {
     my $state = shift;
@@ -7229,9 +7140,7 @@ sub listlock {
     return;
 }
 
-# end listlock
-###############################################################################
-# start dirwatch
+
 sub dirwatch {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
@@ -7393,9 +7302,7 @@ sub dirwatch {
     return;
 }
 
-# end dirwatch
-###############################################################################
-# start dirfiles
+
 sub dirfiles {
     if ( $skipfile{$File::Find::name} )                         { return }
     if ( $nofiles{$File::Find::name} )                          { return }
@@ -7468,9 +7375,7 @@ sub dirfiles {
     return;
 }
 
-# end dirfiles
-###############################################################################
-# start dirwatchfile
+
 sub dirwatchfile {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
@@ -7568,9 +7473,7 @@ sub dirwatchfile {
     return;
 }
 
-# end dirwatchfile
-###############################################################################
-# start integrity
+
 sub integrity {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
@@ -7683,9 +7586,7 @@ sub integrity {
     return;
 }
 
-# end integrity
-###############################################################################
-# start logscanner
+
 sub logscanner {
     my $hour = shift;
     if   ( length $hour == 1 ) { $hour = "0$hour:00" }
@@ -7768,9 +7669,7 @@ sub logscanner {
     return;
 }
 
-# end logscanner
-###############################################################################
-# start exploit
+
 sub exploit {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
@@ -7827,9 +7726,7 @@ sub exploit {
     return;
 }
 
-# end exploit
-###############################################################################
-# start getethdev
+
 sub getethdev {
     my $ethdev   = ConfigServer::GetEthDev->new();
     my %g_ifaces = $ethdev->ifaces;
@@ -7870,9 +7767,6 @@ sub getethdev {
     return;
 }
 
-# end getethdev
-###############################################################################
-## start hex2ip
 sub hex2ip {
     my $bin = pack "C*" => map hex, $_[0] =~ /../g;
     my @l   = unpack "L*", $bin;
@@ -7883,9 +7777,7 @@ sub hex2ip {
         return join '.', map { $_ >> 24, ( $_ >> 16 ) & 0xff, ( $_ >> 8 ) & 0xff, $_ & 0xff } @l;
     }
 }
-## end hex2ip
-###############################################################################
-## start ipv4in6
+
 sub ipv4in6 {
     my $in   = $_[0];
     my @ipv6 = split( ":", $in );
@@ -7902,9 +7794,7 @@ sub ipv4in6 {
 
     return $out;
 }
-## end ipv4in6
-###############################################################################
-# start cleanup
+
 sub cleanup {
     $SIG{INT}  = 'IGNORE';
     $SIG{TERM} = 'IGNORE';
@@ -7935,9 +7825,7 @@ sub cleanup {
     exit 0;
 }
 
-# end cleanup
-###############################################################################
-# start childcleanup
+
 sub childcleanup {
     $SIG{INT}  = 'IGNORE';
     $SIG{TERM} = 'IGNORE';
@@ -7959,9 +7847,7 @@ sub childcleanup {
     exit;
 }
 
-# end childcleanup
-###############################################################################
-# start ignoreip
+
 sub ignoreip {
     my $ip   = shift;
     my $skip = shift;
@@ -8056,9 +7942,7 @@ sub ignoreip {
     return 0;
 }
 
-# end ignoreip
-###############################################################################
-# start linefilter
+
 sub linefilter {
     my $line     = shift;
     my $ad       = shift;
@@ -8279,9 +8163,7 @@ sub linefilter {
     return;
 }
 
-# end linefilter
-###############################################################################
-# start iptablescmd
+
 sub iptablescmd {
     my $line    = shift;
     my $command = shift;
@@ -8390,9 +8272,7 @@ sub iptablescmd {
     return;
 }
 
-# end iptablescmd
-###############################################################################
-# start syscommand
+
 sub syscommand {
     my ( $line, @cmd ) = @_;
     my $cmdline = join( " ", @cmd );
@@ -8425,9 +8305,7 @@ sub syscommand {
     return @output;
 }
 
-# end syscommand
-###############################################################################
-# start iptableslock
+
 my $iptableslock_fh;
 sub iptableslock {
     my $lock      = shift;
@@ -8446,9 +8324,7 @@ sub iptableslock {
     return;
 }
 
-# end iptableslock
-###############################################################################
-# start timer
+
 sub timer {
     my $status = shift;
     my $check  = shift;
@@ -8466,9 +8342,7 @@ sub timer {
     return;
 }
 
-# end timer
-###############################################################################
-# start csflock
+
 sub csflock {
     my $ret = 0;
     sysopen( my $CSFLOCKFILE, "/var/lib/csf/csf.lock", O_RDWR | O_CREAT ) or childcleanup("*Error* Unable to open csf lock file");
@@ -8478,18 +8352,14 @@ sub csflock {
     return $ret;
 }
 
-# end csflock
-###############################################################################
-# start lockfail
+
 sub lockfail {
     my $section = shift;
     logfile("csf is currently restarting - section [$section] skipped");
     exit;
 }
 
-# end lockfail
-###############################################################################
-# start ipblock
+
 sub ipblock {
     my $perm    = shift;
     my $message = shift;
@@ -8867,9 +8737,7 @@ sub ipblock {
     return $return;
 }
 
-# end ipblock
-###############################################################################
-# start ipunblock
+
 sub ipunblock {
     if ( !-z "/var/lib/csf/csf.tempban" ) {
         $SIG{CHLD} = 'IGNORE';
@@ -9093,9 +8961,7 @@ sub ipunblock {
     return;
 }
 
-# end ipunblock
-###############################################################################
-# start cloudflare
+
 sub cloudflare {
     my $action  = shift;
     my $ip      = shift;
@@ -9126,9 +8992,7 @@ sub cloudflare {
     return;
 }
 
-# end cloudflare
-###############################################################################
-# start block_report
+
 sub block_report {
     my @report = @_;
     $SIG{CHLD} = 'IGNORE';
@@ -9164,9 +9028,7 @@ sub block_report {
     return;
 }
 
-# end block_report
-###############################################################################
-# start unblock_report
+
 sub unblock_report {
     my $ip   = shift;
     my $port = shift;
@@ -9202,9 +9064,7 @@ sub unblock_report {
     return;
 }
 
-# end unblock_report
-###############################################################################
-# start stats_report
+
 sub stats_report {
     my @report = @_;
     $SIG{CHLD} = 'IGNORE';
@@ -9368,9 +9228,7 @@ sub stats_report {
     return;
 }
 
-# end stats_report
-###############################################################################
-# start checkvps
+
 sub checkvps {
     if ( -e "/proc/user_beancounters" and !( -e "/proc/vz/version" ) ) {
         open( my $INVPS, "<", "/proc/user_beancounters" );
@@ -9388,9 +9246,7 @@ sub checkvps {
     return 0;
 }
 
-# end checkvps
-###############################################################################
-# start messengerrecaptcha
+
 sub messengerrecaptcha {
     my $timer = time;
     my ( undef, undef, $uid, $gid, undef, undef, undef, $homedir ) = getpwnam( $config{MESSENGER_USER} );
@@ -9447,9 +9303,7 @@ sub messengerrecaptcha {
     return;
 }
 
-# end messengerrecaptcha
-###############################################################################
-# start messenger
+
 sub messengerstop {
     my $version = shift;
     if ( $version == 1 ) {
@@ -9490,9 +9344,7 @@ sub messengerstop {
     return;
 }
 
-# end messengerstop
-###############################################################################
-# start messenger
+
 sub messenger {
     my $port  = shift;
     my $user  = shift;
@@ -9529,9 +9381,7 @@ sub messenger {
     return;
 }
 
-# end messenger
-###############################################################################
-# start messengerv2
+
 sub messengerv2 {
     my $timer = time;
 
@@ -9554,9 +9404,7 @@ sub messengerv2 {
     return;
 }
 
-# end messengerv2
-###############################################################################
-# start messengerv3
+
 sub messengerv3 {
     my $timer = time;
 
@@ -9579,9 +9427,7 @@ sub messengerv3 {
     return;
 }
 
-# end messengerv3
-###############################################################################
-# start domessenger
+
 sub domessenger {
     my $ip     = shift;
     my $delete = shift;
@@ -9681,9 +9527,7 @@ sub domessenger {
     return;
 }
 
-# end domessenger
-###############################################################################
-# start ui
+
 sub ui {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
@@ -10554,9 +10398,6 @@ EOF
     return;
 }
 
-# end ui
-###############################################################################
-# ui_403
 sub ui_403 {
     print "HTTP/1.0 403 Forbidden\r\n";
     print "Content-type: text/html\r\n";
@@ -10568,9 +10409,6 @@ sub ui_403 {
     return;
 }
 
-# end ui_403
-###############################################################################
-# ui_413
 sub ui_413 {
     print "HTTP/1.0 413 Request Entity Too Large\r\n";
     print "Content-type: text/html\r\n";
@@ -10582,9 +10420,7 @@ sub ui_413 {
     return;
 }
 
-# end ui_413
-###############################################################################
-# start lfdserver
+
 sub lfdserver {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
@@ -10837,9 +10673,7 @@ sub lfdserver {
     return;
 }
 
-# end lfdserver
-###############################################################################
-# start lfdclient
+
 sub lfdclient {
     my $perm    = shift;
     my $message = shift;
@@ -10902,9 +10736,7 @@ sub lfdclient {
     return;
 }
 
-# end lfdclient
-###############################################################################
-# start updateconfig
+
 sub updateconfig {
     my $chname  = shift;
     my $chvalue = shift;
@@ -10934,9 +10766,7 @@ sub updateconfig {
     return;
 }
 
-# end updateconfig
-###############################################################################
-# start stats
+
 sub stats {
     my $line = shift;
     my $type = shift;
@@ -11015,9 +10845,7 @@ sub stats {
     return;
 }
 
-# end stats
-###############################################################################
-# start systemstats
+
 sub systemstats {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
@@ -11317,9 +11145,7 @@ sub systemstats {
     return;
 }
 
-# end systemstats
-###############################################################################
-# start allowip
+
 sub allowip {
     my $ipmatch = shift;
 
@@ -11380,9 +11206,7 @@ sub allowip {
     return;
 }
 
-# end allowip
-###############################################################################
-# start testregex
+
 sub testregex {
     my $match = shift;
     eval {
@@ -11393,9 +11217,7 @@ sub testregex {
     return 1;
 }
 
-# end testregex
-###############################################################################
-# start faststart
+
 sub faststart {
     my $text = shift;
     $faststart = 0;
@@ -11527,9 +11349,7 @@ sub faststart {
     return;
 }
 
-# end faststart
-###############################################################################
-# start fastvps
+
 sub fastvps {
     my $size = shift;
     if ( -e "/proc/user_beancounters" and !( -e "/proc/vz/version" ) ) {
@@ -11548,9 +11368,7 @@ sub fastvps {
     return 0;
 }
 
-# end fastvps
-###############################################################################
-# start ipsetcreate
+
 sub ipsetcreate {
     my $set    = shift;
     my $family = "inet";
@@ -11568,9 +11386,7 @@ sub ipsetcreate {
     return;
 }
 
-# end ipsetcreate
-###############################################################################
-# start ipsetrestore
+
 sub ipsetrestore {
     my $set     = shift;
     my $verbose = 1;
@@ -11593,9 +11409,7 @@ sub ipsetrestore {
     return;
 }
 
-# end ipsetrestore
-###############################################################################
-# start ipsetswap
+
 sub ipsetswap {
     my $from    = shift;
     my $to      = shift;
@@ -11633,9 +11447,7 @@ sub ipsetswap {
     return;
 }
 
-# end ipsetswap
-###############################################################################
-# start ipsetadd
+
 sub ipsetadd {
     my $set = shift;
     my $ip  = shift;
@@ -11666,9 +11478,7 @@ sub ipsetadd {
     return;
 }
 
-# end ipsetadd
-###############################################################################
-# start ipsetdel
+
 sub ipsetdel {
     my $set = shift;
     my $ip  = shift;
@@ -11690,9 +11500,7 @@ sub ipsetdel {
     return;
 }
 
-# end ipsetadd
-###############################################################################
-# start ipsetflush
+
 sub ipsetflush {
     my $set = shift;
     logfile("IPSET: flushing set $set");
@@ -11708,6 +11516,3 @@ sub ipsetflush {
     }
     return;
 }
-
-# end ipsetflush
-###############################################################################

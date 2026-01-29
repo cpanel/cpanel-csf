@@ -17,8 +17,7 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, see <https://www.gnu.org/licenses>.
 ###############################################################################
-## no critic (RequireUseWarnings, ProhibitExplicitReturnUndef, ProhibitMixedBooleanOperators, RequireBriefOpen)
-# start main
+
 use strict;
 use lib '/usr/local/csf/lib';
 use Fcntl qw(:DEFAULT :flock);
@@ -193,9 +192,7 @@ if ( ( $input{command} eq "--start" ) or ( $input{command} eq "-s" ) or ( $input
 
 exit 0;
 
-# end main
-###############################################################################
-# start csflock
+
 sub csflock {
     my $lock = shift;
     my $csflockfile_fh;
@@ -209,9 +206,7 @@ sub csflock {
     return;
 }
 
-# end csflock
-###############################################################################
-# start load_config
+
 sub load_config {
     my $config = ConfigServer::Config->loadconfig();
     %config = $config->config;
@@ -345,9 +340,7 @@ sub load_config {
     return;
 }
 
-# end load_config
-###############################################################################
-# start process_input
+
 sub process_input {
 
     # Make a copy of @ARGV to avoid modifying it as it is used elsewhere in the script
@@ -360,9 +353,7 @@ sub process_input {
     return;
 }
 
-# end process_input
-###############################################################################
-# start dostatus
+
 sub dostatus {
     print "iptables filter table\n";
     print "=====================\n";
@@ -388,9 +379,7 @@ sub dostatus {
     return;
 }
 
-# end dostatus
-###############################################################################
-# start dostatus6
+
 sub dostatus6 {
     if ( $config{IPV6} ) {
         print "ip6tables filter table\n";
@@ -421,17 +410,13 @@ sub dostatus6 {
     return;
 }
 
-# end dostatus
-###############################################################################
-# start doversion
+
 sub doversion {
     print "csf: v$version (cPanel)\n";
     return;
 }
 
-# end doversion
-###############################################################################
-# start dolfd
+
 sub dolfd {
     my $lfd = $input{argument}[0];
     if    ( $lfd eq "start" )   { ConfigServer::Service::startlfd() }
@@ -442,9 +427,7 @@ sub dolfd {
     return;
 }
 
-# end dolfd
-###############################################################################
-# start dorestartall
+
 sub dorestartall {
     csflock("lock");
     dostop(1);
@@ -454,9 +437,7 @@ sub dorestartall {
     return;
 }
 
-# end dorestartall
-###############################################################################
-# start doinitup
+
 sub doinitup {
     csflock("lock");
     if ( $config{FASTSTART} ) {
@@ -529,9 +510,7 @@ sub doinitup {
     return;
 }
 
-# end doinitup
-###############################################################################
-# start doinitdown
+
 sub doinitdown {
     if ( $config{FASTSTART} ) {
         if ( -x $config{IPTABLES_SAVE} ) {
@@ -583,9 +562,7 @@ sub doinitdown {
     return;
 }
 
-# end doinitdown
-###############################################################################
-# start doclusterdeny
+
 sub doclusterdeny {
     my $ip      = $input{argument}[0];
     my $comment = $input{comment};
@@ -599,9 +576,7 @@ sub doclusterdeny {
     return;
 }
 
-# end doclusterdeny
-###############################################################################
-# start doclustertempdeny
+
 sub doclustertempdeny {
     my ( $ip, $timeout, $portdir ) = @{ $input{argument} }[ 0 .. 2 ];
     my $inout = "in";
@@ -653,9 +628,7 @@ sub doclustertempdeny {
     return;
 }
 
-# end doclustertempdeny
-###############################################################################
-# start doclusterrm
+
 sub doclusterrm {
     my $ip      = $input{argument}[0];
     my $comment = $input{comment};
@@ -669,9 +642,7 @@ sub doclusterrm {
     return;
 }
 
-# end doclusterrm
-###############################################################################
-# start doclusterarm
+
 sub doclusterarm {
     my $ip      = $input{argument}[0];
     my $comment = $input{comment};
@@ -685,9 +656,7 @@ sub doclusterarm {
     return;
 }
 
-# end doclusterarm
-###############################################################################
-# start doclusterallow
+
 sub doclusterallow {
     my $ip      = $input{argument}[0];
     my $comment = $input{comment};
@@ -701,9 +670,7 @@ sub doclusterallow {
     return;
 }
 
-# end doclusterallow
-###############################################################################
-# start doclustertempallow
+
 sub doclustertempallow {
     my ( $ip, $timeout, $portdir ) = @{ $input{argument} }[ 0 .. 2 ];
     my $inout = "in";
@@ -755,9 +722,7 @@ sub doclustertempallow {
     return;
 }
 
-# end doclustertempallow
-###############################################################################
-# start doclusterignore
+
 sub doclusterignore {
     my $ip      = $input{argument}[0];
     my $comment = $input{comment};
@@ -771,9 +736,7 @@ sub doclusterignore {
     return;
 }
 
-# end doclusterignore
-###############################################################################
-# start doclusterirm
+
 sub doclusterirm {
     my $ip      = $input{argument}[0];
     my $comment = $input{comment};
@@ -787,9 +750,7 @@ sub doclusterirm {
     return;
 }
 
-# end doclusterirm
-###############################################################################
-# start docconfig
+
 sub docconfig {
     my ( $name, $value ) = @{ $input{argument} }[ 0, 1 ];
     unless ( $config{CLUSTER_CONFIG} ) { print "No configuration setting requests allowed\n"; return }
@@ -799,9 +760,7 @@ sub docconfig {
     return;
 }
 
-# end docconfig
-###############################################################################
-# start doclustergrep
+
 sub doclustergrep {
     my $ip = $input{argument}[0];
     if ( !checkip( \$ip ) ) {
@@ -813,9 +772,7 @@ sub doclustergrep {
     return;
 }
 
-# end doclustergrep
-###############################################################################
-# start docfile
+
 sub docfile {
     my $name = $input{argument}[0];
     unless ( $config{CLUSTER_CONFIG} ) { print "No configuration setting requests allowed\n"; return }
@@ -836,17 +793,13 @@ sub docfile {
     return;
 }
 
-# end docfile
-###############################################################################
-# start docrestart
+
 sub docrestart {
     clustersend("RESTART");
     return;
 }
 
-# end docrestart
-###############################################################################
-# start clustersend
+
 sub clustersend {
     my $text = shift;
 
@@ -896,9 +849,6 @@ sub clustersend {
     return;
 }
 
-# end clustersend
-###############################################################################
-# lfdstart
 sub lfdstart {
     open( my $FH, ">", "/var/lib/csf/csf.restart" ) or die "Failed to create csf.restart - $!";
     flock( $FH, LOCK_EX );
@@ -907,9 +857,6 @@ sub lfdstart {
     return;
 }
 
-# lfdstart
-###############################################################################
-# start dostop
 sub dostop {
     my $restart = shift;
     syscommand( __LINE__, "$config{IPTABLES} $verbose --policy INPUT ACCEPT" );
@@ -958,9 +905,7 @@ sub dostop {
     return;
 }
 
-# end dostop
-###############################################################################
-# start dostart
+
 sub dostart {
     if ( ConfigServer::Service::type() eq "systemd" ) {
         my ( $childin, $childout );
@@ -1484,9 +1429,7 @@ sub dostart {
     return;
 }
 
-# end dostart
-###############################################################################
-# start doadd
+
 sub doadd {
     my $ip      = $input{argument}[0];
     my $comment = $input{comment};
@@ -1573,9 +1516,7 @@ sub doadd {
     return;
 }
 
-# end doadd
-###############################################################################
-# start dodeny
+
 sub dodeny {
     my $ip      = $input{argument}[0];
     my $comment = $input{comment};
@@ -1749,9 +1690,7 @@ sub dodeny {
     return;
 }
 
-# end dodeny
-###############################################################################
-# start dokill
+
 sub dokill {
     my $ip    = $input{argument}[0];
     my $is_ip = 0;
@@ -1819,9 +1758,7 @@ sub dokill {
     return;
 }
 
-# end dokill
-###############################################################################
-# start dokillall
+
 sub dokillall {
 
     getethdev();
@@ -1854,9 +1791,7 @@ sub dokillall {
     return;
 }
 
-# end dokillall
-###############################################################################
-# start doakill
+
 sub doakill {
     my $ip = $input{argument}[0];
 
@@ -1895,18 +1830,14 @@ sub doakill {
     return;
 }
 
-# end doakill
-###############################################################################
-# start help
+
 sub dohelp {
     print "csf: v$version (cPanel)\n";
     print slurpee( "/usr/local/csf/lib/csf.help", 'fatal' => 1, 'wantarray' => 0 );
     return;
 }
 
-# end help
-###############################################################################
-# start dopacketfilters
+
 sub dopacketfilters {
     if ( $config{PACKET_FILTER} and $config{LF_SPI} ) {
         if ( $config{FASTSTART} ) { $faststart = 1 }
@@ -1976,9 +1907,7 @@ sub dopacketfilters {
     return;
 }
 
-# end dopacketfilters
-###############################################################################
-# start doportfilters
+
 sub doportfilters {
     my $dropin  = $config{DROP};
     my $dropout = $config{DROP_OUT};
@@ -3364,9 +3293,7 @@ sub doportfilters {
     return;
 }
 
-# end doportfilters
-###############################################################################
-# start dodisable
+
 sub dodisable {
     open( my $OUT, ">", "/etc/csf/csf.disable" );
     flock( $OUT, LOCK_EX );
@@ -3393,9 +3320,7 @@ sub dodisable {
     return;
 }
 
-# end dodisable
-###############################################################################
-# start doenable
+
 sub doenable {
     unless ( -e "/etc/csf/csf.disable" ) {
         print "csf and lfd are not disabled!\n";
@@ -3427,9 +3352,7 @@ sub doenable {
     return;
 }
 
-# end doenable
-###############################################################################
-# start crontab
+
 sub crontab {
     my $act     = shift;
     my @crontab = slurp("/etc/crontab");
@@ -3467,9 +3390,7 @@ sub crontab {
     return;
 }
 
-# end crontab
-###############################################################################
-# start error
+
 sub error {
     my $line  = shift;
     my $error = shift;
@@ -3528,18 +3449,14 @@ sub error {
     exit 1;
 }
 
-# end error
-###############################################################################
-# start version
+
 sub version {
     my ($myv) = slurpee( "/etc/csf/version.txt", 'fatal' => 1 );
     chomp $myv;
     return $myv;
 }
 
-# end version
-###############################################################################
-# start getethdev
+
 sub getethdev {
     my $ethdev   = ConfigServer::GetEthDev->new();
     my %g_ifaces = $ethdev->ifaces;
@@ -3580,9 +3497,7 @@ sub getethdev {
     return;
 }
 
-# end getethdev
-###############################################################################
-# start linefilter
+
 sub linefilter {
     my $line     = shift;
     my $ad       = shift;
@@ -3830,9 +3745,7 @@ sub linefilter {
     return;
 }
 
-# end linefilter
-###############################################################################
-# start autoupdates
+
 sub autoupdates {
     my $hour    = int( rand(24) );
     my $minutes = int( rand(60) );
@@ -3848,9 +3761,7 @@ END
     return;
 }
 
-# end autoupdates
-###############################################################################
-# start doupdate
+
 sub doupdate {
     my $force = 0;
     my $actv  = "";
@@ -3898,9 +3809,7 @@ sub doupdate {
     return;
 }
 
-# end doupdate
-###############################################################################
-# start docheck
+
 sub docheck {
     my $url = "https://$config{DOWNLOADSERVER}/csf/version.txt";
     if ( $config{URLGET} == 1 ) { $url = "http://$config{DOWNLOADSERVER}/csf/version.txt"; }
@@ -3924,9 +3833,7 @@ sub docheck {
     return;
 }
 
-# end docheck
-###############################################################################
-# start doiplookup
+
 sub doiplookup {
     my $ip = $input{argument}[0];
 
@@ -3941,9 +3848,7 @@ sub doiplookup {
     return;
 }
 
-# end doiplookup
-###############################################################################
-# start dogrep
+
 sub dogrep {
     my $ipmatch = $input{argument}[0];
     checkip( \$ipmatch );
@@ -4256,9 +4161,7 @@ $table, $chain, $rest
     return;
 }
 
-# end dogrep
-###############################################################################
-# start dotempban
+
 sub dotempban {
     my ( $ip, $deny, $ports, $inout, $time, $timeout, $message );
     format TEMPBAN =
@@ -4335,9 +4238,7 @@ $deny, $ip,                                   $ports,  $inout,$time,$message
     return;
 }
 
-# end dotempban
-###############################################################################
-# start dotempdeny
+
 sub dotempdeny {
     my $cftemp = shift;
     my ( $ip, $timeout, $portdir ) = @{ $input{argument} }[ 0 .. 2 ];
@@ -4477,9 +4378,7 @@ sub dotempdeny {
     return;
 }
 
-# end dotempdeny
-###############################################################################
-# start dotempallow
+
 sub dotempallow {
     my $cftemp = shift;
     my ( $ip, $timeout, $portdir ) = @{ $input{argument} }[ 0 .. 2 ];
@@ -4605,9 +4504,7 @@ sub dotempallow {
     return;
 }
 
-# end dotempallow
-###############################################################################
-# start dotemprm
+
 sub dotemprm {
     my $ip = $input{argument}[0];
 
@@ -4790,9 +4687,7 @@ sub dotemprm {
     return;
 }
 
-# end dotemprm
-###############################################################################
-# start dotemprmd
+
 sub dotemprmd {
     my $ip = $input{argument}[0];
 
@@ -4900,9 +4795,7 @@ sub dotemprmd {
     return;
 }
 
-# end dotemprmd
-###############################################################################
-# start dotemprma
+
 sub dotemprma {
     my $ip = $input{argument}[0];
 
@@ -5000,9 +4893,7 @@ sub dotemprma {
     return;
 }
 
-# end dotemprma
-###############################################################################
-# start dotempf
+
 sub dotempf {
     getethdev();
     if ( !-z "/var/lib/csf/csf.tempban" ) {
@@ -5151,17 +5042,13 @@ sub dotempf {
     return;
 }
 
-# end dotempf
-###############################################################################
-# start dowatch
+
 sub dowatch {
     print "csf: --watch, -w is no longer supported. Use --trace instead\n";
     return;
 }
 
-# end dowatch
-###############################################################################
-# start dotrace
+
 sub dotrace {
     my $cmd = $ARGV[1];
     my $ip  = $ARGV[2];
@@ -5202,9 +5089,7 @@ sub dotrace {
     return;
 }
 
-# end dotrace
-###############################################################################
-# start dologrun
+
 sub dologrun {
     if ( $config{LOGSCANNER} ) {
         open( my $OUT, ">", "/var/lib/csf/csf.logrun" ) or error( __LINE__, "Could not create /var/lib/csf/csf.logrun: $!" );
@@ -5217,9 +5102,7 @@ sub dologrun {
     return;
 }
 
-# end dologrun
-###############################################################################
-# start domessenger
+
 sub domessenger {
     my $ip     = shift;
     my $delete = shift;
@@ -5343,9 +5226,7 @@ sub domessenger {
     return;
 }
 
-# end domessenger
-###############################################################################
-# start domail
+
 sub domail {
     my $output = ConfigServer::ServerCheck::report();
 
@@ -5367,9 +5248,7 @@ sub domail {
     return;
 }
 
-# end domail
-###############################################################################
-# start dorbls
+
 sub dorbls {
     my ( $failures, $output ) = ConfigServer::RBLCheck::report( 1, "", 0 );
     my $failure_s = "failure";
@@ -5393,9 +5272,7 @@ sub dorbls {
     return;
 }
 
-# end dorbls
-###############################################################################
-# start doprofile
+
 sub doprofile {
     my $cmd      = $ARGV[1];
     my $profile1 = $ARGV[2];
@@ -5560,9 +5437,7 @@ sub doprofile {
     return;
 }
 
-# end doprofile
-###############################################################################
-# start doports
+
 sub doports {
     my ( $fport, $fopen, $fconn, $fpid, $fexe, $fcmd );
     format PORTS =
@@ -5594,9 +5469,7 @@ $fport,    $fopen,$fconn,$fpid,            $fcmd,                               
     return;
 }
 
-# end doports
-###############################################################################
-# start domessengerv2
+
 sub domessengerv2 {
     print "csf - MESSENGERV2 /etc/apache2/conf.d/csf_messenger.conf regeneration:\n\n";
     ConfigServer::Messenger::messengerv2();
@@ -5604,9 +5477,7 @@ sub domessengerv2 {
     return;
 }
 
-# end domessengerv2
-###############################################################################
-# start docloudflare
+
 sub docloudflare {
     my $cmd       = $ARGV[1];
     my $setting   = $ARGV[2];
@@ -5696,9 +5567,7 @@ $ip,             $domain,             $mode,     $date,                    $comm
     return;
 }
 
-# end docloudflare
-###############################################################################
-# start dographs
+
 sub dographs {
     my ( $type, $dir ) = @{ $input{argument} }[ 0, 1 ];
     my %types = (
@@ -5770,9 +5639,7 @@ sub dographs {
     return;
 }
 
-# end dographs
-###############################################################################
-# start loadmodule
+
 sub loadmodule {
     my $module = shift;
     my @output;
@@ -5792,9 +5659,7 @@ sub loadmodule {
     return @output;
 }
 
-# end loadmodule
-###############################################################################
-# start syscommand
+
 sub syscommand {
     my $line         = shift;
     my $command      = shift;
@@ -5915,9 +5780,7 @@ sub syscommand {
     return;
 }
 
-# end syscommand
-###############################################################################
-# start iptableslock
+
 sub iptableslock {
     my $lock      = shift;
     my $iptablesx = shift;
@@ -5936,9 +5799,7 @@ sub iptableslock {
     return;
 }
 
-# end iptableslock
-###############################################################################
-# start checkvps
+
 sub checkvps {
     if ( -e "/proc/user_beancounters" and !( -e "/proc/vz/version" ) ) {
         my @data = slurp("/proc/user_beancounters");
@@ -5953,9 +5814,7 @@ sub checkvps {
     return 0;
 }
 
-# end checkvps
-###############################################################################
-# start modprobe
+
 sub modprobe {
     if ( -e $config{MODPROBE} ) {
         my @modules = ( "ip_tables", "ipt_multiport", "iptable_filter", "ipt_limit", "ipt_LOG", "ipt_REJECT", "ipt_conntrack", "ip_conntrack", "ip_conntrack_ftp", "iptable_mangle", "ipt_REDIRECT", "iptable_nat" );
@@ -5980,9 +5839,7 @@ sub modprobe {
     return;
 }
 
-# end modprobe
-###############################################################################
-# start faststart
+
 sub faststart {
     my $text = shift;
     if (@faststart4) {
@@ -6100,9 +5957,7 @@ sub faststart {
     return;
 }
 
-# end faststart
-###############################################################################
-# start fastvps
+
 sub fastvps {
     my $size = shift;
     if ( -e "/proc/user_beancounters" and !( -e "/proc/vz/version" ) ) {
@@ -6118,9 +5973,7 @@ sub fastvps {
     return 0;
 }
 
-# end fastvps
-###############################################################################
-# start ipsetcreate
+
 sub ipsetcreate {
     my $set = shift;
     $SIG{PIPE} = 'IGNORE';
@@ -6141,9 +5994,7 @@ sub ipsetcreate {
     return;
 }
 
-# end ipsetcreate
-###############################################################################
-# start ipsetrestore
+
 sub ipsetrestore {
     my $set = shift;
     $SIG{PIPE} = 'IGNORE';
@@ -6164,9 +6015,7 @@ sub ipsetrestore {
     return;
 }
 
-# end ipsetrestore
-###############################################################################
-# start ipsetadd
+
 sub ipsetadd {
     my $set = shift;
     my $ip  = shift;
@@ -6194,9 +6043,7 @@ sub ipsetadd {
     return;
 }
 
-# end ipsetadd
-###############################################################################
-# start ipsetdel
+
 sub ipsetdel {
     my $set = shift;
     my $ip  = shift;
@@ -6219,6 +6066,3 @@ sub ipsetdel {
     }
     return;
 }
-
-# end ipsetadd
-###############################################################################
