@@ -463,7 +463,7 @@ sub _messenger {
                                 my $text;
                                 eval {
                                     local $SIG{__DIE__} = undef;
-                                    eval("no lib '/usr/local/csf/lib'");
+                                    eval("no lib '/usr/local/csf/lib'");    ## no critic (BuiltinFunctions::ProhibitStringyEval) It's unclear what this no lib is for but we're leaving it here for now as it's harmless
                                     my $urlget = ConfigServer::URLGet->new( 2, "", $config{URLPROXY} );
                                     my $url    = "https://www.google.com/recaptcha/api/siteverify?secret=$config{RECAPTCHA_SECRET}&response=$recv";
                                     ( $status, $text ) = $urlget->urlget($url);

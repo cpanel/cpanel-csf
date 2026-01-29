@@ -120,7 +120,7 @@ if ( -e "/usr/local/csf/bin/regex.custom.pm" ) {
     _config();
     _eth_info();
 
-    require "/usr/local/csf/bin/regex.custom.pm";
+    require "/usr/local/csf/bin/regex.custom.pm";    ## no critic (Modules::RequireBarewordIncludes)
 }
 
 =head2 processline

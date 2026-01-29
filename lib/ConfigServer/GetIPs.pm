@@ -195,7 +195,7 @@ sub getips {
     }
     else {
         local $SIG{__DIE__} = undef;
-        eval('use Socket6;');
+        eval('use Socket6;');    ## no critic (BuiltinFunctions::ProhibitStringyEval)
         if ($@) {
             my @iplist;
             my ( undef, undef, undef, undef, @addrs ) = Socket::gethostbyname($hostname);
@@ -203,6 +203,7 @@ sub getips {
             push @ips, $_ foreach (@iplist);
         }
         else {
+            ## no critic (BuiltinFunctions::ProhibitStringyEval)
             eval( '
 				use Socket6;
 				my @res = Socket6::getaddrinfo($hostname, undef, Socket6::AF_UNSPEC, Socket6::SOCK_STREAM);
