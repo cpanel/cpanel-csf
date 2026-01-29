@@ -163,8 +163,8 @@ sub find {
             my ( $sip, $sport ) = split( /:/, $rec[1] );
             $sport = hex($sport);
 
-            $dip = &hex2ip($dip);
-            $sip = &hex2ip($sip);
+            $dip = hex2ip($dip);
+            $sip = hex2ip($sip);
 
             if ( $sip eq '0.0.0.1' ) { next }
             if ( $dip eq $ip ) {

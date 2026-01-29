@@ -37,7 +37,7 @@ chomp $version;
 $version =~ s/\W/_/g;
 system( "/bin/cp", "-avf", "/etc/csf/csf.conf", "/var/lib/csf/backup/" . time . "_pre_v${version}_upgrade" );
 
-&loadcsfconfig;
+loadcsfconfig();
 
 if ( -e "/proc/vz/veinfo" ) {
     $vps = 1;
@@ -74,7 +74,7 @@ foreach my $alertfile ( "sshalert.txt", "sualert.txt", "sudoalert.txt", "cpanela
     }
 }
 
-if ( &checkversion("7.72") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/auto772" ) {
+if ( checkversion("7.72") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/auto772" ) {
     my %pignore = (
         'exe:/usr/libexec/dovecot/dict'           => 1,
         'exe:/usr/libexec/mysqld'                 => 1,
@@ -104,7 +104,7 @@ if ( &checkversion("7.72") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/a
     print $out_fh time;
     close($out_fh);
 }
-if ( &checkversion("8.04") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/auto804" ) {
+if ( checkversion("8.04") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/auto804" ) {
     my %pignore = (
         'exe:/usr/local/cpanel/bin/pkgacct' => 1,
         'exe:/usr/libexec/dovecot/anvil'    => 1,
@@ -130,7 +130,7 @@ if ( &checkversion("8.04") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/a
     print $out_fh time;
     close($out_fh);
 }
-if ( &checkversion("8.06") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/auto806" ) {
+if ( checkversion("8.06") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/auto806" ) {
     my %pignore = (
         'exe:/usr/bin/dbus-daemon' => 1,
         'exe:/usr/sbin/httpd'      => 1
@@ -154,7 +154,7 @@ if ( &checkversion("8.06") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/a
     print $out_fh time;
     close($out_fh);
 }
-if ( &checkversion("8.13") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/auto813" ) {
+if ( checkversion("8.13") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/auto813" ) {
     my %pignore = ( 'exe:/usr/local/cpanel/3rdparty/php/54/sbin/php-fpm' => 1 );
     sysopen( my $in_fh, "/etc/csf/csf.pignore", O_RDWR | O_CREAT );
     flock( $in_fh, LOCK_EX );
@@ -175,7 +175,7 @@ if ( &checkversion("8.13") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/a
     print $out_fh time;
     close($out_fh);
 }
-if ( &checkversion("8.26") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/auto826" ) {
+if ( checkversion("8.26") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/auto826" ) {
     my %pignore = (
         'exe:/usr/libexec/dovecot/quota-status' => 1,
         'exe:/usr/libexec/dovecot/stats'        => 1
@@ -199,7 +199,7 @@ if ( &checkversion("8.26") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/a
     print $out_fh time;
     close($out_fh);
 }
-if ( &checkversion("8.27") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/auto827" ) {
+if ( checkversion("8.27") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/auto827" ) {
     my %pignore = ( 'exe:/usr/libexec/dovecot/lmtp' => 1 );
     sysopen( my $in_fh, "/etc/csf/csf.pignore", O_RDWR | O_CREAT );
     flock( $in_fh, LOCK_EX );
@@ -220,7 +220,7 @@ if ( &checkversion("8.27") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/a
     print $out_fh time;
     close($out_fh);
 }
-if ( &checkversion("9.00") and !-e "/var/lib/csf/auto900" ) {
+if ( checkversion("9.00") and !-e "/var/lib/csf/auto900" ) {
     my %pignore = (
         'exe:/usr/local/cpanel/3rdparty/php/54/bin/php-cgi'  => 1,
         'exe:/usr/local/cpanel/3rdparty/php/56/bin/php-cgi'  => 1,
@@ -278,7 +278,7 @@ if ( &checkversion("9.00") and !-e "/var/lib/csf/auto900" ) {
     print $out_fh time;
     close($out_fh);
 }
-if ( &checkversion("9.12") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/auto912" ) {
+if ( checkversion("9.12") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/auto912" ) {
     my %pignore = (
         'exe:/usr/local/cpanel/bin/whm_xfer_download-ssl' => 1,
         'exe:/usr/local/cpanel/bin/autossl_check'         => 1,
@@ -303,7 +303,7 @@ if ( &checkversion("9.12") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/a
     print $out_fh time;
     close($out_fh);
 }
-if ( &checkversion("10.02") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/auto1002" ) {
+if ( checkversion("10.02") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/auto1002" ) {
     my %pignore = ( 'pexe:^/usr/lib/jvm/java-.*/jre/bin/java$' => 1 );
     sysopen( my $in_fh, "/etc/csf/csf.pignore", O_RDWR | O_CREAT );
     flock( $in_fh, LOCK_EX );
@@ -324,7 +324,7 @@ if ( &checkversion("10.02") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/
     print $out_fh time;
     close($out_fh);
 }
-if ( &checkversion("10.06") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/auto1006" ) {
+if ( checkversion("10.06") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/auto1006" ) {
     my %pignore = (
         'exe:/usr/libexec/dovecot/indexer'        => 1,
         'exe:/usr/libexec/dovecot/indexer-worker' => 1
@@ -348,7 +348,7 @@ if ( &checkversion("10.06") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/
     print $out_fh time;
     close($out_fh);
 }
-if ( &checkversion("10.08") and !-e "/var/lib/csf/auto1008" ) {
+if ( checkversion("10.08") and !-e "/var/lib/csf/auto1008" ) {
     my %allow = ( 'Include /etc/csf/cpanel.allow' => 1 );
     sysopen( my $in_fh, "/etc/csf/csf.allow", O_RDWR | O_CREAT );
     flock( $in_fh, LOCK_EX );
@@ -386,7 +386,7 @@ if ( &checkversion("10.08") and !-e "/var/lib/csf/auto1008" ) {
     print $out_fh time;
     close($out_fh);
 }
-if ( &checkversion("10.11") and !-e "/var/lib/csf/auto1011" ) {
+if ( checkversion("10.11") and !-e "/var/lib/csf/auto1011" ) {
     if ( -e "/var/lib/csf/stats/lfdstats" ) {
         sysopen( my $stats_fh, "/var/lib/csf/stats/lfdstats", O_RDWR | O_CREAT );
         flock( $stats_fh, LOCK_EX );
@@ -411,7 +411,7 @@ if ( &checkversion("10.11") and !-e "/var/lib/csf/auto1011" ) {
     print $out_fh time;
     close($out_fh);
 }
-if ( &checkversion("10.23") and !-e "/var/lib/csf/auto1023" ) {
+if ( checkversion("10.23") and !-e "/var/lib/csf/auto1023" ) {
     if ( -e "/etc/csf/csf.blocklists" ) {
         sysopen( my $in_fh, "/etc/csf/csf.blocklists", O_RDWR | O_CREAT );
         flock( $in_fh, LOCK_EX );
@@ -447,7 +447,7 @@ if ( &checkversion("10.23") and !-e "/var/lib/csf/auto1023" ) {
     print $out_fh time;
     close($out_fh);
 }
-if ( &checkversion("11.07") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/auto1107" ) {
+if ( checkversion("11.07") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/auto1107" ) {
     my %pignore = (
         'pexe:/usr/local/cpanel/3rdparty/bin/git.*'              => 1,
         'pexe:/usr/local/cpanel/3rdparty/libexec/git-core/git.*' => 1
@@ -471,7 +471,7 @@ if ( &checkversion("11.07") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/
     print $out_fh time;
     close($out_fh);
 }
-if ( &checkversion("12.02") and !-e "/var/lib/csf/auto1202" ) {
+if ( checkversion("12.02") and !-e "/var/lib/csf/auto1202" ) {
     if ( -e "/etc/csf/csf.blocklists" ) {
         sysopen( my $in_fh, "/etc/csf/csf.blocklists", O_RDWR | O_CREAT );
         flock( $in_fh, LOCK_EX );
@@ -491,7 +491,7 @@ if ( &checkversion("12.02") and !-e "/var/lib/csf/auto1202" ) {
     print $out_fh time;
     close($out_fh);
 }
-if ( &checkversion("12.05") and !-e "/var/lib/csf/auto1205" ) {
+if ( checkversion("12.05") and !-e "/var/lib/csf/auto1205" ) {
     if ( -e "/etc/csf/csf.blocklists" ) {
         sysopen( my $in_fh, "/etc/csf/csf.blocklists", O_RDWR | O_CREAT );
         flock( $in_fh, LOCK_EX );
@@ -511,7 +511,7 @@ if ( &checkversion("12.05") and !-e "/var/lib/csf/auto1205" ) {
     print $out_fh time;
     close($out_fh);
 }
-if ( &checkversion("12.07") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/auto1207" ) {
+if ( checkversion("12.07") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/auto1207" ) {
     my %pignore = (
         '#pcmd:ubic-guardian ubic-periodic.*'                                => 1,
         '#pcmd:perl /usr/local/cpanel/3rdparty/perl/\d+/bin/ubic-periodic.*' => 1
@@ -535,7 +535,7 @@ if ( &checkversion("12.07") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/
     print $out_fh time;
     close($out_fh);
 }
-if ( &checkversion("12.10") and -e "/etc/csf/csf.fignore" and !-e "/var/lib/csf/auto1210" ) {
+if ( checkversion("12.10") and -e "/etc/csf/csf.fignore" and !-e "/var/lib/csf/auto1210" ) {
     my %fignore = ( '/tmp/yarn--[\d\-\.]+/(node|yarn)' => 1 );
     sysopen( my $in_fh, "/etc/csf/csf.fignore", O_RDWR | O_CREAT );
     flock( $in_fh, LOCK_EX );
@@ -556,7 +556,7 @@ if ( &checkversion("12.10") and -e "/etc/csf/csf.fignore" and !-e "/var/lib/csf/
     print $out_fh time;
     close($out_fh);
 }
-if ( &checkversion("14.01") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/auto1401" ) {
+if ( checkversion("14.01") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/auto1401" ) {
     sysopen( my $in_fh, "/etc/csf/csf.pignore", O_RDWR | O_CREAT );
     flock( $in_fh, LOCK_EX );
     my @data = <$in_fh>;
@@ -575,7 +575,7 @@ if ( &checkversion("14.01") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/
     print $out_fh time;
     close($out_fh);
 }
-if ( &checkversion("14.02") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/auto1402" ) {
+if ( checkversion("14.02") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/auto1402" ) {
     my %pignore = ( 'exe:/usr/libexec/dovecot/imap-hibernate' => 1 );
     sysopen( my $in_fh, "/etc/csf/csf.pignore", O_RDWR | O_CREAT );
     flock( $in_fh, LOCK_EX );
@@ -596,7 +596,7 @@ if ( &checkversion("14.02") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/
     print $out_fh time;
     close($out_fh);
 }
-if ( &checkversion("14.03") and !-e "/var/lib/csf/auto1403" ) {
+if ( checkversion("14.03") and !-e "/var/lib/csf/auto1403" ) {
     if ( -e "/etc/csf/csf.blocklists" ) {
         sysopen( my $in_fh, "/etc/csf/csf.blocklists", O_RDWR | O_CREAT );
         flock( $in_fh, LOCK_EX );
@@ -616,7 +616,7 @@ if ( &checkversion("14.03") and !-e "/var/lib/csf/auto1403" ) {
     print $out_fh time;
     close($out_fh);
 }
-if ( &checkversion("14.05") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/auto1405" ) {
+if ( checkversion("14.05") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/auto1405" ) {
     my %pignore = ( 'exe:/usr/sbin/imunify-notifier' => 1 );
     sysopen( my $in_fh, "/etc/csf/csf.pignore", O_RDWR | O_CREAT );
     flock( $in_fh, LOCK_EX );
@@ -637,7 +637,7 @@ if ( &checkversion("14.05") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/
     print $out_fh time;
     close($out_fh);
 }
-if ( &checkversion("14.06") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/auto1406" ) {
+if ( checkversion("14.06") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/auto1406" ) {
     my %pignore = (
         'exe:/usr/bin/sw-engine'      => 1,
         'exe:/usr/sbin/sw-engine-fpm' => 1,
@@ -662,7 +662,7 @@ if ( &checkversion("14.06") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/
     print $out_fh time;
     close($out_fh);
 }
-if ( &checkversion("14.18") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/auto1418" ) {
+if ( checkversion("14.18") and -e "/etc/csf/csf.pignore" and !-e "/var/lib/csf/auto1418" ) {
     my %pignore = ( 'exe:/usr/local/cpanel/3rdparty/wp-toolkit/bin/wpt-panopticon' => 1 );
     sysopen( my $in_fh, "/etc/csf/csf.pignore", O_RDWR | O_CREAT );
     flock( $in_fh, LOCK_EX );
@@ -817,7 +817,7 @@ if ( $config{TESTING} ) {
             }
         }
         close $out_fh;
-        &loadcsfconfig;
+        loadcsfconfig();
     }
 
     open( my $fh, "<", "/proc/sys/kernel/osrelease" );
@@ -847,7 +847,7 @@ if ( $config{TESTING} ) {
                 }
             }
             close $out_fh;
-            &loadcsfconfig;
+            loadcsfconfig();
         }
     }
 
@@ -878,7 +878,7 @@ if ( $config{TESTING} ) {
                 print $out_fh $line . "\n";
             }
             close $out_fh;
-            &loadcsfconfig;
+            loadcsfconfig();
         }
     }
 
@@ -916,7 +916,7 @@ if ( $config{TESTING} ) {
             }
         }
         close $out_fh;
-        &loadcsfconfig;
+        loadcsfconfig();
     }
 
     if ( -e $config{IP6TABLES} and !$vps ) {
@@ -967,7 +967,7 @@ if ( $config{TESTING} ) {
                 }
             }
             close $out_fh;
-            &loadcsfconfig;
+            loadcsfconfig();
         }
     }
 
@@ -1003,7 +1003,7 @@ if ( $config{TESTING} ) {
             }
         }
         close $out_fh;
-        &loadcsfconfig;
+        loadcsfconfig();
     }
     if ($vps) {
         print "Adding passive port range for VZ servers\n";
@@ -1055,7 +1055,7 @@ if ( $config{TESTING} ) {
                             }
                         }
                         close($CSFCONF);
-                        &loadcsfconfig;
+                        loadcsfconfig();
                     }
                 }
             }
@@ -1087,7 +1087,7 @@ foreach my $line (@config) {
     else {
         print "Error: Invalid configuration line [$line]";
     }
-    if ( &checkversion("10.15") and !-e "/var/lib/csf/auto1015" ) {
+    if ( checkversion("10.15") and !-e "/var/lib/csf/auto1015" ) {
         if ( $name eq "MESSENGER_RATE"  and $config{$name} eq "30/m" ) { $config{$name} = "100/s" }
         if ( $name eq "MESSENGER_BURST" and $config{$name} eq "5" )    { $config{$name} = "150" }
         open( my $AUTO, ">", "/var/lib/csf/auto1015" );
@@ -1099,7 +1099,7 @@ foreach my $line (@config) {
         print $out_fh "$name = \"$config{$name}\"\n";
     }
     else {
-        if ( &checkversion("9.29") and !-e "/var/lib/csf/auto929" and $name eq "PT_USERRSS" ) {
+        if ( checkversion("9.29") and !-e "/var/lib/csf/auto929" and $name eq "PT_USERRSS" ) {
             $line = "PT_USERRSS = \"$config{PT_USERMEM}\"";
             open( my $AUTO, ">", "/var/lib/csf/auto929" );
             flock( $AUTO, LOCK_EX );

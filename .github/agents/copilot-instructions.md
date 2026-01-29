@@ -14,6 +14,8 @@ Auto-generated from all feature plans. Last updated: 2026-01-22
 - Perl 5.36+ (cPanel-provided at `/usr/local/cpanel/3rdparty/bin/perl`) + GD::Graph::bars, GD::Graph::pie, GD::Graph::lines, Fcntl (006-modernize-serverstats)
 - Reads from `/var/lib/csf/stats/system`, writes GIF images to configurable directory (006-modernize-serverstats)
 - Perl 5.36+ (cPanel-provided at `/usr/local/cpanel/3rdparty/bin/perl`) Net::IP, Fcntl (001-modernize-rblcheck)
+- Perl 5.36+ (cPanel-provided at `/usr/local/cpanel/3rdparty/bin/perl`) + None (pure refactoring, no new dependencies) (008-remove-ampersand)
+- File system (modify existing `.pl`, `.pm`, `.t` files in place) (008-remove-ampersand)
 
 ## Project Structure
 
@@ -31,10 +33,9 @@ tests/
 Perl 5.36+ (cPanel-provided at `/usr/local/cpanel/3rdparty/bin/perl`): Follow standard conventions
 
 ## Recent Changes
+- 008-remove-ampersand: Added Perl 5.36+ (cPanel-provided at `/usr/local/cpanel/3rdparty/bin/perl`) + None (pure refactoring, no new dependencies)
 - 006-modernize-serverstats: Added Perl 5.36+ (cPanel-provided at `/usr/local/cpanel/3rdparty/bin/perl`) + GD::Graph::bars, GD::Graph::pie, GD::Graph::lines, Fcntl
 - 006-modernize-sendmail: Added Perl 5.36+ (cPanel-provided at `/usr/local/cpanel/3rdparty/bin/perl`) + ConfigServer::Config, ConfigServer::Slurp, Carp, POSIX, Net::SMTP (conditional)
-- 004-modernize-ports: Added Perl 5.36+ (cPanel-provided at `/usr/local/cpanel/3rdparty/bin/perl`) + ConfigServer::Config, Cpanel::Slurp, Fcntl
-- 003-modernize-displayui: Added Perl 5.36+ (cPanel-provided at `/usr/local/cpanel/3rdparty/bin/perl`) + Net::CIDR::Lite, Fcntl, File::Copy, IPC::Open3
 
 
 <!-- MANUAL ADDITIONS START -->

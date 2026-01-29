@@ -61,7 +61,7 @@ our (
     @faststart6nat
 );
 
-$version = &version;
+$version = version();
 
 $ipscidr6 = Net::CIDR::Lite->new;
 $ipscidr  = Net::CIDR::Lite->new;
@@ -72,8 +72,8 @@ $slurpreg  = ConfigServer::Slurp->slurpreg;
 $cleanreg  = ConfigServer::Slurp->cleanreg;
 $faststart = 0;
 
-&process_input;
-&load_config;
+process_input();
+load_config();
 
 $urlget = ConfigServer::URLGet->new( $config{URLGET}, "csf/$version", $config{URLPROXY} );
 unless ( defined $urlget ) {
@@ -102,8 +102,8 @@ if ( ( -e "/etc/csf/csf.disable" ) and ( $input{command} ne "--enable" ) and ( $
     }
     unless ($ok) { exit 1 }
 }
-unless ( -e $config{IPTABLES} )                         { &error( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} (iptables binary location) does not exist!" ) }
-if     ( $config{IPV6} and !( -e $config{IP6TABLES} ) ) { &error( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} (ip6tables binary location) does not exist!" ) }
+unless ( -e $config{IPTABLES} )                         { error( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} (iptables binary location) does not exist!" ) }
+if     ( $config{IPV6} and !( -e $config{IP6TABLES} ) ) { error( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} (ip6tables binary location) does not exist!" ) }
 
 if ( ( -e "/etc/csf/csf.error" ) and ( $input{command} ne "--startf" ) and ( $input{command} ne "-sf" ) and ( $input{command} ne "-q" ) and ( $input{command} ne "--startq" ) and ( $input{command} ne "--start" ) and ( $input{command} ne "-s" ) and ( $input{command} ne "--restart" ) and ( $input{command} ne "-r" ) and ( $input{command} ne "--enable" ) and ( $input{command} ne "-e" ) ) {
     my ($error) = slurpee( "/etc/csf/csf.error", 'fatal' => 1 );
@@ -121,11 +121,11 @@ unless ( $input{command} =~ /^--(stop|initdown|initup)$/ ) {
 if    ( ( $input{command} eq "--status" ) or ( $input{command} eq "-l" ) )   { &dostatus }
 elsif ( ( $input{command} eq "--status6" ) or ( $input{command} eq "-l6" ) ) { &dostatus6 }
 elsif ( ( $input{command} eq "--version" ) or ( $input{command} eq "-v" ) )  { &doversion }
-elsif ( ( $input{command} eq "--stop" ) or ( $input{command} eq "-f" ) )     { &csflock("lock"); &dostop(0); &csflock("unlock") }
-elsif ( ( $input{command} eq "--startf" ) or ( $input{command} eq "-sf" ) )  { &csflock("lock"); &dostop(1); &dostart; &csflock("unlock") }
+elsif ( ( $input{command} eq "--stop" ) or ( $input{command} eq "-f" ) )     { csflock("lock"); dostop(0); csflock("unlock") }
+elsif ( ( $input{command} eq "--startf" ) or ( $input{command} eq "-sf" ) )  { csflock("lock"); dostop(1); dostart(); csflock("unlock") }
 elsif ( ( $input{command} eq "--start" ) or ( $input{command} eq "-s" ) or ( $input{command} eq "--restart" ) or ( $input{command} eq "-r" ) ) {
     if   ( $config{LFDSTART} ) { &lfdstart }
-    else                       { &csflock("lock"); &dostop(1); &dostart; &csflock("unlock") }
+    else                       { csflock("lock"); dostop(1); dostart(); csflock("unlock") }
 }
 elsif ( ( $input{command} eq "--startq" ) or ( $input{command} eq "-q" ) )                                 { &lfdstart }
 elsif ( ( $input{command} eq "--restartall" ) or ( $input{command} eq "-ra" ) )                            { &dorestartall }
@@ -135,8 +135,8 @@ elsif ( ( $input{command} eq "--denyrm" ) or ( $input{command} eq "-dr" ) )     
 elsif ( ( $input{command} eq "--denyf" ) or ( $input{command} eq "-df" ) )                                 { &dokillall }
 elsif ( ( $input{command} eq "--addrm" ) or ( $input{command} eq "-ar" ) )                                 { &doakill }
 elsif ( ( $input{command} eq "--update" ) or ( $input{command} eq "-u" ) or ( $input{command} eq "-uf" ) ) { &doupdate }
-elsif ( ( $input{command} eq "--disable" ) or ( $input{command} eq "-x" ) )                                { &csflock("lock"); &dodisable; &csflock("unlock") }
-elsif ( ( $input{command} eq "--enable" ) or ( $input{command} eq "-e" ) )                                 { &csflock("lock"); &doenable;  &csflock("unlock") }
+elsif ( ( $input{command} eq "--disable" ) or ( $input{command} eq "-x" ) )                                { csflock("lock"); dodisable(); csflock("unlock") }
+elsif ( ( $input{command} eq "--enable" ) or ( $input{command} eq "-e" ) )                                 { csflock("lock"); doenable();  csflock("unlock") }
 elsif ( ( $input{command} eq "--check" ) or ( $input{command} eq "-c" ) )                                  { &docheck }
 elsif ( ( $input{command} eq "--grep" ) or ( $input{command} eq "-g" ) )                                   { &dogrep }
 elsif ( ( $input{command} eq "--iplookup" ) or ( $input{command} eq "-i" ) )                               { &doiplookup }
@@ -156,7 +156,7 @@ elsif ( ( $input{command} eq "--crm" ) or ( $input{command} eq "-cr" ) )        
 elsif ( ( $input{command} eq "--carm" ) or ( $input{command} eq "-car" ) )                                 { &doclusterarm }
 elsif ( ( $input{command} eq "--cignore" ) or ( $input{command} eq "-ci" ) )                               { &doclusterignore }
 elsif ( ( $input{command} eq "--cirm" ) or ( $input{command} eq "-cir" ) )                                 { &doclusterirm }
-elsif ( ( $input{command} eq "--cping" ) or ( $input{command} eq "-cp" ) )                                 { &clustersend("PING") }
+elsif ( ( $input{command} eq "--cping" ) or ( $input{command} eq "-cp" ) )                                 { clustersend("PING") }
 elsif ( ( $input{command} eq "--cgrep" ) or ( $input{command} eq "-cg" ) )                                 { &doclustergrep }
 elsif ( ( $input{command} eq "--cconfig" ) or ( $input{command} eq "-cc" ) )                               { &docconfig }
 elsif ( ( $input{command} eq "--cfile" ) or ( $input{command} eq "-cf" ) )                                 { &docfile }
@@ -366,24 +366,24 @@ sub process_input {
 sub dostatus {
     print "iptables filter table\n";
     print "=====================\n";
-    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -v -L -n --line-numbers" );
+    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -v -L -n --line-numbers" );
     if ( $config{MANGLE} ) {
         print "\n\n";
         print "iptables mangle table\n";
         print "=====================\n";
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -v -t mangle -L -n --line-numbers" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -v -t mangle -L -n --line-numbers" );
     }
     if ( $config{RAW} ) {
         print "\n\n";
         print "iptables raw table\n";
         print "==================\n";
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -v -t raw -L -n --line-numbers" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -v -t raw -L -n --line-numbers" );
     }
     if ( $config{NAT} ) {
         print "\n\n";
         print "iptables nat table\n";
         print "==================\n";
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -v -t nat -L -n --line-numbers" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -v -t nat -L -n --line-numbers" );
     }
     return;
 }
@@ -395,24 +395,24 @@ sub dostatus6 {
     if ( $config{IPV6} ) {
         print "ip6tables filter table\n";
         print "======================\n";
-        &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -v -L -n --line-numbers" );
+        syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -v -L -n --line-numbers" );
         if ( $config{MANGLE6} ) {
             print "\n\n";
             print "ip6tables mangle table\n";
             print "======================\n";
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -v -t mangle -L -n --line-numbers" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -v -t mangle -L -n --line-numbers" );
         }
         if ( $config{RAW6} ) {
             print "\n\n";
             print "ip6tables raw table\n";
             print "===================\n";
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -v -t raw -L -n --line-numbers" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -v -t raw -L -n --line-numbers" );
         }
         if ( $config{NAT6} ) {
             print "\n\n";
             print "ip6tables nat table\n";
             print "===================\n";
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -v -t nat -L -n --line-numbers" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -v -t nat -L -n --line-numbers" );
         }
     }
     else {
@@ -446,10 +446,10 @@ sub dolfd {
 ###############################################################################
 # start dorestartall
 sub dorestartall {
-    &csflock("lock");
-    &dostop(1);
-    &dostart;
-    &csflock("unlock");
+    csflock("lock");
+    dostop(1);
+    dostart();
+    csflock("unlock");
     ConfigServer::Service::restartlfd();
     return;
 }
@@ -458,9 +458,9 @@ sub dorestartall {
 ###############################################################################
 # start doinitup
 sub doinitup {
-    &csflock("lock");
+    csflock("lock");
     if ( $config{FASTSTART} ) {
-        &modprobe;
+        modprobe();
         if ( -e "/var/lib/csf/csf.4.saved" ) {
             if ( $config{LF_IPSET} ) {
                 if ( -x $config{IPSET} ) {
@@ -494,8 +494,8 @@ sub doinitup {
             unlink "/var/lib/csf/csf.4.saved";
         }
         else {
-            &dostop(1);
-            &dostart;
+            dostop(1);
+            dostart();
             exit 0;
         }
         if ( $config{IPV6} ) {
@@ -515,17 +515,17 @@ sub doinitup {
                 unlink "/var/lib/csf/csf.6.saved";
             }
             else {
-                &dostop(1);
-                &dostart;
+                dostop(1);
+                dostart();
                 exit 0;
             }
         }
     }
     else {
-        &dostop(1);
-        &dostart;
+        dostop(1);
+        dostart();
     }
-    &csflock("unlock");
+    csflock("unlock");
     return;
 }
 
@@ -595,7 +595,7 @@ sub doclusterdeny {
         return;
     }
 
-    &clustersend("D $ip 1 * inout 3600 $comment");
+    clustersend("D $ip 1 * inout 3600 $comment");
     return;
 }
 
@@ -649,7 +649,7 @@ sub doclustertempdeny {
         return;
     }
 
-    &clustersend("TD $ip $perm $ports $inout $timeout $comment");
+    clustersend("TD $ip $perm $ports $inout $timeout $comment");
     return;
 }
 
@@ -665,7 +665,7 @@ sub doclusterrm {
         return;
     }
 
-    &clustersend("R $ip");
+    clustersend("R $ip");
     return;
 }
 
@@ -681,7 +681,7 @@ sub doclusterarm {
         return;
     }
 
-    &clustersend("AR $ip");
+    clustersend("AR $ip");
     return;
 }
 
@@ -697,7 +697,7 @@ sub doclusterallow {
         return;
     }
 
-    &clustersend("A $ip 1 * inout 3600 $comment");
+    clustersend("A $ip 1 * inout 3600 $comment");
     return;
 }
 
@@ -751,7 +751,7 @@ sub doclustertempallow {
         return;
     }
 
-    &clustersend("TA $ip $perm $ports $inout $timeout $comment");
+    clustersend("TA $ip $perm $ports $inout $timeout $comment");
     return;
 }
 
@@ -767,7 +767,7 @@ sub doclusterignore {
         return;
     }
 
-    &clustersend("I $ip     $comment");
+    clustersend("I $ip     $comment");
     return;
 }
 
@@ -783,7 +783,7 @@ sub doclusterirm {
         return;
     }
 
-    &clustersend("IR $ip");
+    clustersend("IR $ip");
     return;
 }
 
@@ -795,7 +795,7 @@ sub docconfig {
     unless ( $config{CLUSTER_CONFIG} ) { print "No configuration setting requests allowed\n"; return }
     unless ($name)                     { print "No configuration setting entered\n";          return }
 
-    &clustersend("C $name $value");
+    clustersend("C $name $value");
     return;
 }
 
@@ -809,7 +809,7 @@ sub doclustergrep {
         return;
     }
 
-    &clustersend("G $ip");
+    clustersend("G $ip");
     return;
 }
 
@@ -828,7 +828,7 @@ sub docfile {
         my $send = "FILE $file\n";
         foreach my $line (@data) { $send .= $line }
 
-        &clustersend($send);
+        clustersend($send);
     }
     else {
         print "csf: Error [$name] does not exist\n";
@@ -840,7 +840,7 @@ sub docfile {
 ###############################################################################
 # start docrestart
 sub docrestart {
-    &clustersend("RESTART");
+    clustersend("RESTART");
     return;
 }
 
@@ -912,49 +912,49 @@ sub lfdstart {
 # start dostop
 sub dostop {
     my $restart = shift;
-    &syscommand( __LINE__, "$config{IPTABLES} $verbose --policy INPUT ACCEPT" );
-    &syscommand( __LINE__, "$config{IPTABLES} $verbose --policy OUTPUT ACCEPT" );
-    &syscommand( __LINE__, "$config{IPTABLES} $verbose --policy FORWARD ACCEPT" );
-    &syscommand( __LINE__, "$config{IPTABLES} $verbose --flush" );
-    &syscommand( __LINE__, "$config{IPTABLES} $verbose --delete-chain" );
+    syscommand( __LINE__, "$config{IPTABLES} $verbose --policy INPUT ACCEPT" );
+    syscommand( __LINE__, "$config{IPTABLES} $verbose --policy OUTPUT ACCEPT" );
+    syscommand( __LINE__, "$config{IPTABLES} $verbose --policy FORWARD ACCEPT" );
+    syscommand( __LINE__, "$config{IPTABLES} $verbose --flush" );
+    syscommand( __LINE__, "$config{IPTABLES} $verbose --delete-chain" );
     if ( $config{NAT} ) {
-        &syscommand( __LINE__, "$config{IPTABLES} $verbose -t nat --flush" );
-        &syscommand( __LINE__, "$config{IPTABLES} $verbose -t nat --delete-chain" );
+        syscommand( __LINE__, "$config{IPTABLES} $verbose -t nat --flush" );
+        syscommand( __LINE__, "$config{IPTABLES} $verbose -t nat --delete-chain" );
     }
     if ( $config{RAW} ) {
-        &syscommand( __LINE__, "$config{IPTABLES} $verbose -t raw --flush" );
-        &syscommand( __LINE__, "$config{IPTABLES} $verbose -t raw --delete-chain" );
+        syscommand( __LINE__, "$config{IPTABLES} $verbose -t raw --flush" );
+        syscommand( __LINE__, "$config{IPTABLES} $verbose -t raw --delete-chain" );
     }
     if ( $config{MANGLE} ) {
-        &syscommand( __LINE__, "$config{IPTABLES} $verbose -t mangle --flush" );
-        &syscommand( __LINE__, "$config{IPTABLES} $verbose -t mangle --delete-chain" );
+        syscommand( __LINE__, "$config{IPTABLES} $verbose -t mangle --flush" );
+        syscommand( __LINE__, "$config{IPTABLES} $verbose -t mangle --delete-chain" );
     }
 
     if ( $config{IPV6} ) {
-        &syscommand( __LINE__, "$config{IP6TABLES} $verbose --policy INPUT ACCEPT" );
-        &syscommand( __LINE__, "$config{IP6TABLES} $verbose --policy OUTPUT ACCEPT" );
-        &syscommand( __LINE__, "$config{IP6TABLES} $verbose --policy FORWARD ACCEPT" );
-        &syscommand( __LINE__, "$config{IP6TABLES} $verbose --flush" );
-        &syscommand( __LINE__, "$config{IP6TABLES} $verbose --delete-chain" );
+        syscommand( __LINE__, "$config{IP6TABLES} $verbose --policy INPUT ACCEPT" );
+        syscommand( __LINE__, "$config{IP6TABLES} $verbose --policy OUTPUT ACCEPT" );
+        syscommand( __LINE__, "$config{IP6TABLES} $verbose --policy FORWARD ACCEPT" );
+        syscommand( __LINE__, "$config{IP6TABLES} $verbose --flush" );
+        syscommand( __LINE__, "$config{IP6TABLES} $verbose --delete-chain" );
         if ( $config{NAT6} ) {
-            &syscommand( __LINE__, "$config{IP6TABLES} $verbose -t nat --flush" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $verbose -t nat --delete-chain" );
+            syscommand( __LINE__, "$config{IP6TABLES} $verbose -t nat --flush" );
+            syscommand( __LINE__, "$config{IP6TABLES} $verbose -t nat --delete-chain" );
         }
         if ( $config{RAW6} ) {
-            &syscommand( __LINE__, "$config{IP6TABLES} $verbose -t raw --flush" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $verbose -t raw --delete-chain" );
+            syscommand( __LINE__, "$config{IP6TABLES} $verbose -t raw --flush" );
+            syscommand( __LINE__, "$config{IP6TABLES} $verbose -t raw --delete-chain" );
         }
         if ( $config{MANGLE6} ) {
-            &syscommand( __LINE__, "$config{IP6TABLES} $verbose -t mangle --flush" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $verbose -t mangle --delete-chain" );
+            syscommand( __LINE__, "$config{IP6TABLES} $verbose -t mangle --flush" );
+            syscommand( __LINE__, "$config{IP6TABLES} $verbose -t mangle --delete-chain" );
         }
     }
     if ( $config{LF_IPSET} ) {
-        &syscommand( __LINE__, "$config{IPSET} flush" );
-        &syscommand( __LINE__, "$config{IPSET} destroy" );
+        syscommand( __LINE__, "$config{IPSET} flush" );
+        syscommand( __LINE__, "$config{IPSET} destroy" );
     }
 
-    if ( $config{TESTING} ) { &crontab("remove") }
+    if ( $config{TESTING} ) { crontab("remove") }
     return;
 }
 
@@ -969,17 +969,17 @@ sub dostart {
         waitpid( $cmdpid, 0 );
         chomp @reply;
         if ( $reply[0] eq "active" or $reply[0] eq "activating" ) {
-            &error( __LINE__, "*Error* firewalld found to be running. You must stop and disable firewalld when using csf" );
+            error( __LINE__, "*Error* firewalld found to be running. You must stop and disable firewalld when using csf" );
             exit 1;
         }
     }
 
-    if   ( $config{TESTING} ) { &crontab("add") }
-    else                      { &crontab("remove") }
+    if   ( $config{TESTING} ) { crontab("add") }
+    else                      { crontab("remove") }
     if ( -e "/etc/csf/csf.error" ) { unlink("/etc/csf/csf.error") }
 
-    &getethdev;
-    &modprobe;
+    getethdev();
+    modprobe();
 
     $noowner = 0;
     if ( $config{VPS} and $config{SMTP_BLOCK} ) {
@@ -995,7 +995,7 @@ sub dostart {
             $noowner = 1;
         }
         else {
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D OUTPUT -p tcp --dport 9999 -m owner --uid-owner 0 -j $accept", 0 );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D OUTPUT -p tcp --dport 9999 -m owner --uid-owner 0 -j $accept", 0 );
         }
     }
 
@@ -1021,99 +1021,99 @@ sub dostart {
             close($CONF);
         }
         print "Running $csfpre\n";
-        &syscommand( __LINE__, "$path ; $csfpre" );
+        syscommand( __LINE__, "$path ; $csfpre" );
     }
 
     if ( $config{WATCH_MODE} ) {
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N LOGACCEPT" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOGACCEPT -j ACCEPT" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N LOGACCEPT" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOGACCEPT -j ACCEPT" );
         if ( $config{IPV6} ) {
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N LOGACCEPT" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOGACCEPT -j ACCEPT" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N LOGACCEPT" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOGACCEPT -j ACCEPT" );
         }
     }
 
     foreach my $name ( keys %blocklists ) {
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N $name" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N $name" );
         if ( $config{IPV6} ) {
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N $name" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N $name" );
         }
     }
-    if ( $config{CC_ALLOW_FILTER} ) { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N CC_ALLOWF" ) }
+    if ( $config{CC_ALLOW_FILTER} ) { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N CC_ALLOWF" ) }
     if ( $config{CC_ALLOW_PORTS} ) {
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N CC_ALLOWP" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N CC_ALLOWPORTS" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N CC_ALLOWP" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N CC_ALLOWPORTS" );
     }
     if ( $config{CC_DENY_PORTS} ) {
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N CC_DENYP" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N CC_DENYPORTS" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N CC_DENYP" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N CC_DENYPORTS" );
     }
-    if ( $config{CC_ALLOW} )                                                             { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N CC_ALLOW" ) }
-    if ( $config{CC_DENY} )                                                              { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N CC_DENY" ) }
-    if ( scalar( keys %blocklists ) > 0 and $config{DROP_IP_LOGGING} )                   { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N BLOCKDROP" ) }
-    if ( ( $config{CC_DENY} or $config{CC_ALLOW_FILTER} ) and $config{DROP_IP_LOGGING} ) { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N CCDROP" ) }
+    if ( $config{CC_ALLOW} )                                                             { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N CC_ALLOW" ) }
+    if ( $config{CC_DENY} )                                                              { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N CC_DENY" ) }
+    if ( scalar( keys %blocklists ) > 0 and $config{DROP_IP_LOGGING} )                   { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N BLOCKDROP" ) }
+    if ( ( $config{CC_DENY} or $config{CC_ALLOW_FILTER} ) and $config{DROP_IP_LOGGING} ) { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N CCDROP" ) }
     if ( $config{IPV6} ) {
-        if ( $config{CC_ALLOW_FILTER} ) { &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N CC_ALLOWF" ) }
+        if ( $config{CC_ALLOW_FILTER} ) { syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N CC_ALLOWF" ) }
         if ( $config{CC_ALLOW_PORTS} ) {
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N CC_ALLOWP" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N CC_ALLOWPORTS" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N CC_ALLOWP" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N CC_ALLOWPORTS" );
         }
         if ( $config{CC_DENY_PORTS} ) {
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N CC_DENYP" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N CC_DENYPORTS" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N CC_DENYP" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N CC_DENYPORTS" );
         }
-        if ( $config{CC_ALLOW} )                                                             { &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N CC_ALLOW" ) }
-        if ( $config{CC_DENY} )                                                              { &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N CC_DENY" ) }
-        if ( scalar( keys %blocklists ) > 0 and $config{DROP_IP_LOGGING} )                   { &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N BLOCKDROP" ) }
-        if ( ( $config{CC_DENY} or $config{CC_ALLOW_FILTER} ) and $config{DROP_IP_LOGGING} ) { &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N CCDROP" ) }
+        if ( $config{CC_ALLOW} )                                                             { syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N CC_ALLOW" ) }
+        if ( $config{CC_DENY} )                                                              { syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N CC_DENY" ) }
+        if ( scalar( keys %blocklists ) > 0 and $config{DROP_IP_LOGGING} )                   { syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N BLOCKDROP" ) }
+        if ( ( $config{CC_DENY} or $config{CC_ALLOW_FILTER} ) and $config{DROP_IP_LOGGING} ) { syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N CCDROP" ) }
     }
 
-    if ( $config{GLOBAL_ALLOW} )  { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N GALLOWIN" ) }
-    if ( $config{GLOBAL_ALLOW} )  { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N GALLOWOUT" ) }
-    if ( $config{GLOBAL_DENY} )   { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N GDENYIN" ) }
-    if ( $config{GLOBAL_DENY} )   { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N GDENYOUT" ) }
-    if ( $config{DYNDNS} )        { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N ALLOWDYNIN" ) }
-    if ( $config{DYNDNS} )        { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N ALLOWDYNOUT" ) }
-    if ( $config{GLOBAL_DYNDNS} ) { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N GDYNIN" ) }
-    if ( $config{GLOBAL_DYNDNS} ) { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N GDYNOUT" ) }
-    if ( $config{SYNFLOOD} )      { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N SYNFLOOD" ) }
-    if ( $config{PORTFLOOD} )     { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N PORTFLOOD" ) }
-    if ( $config{CONNLIMIT} )     { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N CONNLIMIT" ) }
-    if ( $config{UDPFLOOD} )      { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N UDPFLOOD" ) }
+    if ( $config{GLOBAL_ALLOW} )  { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N GALLOWIN" ) }
+    if ( $config{GLOBAL_ALLOW} )  { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N GALLOWOUT" ) }
+    if ( $config{GLOBAL_DENY} )   { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N GDENYIN" ) }
+    if ( $config{GLOBAL_DENY} )   { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N GDENYOUT" ) }
+    if ( $config{DYNDNS} )        { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N ALLOWDYNIN" ) }
+    if ( $config{DYNDNS} )        { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N ALLOWDYNOUT" ) }
+    if ( $config{GLOBAL_DYNDNS} ) { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N GDYNIN" ) }
+    if ( $config{GLOBAL_DYNDNS} ) { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N GDYNOUT" ) }
+    if ( $config{SYNFLOOD} )      { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N SYNFLOOD" ) }
+    if ( $config{PORTFLOOD} )     { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N PORTFLOOD" ) }
+    if ( $config{CONNLIMIT} )     { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N CONNLIMIT" ) }
+    if ( $config{UDPFLOOD} )      { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N UDPFLOOD" ) }
 
     if ( $config{IPV6} ) {
-        if ( $config{GLOBAL_ALLOW} )  { &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N GALLOWIN" ) }
-        if ( $config{GLOBAL_ALLOW} )  { &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N GALLOWOUT" ) }
-        if ( $config{GLOBAL_DENY} )   { &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N GDENYIN" ) }
-        if ( $config{GLOBAL_DENY} )   { &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N GDENYOUT" ) }
-        if ( $config{DYNDNS} )        { &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N ALLOWDYNIN" ) }
-        if ( $config{DYNDNS} )        { &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N ALLOWDYNOUT" ) }
-        if ( $config{GLOBAL_DYNDNS} ) { &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N GDYNIN" ) }
-        if ( $config{GLOBAL_DYNDNS} ) { &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N GDYNOUT" ) }
-        if ( $config{SYNFLOOD} )      { &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N SYNFLOOD" ) }
-        if ( $config{PORTFLOOD6} )    { &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N PORTFLOOD" ) }
-        if ( $config{CONNLIMIT6} )    { &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N CONNLIMIT" ) }
-        if ( $config{UDPFLOOD} )      { &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N UDPFLOOD" ) }
+        if ( $config{GLOBAL_ALLOW} )  { syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N GALLOWIN" ) }
+        if ( $config{GLOBAL_ALLOW} )  { syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N GALLOWOUT" ) }
+        if ( $config{GLOBAL_DENY} )   { syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N GDENYIN" ) }
+        if ( $config{GLOBAL_DENY} )   { syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N GDENYOUT" ) }
+        if ( $config{DYNDNS} )        { syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N ALLOWDYNIN" ) }
+        if ( $config{DYNDNS} )        { syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N ALLOWDYNOUT" ) }
+        if ( $config{GLOBAL_DYNDNS} ) { syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N GDYNIN" ) }
+        if ( $config{GLOBAL_DYNDNS} ) { syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N GDYNOUT" ) }
+        if ( $config{SYNFLOOD} )      { syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N SYNFLOOD" ) }
+        if ( $config{PORTFLOOD6} )    { syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N PORTFLOOD" ) }
+        if ( $config{CONNLIMIT6} )    { syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N CONNLIMIT" ) }
+        if ( $config{UDPFLOOD} )      { syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N UDPFLOOD" ) }
     }
 
-    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N LOGDROPIN" );
-    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N LOGDROPOUT" );
-    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N DENYIN" );
-    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N DENYOUT" );
-    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N ALLOWIN" );
-    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N ALLOWOUT" );
-    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N LOCALINPUT" );
-    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N LOCALOUTPUT" );
+    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N LOGDROPIN" );
+    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N LOGDROPOUT" );
+    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N DENYIN" );
+    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N DENYOUT" );
+    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N ALLOWIN" );
+    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N ALLOWOUT" );
+    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N LOCALINPUT" );
+    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N LOCALOUTPUT" );
 
     if ( $config{IPV6} ) {
-        &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N LOGDROPIN" );
-        &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N LOGDROPOUT" );
-        &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N DENYIN" );
-        &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N DENYOUT" );
-        &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N ALLOWIN" );
-        &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N ALLOWOUT" );
-        &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N LOCALINPUT" );
-        &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N LOCALOUTPUT" );
+        syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N LOGDROPIN" );
+        syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N LOGDROPOUT" );
+        syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N DENYIN" );
+        syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N DENYOUT" );
+        syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N ALLOWIN" );
+        syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N ALLOWOUT" );
+        syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N LOCALINPUT" );
+        syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N LOCALOUTPUT" );
     }
 
     if ( $config{DROP_LOGGING} ) {
@@ -1124,75 +1124,75 @@ sub dostart {
             if ( $config{FASTSTART} ) { $faststart = 1 }
             foreach my $port ( split( /\,/, $config{DROP_NOLOG} ) ) {
                 if ( $port eq "" )         { next }
-                if ( $port !~ /^[\d:]*$/ ) { &error( __LINE__, "Invalid DROP_NOLOG port [$port]" ) }
-                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPIN -p tcp --dport $port -j $config{DROP}" );
-                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPIN -p udp --dport $port -j $config{DROP}" );
+                if ( $port !~ /^[\d:]*$/ ) { error( __LINE__, "Invalid DROP_NOLOG port [$port]" ) }
+                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPIN -p tcp --dport $port -j $config{DROP}" );
+                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPIN -p udp --dport $port -j $config{DROP}" );
                 if ( $config{IPV6} ) {
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPIN -p tcp --dport $port -j $config{DROP}" );
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPIN -p udp --dport $port -j $config{DROP}" );
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPIN -p tcp --dport $port -j $config{DROP}" );
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPIN -p udp --dport $port -j $config{DROP}" );
                 }
             }
-            if ( $config{FASTSTART} ) { &faststart("DROP no logging") }
+            if ( $config{FASTSTART} ) { faststart("DROP no logging") }
         }
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPIN -p tcp $dports -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *TCP_IN Blocked* '" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPOUT -p tcp --syn -m limit --limit 30/m --limit-burst 5 -j $logouttarget 'Firewall: *TCP_OUT Blocked* '" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPIN -p udp $dports -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *UDP_IN Blocked* '" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPOUT -p udp -m limit --limit 30/m --limit-burst 5 -j $logouttarget 'Firewall: *UDP_OUT Blocked* '" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPIN -p icmp -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *ICMP_IN Blocked* '" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPOUT -p icmp -m limit --limit 30/m --limit-burst 5 -j $logouttarget 'Firewall: *ICMP_OUT Blocked* '" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPIN -p tcp $dports -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *TCP_IN Blocked* '" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPOUT -p tcp --syn -m limit --limit 30/m --limit-burst 5 -j $logouttarget 'Firewall: *TCP_OUT Blocked* '" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPIN -p udp $dports -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *UDP_IN Blocked* '" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPOUT -p udp -m limit --limit 30/m --limit-burst 5 -j $logouttarget 'Firewall: *UDP_OUT Blocked* '" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPIN -p icmp -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *ICMP_IN Blocked* '" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPOUT -p icmp -m limit --limit 30/m --limit-burst 5 -j $logouttarget 'Firewall: *ICMP_OUT Blocked* '" );
         if ( $config{IPV6} ) {
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPIN -p tcp $dports -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *TCP6IN Blocked* '" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPOUT -p tcp --syn -m limit --limit 30/m --limit-burst 5 -j $logouttarget 'Firewall: *TCP6OUT Blocked* '" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPIN -p udp $dports -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *UDP6IN Blocked* '" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPOUT -p udp -m limit --limit 30/m --limit-burst 5 -j $logouttarget 'Firewall: *UDP6OUT Blocked* '" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPIN -p icmpv6 -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *ICMP6IN Blocked* '" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPOUT -p icmpv6 -m limit --limit 30/m --limit-burst 5 -j $logouttarget 'Firewall: *ICMP6OUT Blocked* '" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPIN -p tcp $dports -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *TCP6IN Blocked* '" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPOUT -p tcp --syn -m limit --limit 30/m --limit-burst 5 -j $logouttarget 'Firewall: *TCP6OUT Blocked* '" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPIN -p udp $dports -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *UDP6IN Blocked* '" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPOUT -p udp -m limit --limit 30/m --limit-burst 5 -j $logouttarget 'Firewall: *UDP6OUT Blocked* '" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPIN -p icmpv6 -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *ICMP6IN Blocked* '" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPOUT -p icmpv6 -m limit --limit 30/m --limit-burst 5 -j $logouttarget 'Firewall: *ICMP6OUT Blocked* '" );
         }
-        if ( scalar( keys %blocklists ) > 0                   and $config{DROP_IP_LOGGING} ) { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A BLOCKDROP -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *BLOCK_LIST* '" ); }
-        if ( ( $config{CC_DENY} or $config{CC_ALLOW_FILTER} ) and $config{DROP_IP_LOGGING} ) { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CCDROP -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *CC_DENY* '" ); }
-        if ( $config{PORTFLOOD} ) { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A PORTFLOOD -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *Port Flood* '" ); }
+        if ( scalar( keys %blocklists ) > 0                   and $config{DROP_IP_LOGGING} ) { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A BLOCKDROP -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *BLOCK_LIST* '" ); }
+        if ( ( $config{CC_DENY} or $config{CC_ALLOW_FILTER} ) and $config{DROP_IP_LOGGING} ) { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CCDROP -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *CC_DENY* '" ); }
+        if ( $config{PORTFLOOD} ) { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A PORTFLOOD -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *Port Flood* '" ); }
         if ( $config{IPV6} ) {
-            if ( scalar( keys %blocklists ) > 0 and $config{DROP_IP_LOGGING} )                   { &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A BLOCKDROP -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *BLOCK_LIST* '" ); }
-            if ( ( $config{CC_DENY} or $config{CC_ALLOW_FILTER} ) and $config{DROP_IP_LOGGING} ) { &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A CCDROP -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *CC_DENY* '" ); }
-            if ( $config{PORTFLOOD6} )                                                           { &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A PORTFLOOD -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *Port Flood* '" ); }
+            if ( scalar( keys %blocklists ) > 0 and $config{DROP_IP_LOGGING} )                   { syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A BLOCKDROP -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *BLOCK_LIST* '" ); }
+            if ( ( $config{CC_DENY} or $config{CC_ALLOW_FILTER} ) and $config{DROP_IP_LOGGING} ) { syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A CCDROP -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *CC_DENY* '" ); }
+            if ( $config{PORTFLOOD6} )                                                           { syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A PORTFLOOD -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *Port Flood* '" ); }
         }
     }
 
-    if ( scalar( keys %blocklists ) > 0                   and $config{DROP_IP_LOGGING} ) { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A BLOCKDROP -j $config{DROP}" ); }
-    if ( ( $config{CC_DENY} or $config{CC_ALLOW_FILTER} ) and $config{DROP_IP_LOGGING} ) { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CCDROP -j $config{DROP}" ); }
+    if ( scalar( keys %blocklists ) > 0                   and $config{DROP_IP_LOGGING} ) { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A BLOCKDROP -j $config{DROP}" ); }
+    if ( ( $config{CC_DENY} or $config{CC_ALLOW_FILTER} ) and $config{DROP_IP_LOGGING} ) { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CCDROP -j $config{DROP}" ); }
     if ( $config{IPV6} ) {
-        if ( scalar( keys %blocklists ) > 0                   and $config{DROP_IP_LOGGING} ) { &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A BLOCKDROP -j $config{DROP}" ); }
-        if ( ( $config{CC_DENY} or $config{CC_ALLOW_FILTER} ) and $config{DROP_IP_LOGGING} ) { &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A CCDROP -j $config{DROP}" ); }
+        if ( scalar( keys %blocklists ) > 0                   and $config{DROP_IP_LOGGING} ) { syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A BLOCKDROP -j $config{DROP}" ); }
+        if ( ( $config{CC_DENY} or $config{CC_ALLOW_FILTER} ) and $config{DROP_IP_LOGGING} ) { syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A CCDROP -j $config{DROP}" ); }
     }
 
-    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPIN -j $config{DROP}" );
-    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPOUT -j $config{DROP_OUT}" );
+    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPIN -j $config{DROP}" );
+    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPOUT -j $config{DROP_OUT}" );
     if ( $config{IPV6} ) {
-        &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPIN -j $config{DROP}" );
-        &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPOUT -j $config{DROP_OUT}" );
+        syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPIN -j $config{DROP}" );
+        syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOGDROPOUT -j $config{DROP_OUT}" );
     }
 
-    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOCALOUTPUT $ethdevout -j DENYOUT" );
-    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT $ethdevin -j DENYIN" );
-    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I LOCALOUTPUT $ethdevout -j ALLOWOUT" );
-    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I LOCALINPUT $ethdevin -j ALLOWIN" );
+    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOCALOUTPUT $ethdevout -j DENYOUT" );
+    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT $ethdevin -j DENYIN" );
+    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I LOCALOUTPUT $ethdevout -j ALLOWOUT" );
+    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I LOCALINPUT $ethdevin -j ALLOWIN" );
     if ( $config{IPV6} ) {
-        &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOCALOUTPUT $ethdevout -j DENYOUT" );
-        &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT $ethdevin -j DENYIN" );
-        &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I LOCALOUTPUT $ethdevout -j ALLOWOUT" );
-        &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I LOCALINPUT $ethdevin -j ALLOWIN" );
+        syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOCALOUTPUT $ethdevout -j DENYOUT" );
+        syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT $ethdevin -j DENYIN" );
+        syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I LOCALOUTPUT $ethdevout -j ALLOWOUT" );
+        syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I LOCALINPUT $ethdevin -j ALLOWIN" );
     }
 
     if ( $config{MESSENGER} ) {
         if ( $config{LF_IPSET} ) {
-            &ipsetcreate("MESSENGER");
-            if ( $config{MESSENGER6} ) { &ipsetcreate("MESSENGER_6") }
-            &domessenger( "-m set --match-set MESSENGER src", "A" );
+            ipsetcreate("MESSENGER");
+            if ( $config{MESSENGER6} ) { ipsetcreate("MESSENGER_6") }
+            domessenger( "-m set --match-set MESSENGER src", "A" );
         }
     }
 
-    &dopacketfilters;
-    &doportfilters;
+    dopacketfilters();
+    doportfilters();
 
     my $skipin   = 1;
     my $skipout  = 1;
@@ -1202,44 +1202,44 @@ sub dostart {
     my $dropout = $config{DROP_OUT};
     if ( $config{DROP_OUT_LOGGING} ) { $dropout = "LOGDROPOUT" }
 
-    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I INPUT  -i lo -j $accept" );
-    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT -o lo -j $accept" );
-    unless ( $config{LF_SPI} ) { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $ethdevout -j $accept" ) }
-    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $ethdevout -j $dropout" );
-    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -j LOGDROPIN" );
+    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I INPUT  -i lo -j $accept" );
+    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT -o lo -j $accept" );
+    unless ( $config{LF_SPI} ) { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $ethdevout -j $accept" ) }
+    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $ethdevout -j $dropout" );
+    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -j LOGDROPIN" );
     if ( $config{IPV6} ) {
-        &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I INPUT  -i lo -j $accept" );
-        &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT -o lo -j $accept" );
-        unless ( $config{IPV6_SPI} ) { &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $eth6devout -j $accept" ) }
-        &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $eth6devout -j $dropout" );
-        &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INPUT $eth6devin -j LOGDROPIN" );
+        syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I INPUT  -i lo -j $accept" );
+        syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT -o lo -j $accept" );
+        unless ( $config{IPV6_SPI} ) { syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $eth6devout -j $accept" ) }
+        syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $eth6devout -j $dropout" );
+        syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INPUT $eth6devin -j LOGDROPIN" );
     }
 
     if ( $config{SMTP_BLOCK} ) {
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N SMTPOUTPUT" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT -j SMTPOUTPUT" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N SMTPOUTPUT" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT -j SMTPOUTPUT" );
         if ( $config{IPV6} ) {
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N SMTPOUTPUT" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT -j SMTPOUTPUT" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N SMTPOUTPUT" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT -j SMTPOUTPUT" );
         }
         if ( $config{FASTSTART} ) { $faststart = 1 }
         my $dropout = $config{DROP_OUT};
         if ( $config{DROP_OUT_LOGGING} ) { $dropout = "LOGDROPOUT" }
         $config{SMTP_PORTS} =~ s/\s//g;
         if ( $config{SMTP_PORTS} ne "" ) {
-            unless ( $config{SMTP_REDIRECT} ) { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I SMTPOUTPUT -p tcp -m multiport --dports $config{SMTP_PORTS} -j $dropout", 1 ) }
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I SMTPOUTPUT -p tcp -m multiport --dports $config{SMTP_PORTS} -m owner --uid-owner 0 -j $accept", 1 );
+            unless ( $config{SMTP_REDIRECT} ) { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I SMTPOUTPUT -p tcp -m multiport --dports $config{SMTP_PORTS} -j $dropout", 1 ) }
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I SMTPOUTPUT -p tcp -m multiport --dports $config{SMTP_PORTS} -m owner --uid-owner 0 -j $accept", 1 );
             if ( $config{IPV6} ) {
-                unless ( $config{SMTP_REDIRECT} ) { &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I SMTPOUTPUT -p tcp -m multiport --dports $config{SMTP_PORTS} -j $dropout", 1 ) }
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I SMTPOUTPUT -p tcp -m multiport --dports $config{SMTP_PORTS} -m owner --uid-owner 0 -j $accept", 1 );
+                unless ( $config{SMTP_REDIRECT} ) { syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I SMTPOUTPUT -p tcp -m multiport --dports $config{SMTP_PORTS} -j $dropout", 1 ) }
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I SMTPOUTPUT -p tcp -m multiport --dports $config{SMTP_PORTS} -m owner --uid-owner 0 -j $accept", 1 );
             }
             foreach my $item ( split( /\,/, $config{SMTP_ALLOWUSER} ) ) {
                 $item =~ s/\s//g;
                 my $uid = ( getpwnam($item) )[2];
                 if ($uid) {
-                    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I SMTPOUTPUT -p tcp -m multiport --dports $config{SMTP_PORTS} -m owner --uid-owner $uid -j $accept", 1 );
+                    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I SMTPOUTPUT -p tcp -m multiport --dports $config{SMTP_PORTS} -m owner --uid-owner $uid -j $accept", 1 );
                     if ( $config{IPV6} ) {
-                        &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I SMTPOUTPUT -p tcp -m multiport --dports $config{SMTP_PORTS} -m owner --uid-owner $uid -j $accept", 1 );
+                        syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I SMTPOUTPUT -p tcp -m multiport --dports $config{SMTP_PORTS} -m owner --uid-owner $uid -j $accept", 1 );
                     }
                 }
             }
@@ -1254,25 +1254,25 @@ sub dostart {
                 }
             }
             if ( $config{SMTP_ALLOWLOCAL} ) {
-                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I SMTPOUTPUT -o lo -p tcp -m multiport --dports $config{SMTP_PORTS} -j $accept", 1 );
+                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I SMTPOUTPUT -o lo -p tcp -m multiport --dports $config{SMTP_PORTS} -j $accept", 1 );
                 if ( $config{IPV6} ) {
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I SMTPOUTPUT -o lo -p tcp -m multiport --dports $config{SMTP_PORTS} -j $accept", 1 );
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I SMTPOUTPUT -o lo -p tcp -m multiport --dports $config{SMTP_PORTS} -j $accept", 1 );
                 }
             }
             if ( $config{SMTP_REDIRECT} ) {
-                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t nat -I OUTPUT -p tcp -m multiport --dports $config{SMTP_PORTS} -j REDIRECT",                      1 );
-                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t nat -I OUTPUT -p tcp -m multiport --dports $config{SMTP_PORTS} -m owner --uid-owner 0 -j RETURN", 1 );
+                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t nat -I OUTPUT -p tcp -m multiport --dports $config{SMTP_PORTS} -j REDIRECT",                      1 );
+                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t nat -I OUTPUT -p tcp -m multiport --dports $config{SMTP_PORTS} -m owner --uid-owner 0 -j RETURN", 1 );
                 if ( $config{IPV6} and $config{SMTP_REDIRECT6} ) {
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -t nat -I OUTPUT -p tcp -m multiport --dports $config{SMTP_PORTS} -j REDIRECT",                      1 );
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -t nat -I OUTPUT -p tcp -m multiport --dports $config{SMTP_PORTS} -m owner --uid-owner 0 -j RETURN", 1 );
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -t nat -I OUTPUT -p tcp -m multiport --dports $config{SMTP_PORTS} -j REDIRECT",                      1 );
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -t nat -I OUTPUT -p tcp -m multiport --dports $config{SMTP_PORTS} -m owner --uid-owner 0 -j RETURN", 1 );
                 }
                 foreach my $item ( split( /\,/, $config{SMTP_ALLOWUSER} ) ) {
                     $item =~ s/\s//g;
                     my $uid = ( getpwnam($item) )[2];
                     if ($uid) {
-                        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t nat -I OUTPUT -p tcp -m multiport --dports $config{SMTP_PORTS} -m owner --uid-owner $uid -j RETURN", 1 );
+                        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t nat -I OUTPUT -p tcp -m multiport --dports $config{SMTP_PORTS} -m owner --uid-owner $uid -j RETURN", 1 );
                         if ( $config{IPV6} and $config{SMTP_REDIRECT6} ) {
-                            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -t nat -I OUTPUT -p tcp -m multiport --dports $config{SMTP_PORTS} -m owner --uid-owner $uid -j RETURN", 1 );
+                            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -t nat -I OUTPUT -p tcp -m multiport --dports $config{SMTP_PORTS} -m owner --uid-owner $uid -j RETURN", 1 );
                         }
                     }
                 }
@@ -1287,27 +1287,27 @@ sub dostart {
                     }
                 }
                 if ( $config{SMTP_ALLOWLOCAL} ) {
-                    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t nat -I OUTPUT -o lo -p tcp -m multiport --dports $config{SMTP_PORTS} -j RETURN", 1 );
+                    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t nat -I OUTPUT -o lo -p tcp -m multiport --dports $config{SMTP_PORTS} -j RETURN", 1 );
                     if ( $config{IPV6} and $config{SMTP_REDIRECT6} ) {
-                        &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -t nat -I OUTPUT -o lo -p tcp -m multiport --dports $config{SMTP_PORTS} -j RETURN", 1 );
+                        syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -t nat -I OUTPUT -o lo -p tcp -m multiport --dports $config{SMTP_PORTS} -j RETURN", 1 );
                     }
                 }
             }
         }
-        if ( $config{FASTSTART} ) { &faststart("SMTP Block") }
+        if ( $config{FASTSTART} ) { faststart("SMTP Block") }
     }
 
     if     ( $config{FASTSTART} ) { $faststart = 1 }
     unless ( $config{DNS_STRICT} ) {
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -p udp --sport 53 -j $accept" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -p tcp --sport 53 -j $accept" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -p udp --dport 53 -j $accept" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -p tcp --dport 53 -j $accept" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -p udp --sport 53 -j $accept" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -p tcp --sport 53 -j $accept" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -p udp --dport 53 -j $accept" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -p tcp --dport 53 -j $accept" );
         if ( $config{IPV6} ) {
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $eth6devout -p udp --sport 53 -j $accept" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $eth6devout -p tcp --sport 53 -j $accept" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $eth6devout -p udp --dport 53 -j $accept" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $eth6devout -p tcp --dport 53 -j $accept" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $eth6devout -p udp --sport 53 -j $accept" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $eth6devout -p tcp --sport 53 -j $accept" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $eth6devout -p udp --dport 53 -j $accept" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $eth6devout -p tcp --dport 53 -j $accept" );
         }
     }
 
@@ -1318,36 +1318,36 @@ sub dostart {
             if ( $line =~ /^nameserver\s+($ipv4reg)/ ) {
                 my $ip = $1;
                 unless ( $ips{$ip} or $ipscidr->find($ip) ) {
-                    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I INPUT $ethdevin -s $ip -p udp --sport 53 -j $accept" );
-                    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I INPUT $ethdevin -s $ip -p tcp --sport 53 -j $accept" );
-                    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I INPUT $ethdevin -s $ip -p udp --dport 53 -j $accept" );
-                    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I INPUT $ethdevin -s $ip -p tcp --dport 53 -j $accept" );
+                    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I INPUT $ethdevin -s $ip -p udp --sport 53 -j $accept" );
+                    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I INPUT $ethdevin -s $ip -p tcp --sport 53 -j $accept" );
+                    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I INPUT $ethdevin -s $ip -p udp --dport 53 -j $accept" );
+                    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I INPUT $ethdevin -s $ip -p tcp --dport 53 -j $accept" );
                     $skipin += 4;
-                    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -d $ip -p udp --sport 53 -j $accept" );
-                    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -d $ip -p tcp --sport 53 -j $accept" );
-                    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -d $ip -p udp --dport 53 -j $accept" );
-                    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -d $ip -p tcp --dport 53 -j $accept" );
+                    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -d $ip -p udp --sport 53 -j $accept" );
+                    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -d $ip -p tcp --sport 53 -j $accept" );
+                    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -d $ip -p udp --dport 53 -j $accept" );
+                    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -d $ip -p tcp --dport 53 -j $accept" );
                     $skipout += 4;
                 }
             }
             if ( $line =~ /^nameserver\s+($ipv6reg)/ ) {
                 my $ip = $1;
                 unless ( $ips{$ip} or $ipscidr6->find($ip) ) {
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I INPUT $ethdevin -s $ip -p udp --sport 53 -j $accept" );
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I INPUT $ethdevin -s $ip -p tcp --sport 53 -j $accept" );
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I INPUT $ethdevin -s $ip -p udp --dport 53 -j $accept" );
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I INPUT $ethdevin -s $ip -p tcp --dport 53 -j $accept" );
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I INPUT $ethdevin -s $ip -p udp --sport 53 -j $accept" );
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I INPUT $ethdevin -s $ip -p tcp --sport 53 -j $accept" );
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I INPUT $ethdevin -s $ip -p udp --dport 53 -j $accept" );
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I INPUT $ethdevin -s $ip -p tcp --dport 53 -j $accept" );
                     $skipin6 += 4;
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -d $ip -p udp --sport 53 -j $accept" );
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -d $ip -p tcp --sport 53 -j $accept" );
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -d $ip -p udp --dport 53 -j $accept" );
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -d $ip -p tcp --dport 53 -j $accept" );
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -d $ip -p udp --sport 53 -j $accept" );
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -d $ip -p tcp --sport 53 -j $accept" );
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -d $ip -p udp --dport 53 -j $accept" );
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -d $ip -p tcp --dport 53 -j $accept" );
                     $skipout6 += 4;
                 }
             }
         }
     }
-    if ( $config{FASTSTART} ) { &faststart("DNS") }
+    if ( $config{FASTSTART} ) { faststart("DNS") }
 
     if ( $config{MESSENGER} ) {
         $skipin  += 2;
@@ -1355,63 +1355,63 @@ sub dostart {
         if ( $config{MESSENGER_HTTPS_IN} ) {
             $skipin  += 1;
             $skipout += 1;
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I INPUT $ethdevin -p tcp --dport $config{MESSENGER_HTTPS} -m limit --limit $config{MESSENGER_RATE} --limit-burst $config{MESSENGER_BURST} -j $accept" );
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -p tcp --sport $config{MESSENGER_HTTPS} -m limit --limit $config{MESSENGER_RATE} --limit-burst $config{MESSENGER_BURST} -j $accept" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I INPUT $ethdevin -p tcp --dport $config{MESSENGER_HTTPS} -m limit --limit $config{MESSENGER_RATE} --limit-burst $config{MESSENGER_BURST} -j $accept" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -p tcp --sport $config{MESSENGER_HTTPS} -m limit --limit $config{MESSENGER_RATE} --limit-burst $config{MESSENGER_BURST} -j $accept" );
         }
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I INPUT $ethdevin -p tcp --dport $config{MESSENGER_HTML} -m limit --limit $config{MESSENGER_RATE} --limit-burst $config{MESSENGER_BURST} -j $accept" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I INPUT $ethdevin -p tcp --dport $config{MESSENGER_TEXT} -m limit --limit $config{MESSENGER_RATE} --limit-burst $config{MESSENGER_BURST} -j $accept" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -p tcp --sport $config{MESSENGER_HTML} -m limit --limit $config{MESSENGER_RATE} --limit-burst $config{MESSENGER_BURST} -j $accept" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -p tcp --sport $config{MESSENGER_TEXT} -m limit --limit $config{MESSENGER_RATE} --limit-burst $config{MESSENGER_BURST} -j $accept" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I INPUT $ethdevin -p tcp --dport $config{MESSENGER_HTML} -m limit --limit $config{MESSENGER_RATE} --limit-burst $config{MESSENGER_BURST} -j $accept" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I INPUT $ethdevin -p tcp --dport $config{MESSENGER_TEXT} -m limit --limit $config{MESSENGER_RATE} --limit-burst $config{MESSENGER_BURST} -j $accept" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -p tcp --sport $config{MESSENGER_HTML} -m limit --limit $config{MESSENGER_RATE} --limit-burst $config{MESSENGER_BURST} -j $accept" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -p tcp --sport $config{MESSENGER_TEXT} -m limit --limit $config{MESSENGER_RATE} --limit-burst $config{MESSENGER_BURST} -j $accept" );
         if ( $config{MESSENGER6} ) {
             $skipin6  += 2;
             $skipout6 += 2;
             if ( $config{MESSENGER_HTTPS_IN} ) {
                 $skipin6  += 1;
                 $skipout6 += 1;
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I INPUT $ethdevin -p tcp --dport $config{MESSENGER_HTTPS} -m limit --limit $config{MESSENGER_RATE} --limit-burst $config{MESSENGER_BURST} -j $accept" );
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -p tcp --sport $config{MESSENGER_HTTPS} -m limit --limit $config{MESSENGER_RATE} --limit-burst $config{MESSENGER_BURST} -j $accept" );
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I INPUT $ethdevin -p tcp --dport $config{MESSENGER_HTTPS} -m limit --limit $config{MESSENGER_RATE} --limit-burst $config{MESSENGER_BURST} -j $accept" );
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -p tcp --sport $config{MESSENGER_HTTPS} -m limit --limit $config{MESSENGER_RATE} --limit-burst $config{MESSENGER_BURST} -j $accept" );
             }
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I INPUT $ethdevin -p tcp --dport $config{MESSENGER_HTML} -m limit --limit $config{MESSENGER_RATE} --limit-burst $config{MESSENGER_BURST} -j $accept" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I INPUT $ethdevin -p tcp --dport $config{MESSENGER_TEXT} -m limit --limit $config{MESSENGER_RATE} --limit-burst $config{MESSENGER_BURST} -j $accept" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -p tcp --sport $config{MESSENGER_HTML} -m limit --limit $config{MESSENGER_RATE} --limit-burst $config{MESSENGER_BURST} -j $accept" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -p tcp --sport $config{MESSENGER_TEXT} -m limit --limit $config{MESSENGER_RATE} --limit-burst $config{MESSENGER_BURST} -j $accept" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I INPUT $ethdevin -p tcp --dport $config{MESSENGER_HTML} -m limit --limit $config{MESSENGER_RATE} --limit-burst $config{MESSENGER_BURST} -j $accept" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I INPUT $ethdevin -p tcp --dport $config{MESSENGER_TEXT} -m limit --limit $config{MESSENGER_RATE} --limit-burst $config{MESSENGER_BURST} -j $accept" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -p tcp --sport $config{MESSENGER_HTML} -m limit --limit $config{MESSENGER_RATE} --limit-burst $config{MESSENGER_BURST} -j $accept" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -p tcp --sport $config{MESSENGER_TEXT} -m limit --limit $config{MESSENGER_RATE} --limit-burst $config{MESSENGER_BURST} -j $accept" );
         }
     }
 
     if ( $config{DOCKER} ) {
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N DOCKER" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N DOCKER" );
         if ( $config{NAT} ) {
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t nat -N DOCKER" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t nat -N DOCKER" );
         }
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t nat -A POSTROUTING -s $config{DOCKER_NETWORK4} ! -o $config{DOCKER_DEVICE} -j MASQUERADE" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A FORWARD -o $config{DOCKER_DEVICE} $statemodule RELATED,ESTABLISHED -j ACCEPT" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A FORWARD -i $config{DOCKER_DEVICE} ! -o $config{DOCKER_DEVICE} -j ACCEPT" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A FORWARD -i $config{DOCKER_DEVICE} -o $config{DOCKER_DEVICE} -j ACCEPT" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t nat -A POSTROUTING -s $config{DOCKER_NETWORK4} ! -o $config{DOCKER_DEVICE} -j MASQUERADE" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A FORWARD -o $config{DOCKER_DEVICE} $statemodule RELATED,ESTABLISHED -j ACCEPT" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A FORWARD -i $config{DOCKER_DEVICE} ! -o $config{DOCKER_DEVICE} -j ACCEPT" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A FORWARD -i $config{DOCKER_DEVICE} -o $config{DOCKER_DEVICE} -j ACCEPT" );
         if ( $config{IPV6} and $config{NAT6} and $config{DOCKER_NETWORK6} ne "" ) {
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N DOCKER" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -t nat -A POSTROUTING -s $config{DOCKER_NETWORK6} ! -o $config{DOCKER_DEVICE} -j MASQUERADE" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A FORWARD -o $config{DOCKER_DEVICE} $statemodule RELATED,ESTABLISHED -j ACCEPT" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A FORWARD -i $config{DOCKER_DEVICE} ! -o $config{DOCKER_DEVICE} -j ACCEPT" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A FORWARD -i $config{DOCKER_DEVICE} -o $config{DOCKER_DEVICE} -j ACCEPT" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N DOCKER" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -t nat -A POSTROUTING -s $config{DOCKER_NETWORK6} ! -o $config{DOCKER_DEVICE} -j MASQUERADE" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A FORWARD -o $config{DOCKER_DEVICE} $statemodule RELATED,ESTABLISHED -j ACCEPT" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A FORWARD -i $config{DOCKER_DEVICE} ! -o $config{DOCKER_DEVICE} -j ACCEPT" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A FORWARD -i $config{DOCKER_DEVICE} -o $config{DOCKER_DEVICE} -j ACCEPT" );
         }
     }
 
-    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $skipout $ethdevout -j LOCALOUTPUT" );
-    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I INPUT $skipin $ethdevin -j LOCALINPUT" );
+    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $skipout $ethdevout -j LOCALOUTPUT" );
+    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I INPUT $skipin $ethdevin -j LOCALINPUT" );
     if ( $config{IPV6} ) {
-        &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $skipout6 $eth6devout -j LOCALOUTPUT" );
-        &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I INPUT $skipin6 $eth6devin -j LOCALINPUT" );
+        syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $skipout6 $eth6devout -j LOCALOUTPUT" );
+        syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I INPUT $skipin6 $eth6devin -j LOCALINPUT" );
     }
 
     $config{ETH_DEVICE_SKIP} =~ s/\s//g;
     if ( $config{ETH_DEVICE_SKIP} ne "" ) {
         foreach my $device ( split( /\,/, $config{ETH_DEVICE_SKIP} ) ) {
             if ( $ifaces{$device} ) {
-                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I INPUT  -i $device -j $accept" );
-                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT -o $device -j $accept" );
+                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I INPUT  -i $device -j $accept" );
+                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT -o $device -j $accept" );
                 if ( $config{IPV6} ) {
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I INPUT  -i $device -j $accept" );
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT -o $device -j $accept" );
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I INPUT  -i $device -j $accept" );
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT -o $device -j $accept" );
                 }
             }
             else {
@@ -1420,13 +1420,13 @@ sub dostart {
         }
     }
 
-    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose --policy INPUT   DROP", 1 );
-    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose --policy OUTPUT  DROP", 1 );
-    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose --policy FORWARD DROP", 1 );
+    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose --policy INPUT   DROP", 1 );
+    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose --policy OUTPUT  DROP", 1 );
+    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose --policy FORWARD DROP", 1 );
     if ( $config{IPV6} ) {
-        &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose --policy INPUT   DROP", 1 );
-        &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose --policy OUTPUT  DROP", 1 );
-        &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose --policy FORWARD DROP", 1 );
+        syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose --policy INPUT   DROP", 1 );
+        syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose --policy OUTPUT  DROP", 1 );
+        syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose --policy FORWARD DROP", 1 );
     }
 
     if ( $csfpost ne "" ) {
@@ -1444,7 +1444,7 @@ sub dostart {
             close($CONF);
         }
         print "Running $csfpost\n";
-        &syscommand( __LINE__, "$path ; $csfpost" );
+        syscommand( __LINE__, "$path ; $csfpost" );
     }
 
     if ( $config{VPS} ) {
@@ -1493,7 +1493,7 @@ sub doadd {
 
     my $checkip = checkip( \$ip );
 
-    &getethdev;
+    getethdev();
 
     if ( $ips{$ip} or $ipscidr->find($ip) or $ipscidr6->find($ip) ) {
         print "add failed: $ip is one of this servers addresses!\n";
@@ -1526,7 +1526,7 @@ sub doadd {
     if ($hit) {
         print "Removing $ip from csf.deny...\n";
         $input{argument}[0] = $ip;
-        &dokill;
+        dokill();
     }
 
     my $allowmatches;
@@ -1550,8 +1550,8 @@ sub doadd {
     }
 
     my $ipstring = quotemeta($ip);
-    sysopen( my $ALLOW, "/etc/csf/csf.allow", O_RDWR | O_CREAT ) or &error( __LINE__, "Could not open /etc/csf/csf.allow: $!" );
-    flock( $ALLOW, LOCK_EX )                                     or &error( __LINE__, "Could not lock /etc/csf/csf.allow: $!" );
+    sysopen( my $ALLOW, "/etc/csf/csf.allow", O_RDWR | O_CREAT ) or error( __LINE__, "Could not open /etc/csf/csf.allow: $!" );
+    flock( $ALLOW, LOCK_EX )                                     or error( __LINE__, "Could not lock /etc/csf/csf.allow: $!" );
     my $text = join( "", <$ALLOW> );
     @allow = split( /$slurpreg/, $text );
     chomp @allow;
@@ -1563,13 +1563,13 @@ sub doadd {
         }
         else {
             print "Adding $ip to csf.allow and iptables ACCEPT...\n";
-            &linefilter( $ip, "allow" );
+            linefilter( $ip, "allow" );
         }
     }
     else {
         print "add failed: $ip is in already in the allow file /etc/csf/csf.allow\n";
     }
-    close($ALLOW) or &error( __LINE__, "Could not close /etc/csf/csf.allow: $!" );
+    close($ALLOW) or error( __LINE__, "Could not close /etc/csf/csf.allow: $!" );
     return;
 }
 
@@ -1582,7 +1582,7 @@ sub dodeny {
 
     my $checkip = checkip( \$ip );
 
-    &getethdev;
+    getethdev();
 
     if ( $ips{$ip} or $ipscidr->find($ip) or $ipscidr6->find($ip) ) {
         print "deny failed: [$ip] is one of this servers addresses!\n";
@@ -1679,8 +1679,8 @@ sub dodeny {
         }
     }
 
-    sysopen( my $DENY, "/etc/csf/csf.deny", O_RDWR | O_CREAT ) or &error( __LINE__, "Could not open /etc/csf/csf.deny: $!" );
-    flock( $DENY, LOCK_EX )                                    or &error( __LINE__, "Could not lock /etc/csf/csf.deny: $!" );
+    sysopen( my $DENY, "/etc/csf/csf.deny", O_RDWR | O_CREAT ) or error( __LINE__, "Could not open /etc/csf/csf.deny: $!" );
+    flock( $DENY, LOCK_EX )                                    or error( __LINE__, "Could not lock /etc/csf/csf.deny: $!" );
     my $text = join( "", <$DENY> );
     @deny = split( /$slurpreg/, $text );
     chomp @deny;
@@ -1712,7 +1712,7 @@ sub dodeny {
             for ( my $x = 0; $x < ( $ipcount - $config{DENY_IP_LIMIT} ) + 1; $x++ ) {
                 print "$denyips[$x]\n";
                 my ( $kip, undef ) = split( /\s/, $denyips[$x], 2 );
-                &linefilter( $kip, "deny", "", 1 );
+                linefilter( $kip, "deny", "", 1 );
 
                 #				sysopen (my $TEMPIP, "/var/lib/csf/csf.tempip", O_RDWR | O_CREAT);
                 #				flock ($TEMPIP, LOCK_EX);
@@ -1739,13 +1739,13 @@ sub dodeny {
         }
         else {
             print "Adding $ip to csf.deny and iptables DROP...\n";
-            &linefilter( $ip, "deny" );
+            linefilter( $ip, "deny" );
         }
     }
     else {
         print "deny failed: $ip is in already in the deny file /etc/csf/csf.deny $denymatches times\n";
     }
-    close($DENY) or &error( __LINE__, "Could not close /etc/csf/csf.deny: $!" );
+    close($DENY) or error( __LINE__, "Could not close /etc/csf/csf.deny: $!" );
     return;
 }
 
@@ -1762,10 +1762,10 @@ sub dokill {
         return;
     }
 
-    &getethdev;
+    getethdev();
 
-    sysopen( my $DENY, "/etc/csf/csf.deny", O_RDWR | O_CREAT ) or &error( __LINE__, "Could not open /etc/csf/csf.deny: $!" );
-    flock( $DENY, LOCK_EX )                                    or &error( __LINE__, "Could not lock /etc/csf/csf.deny: $!" );
+    sysopen( my $DENY, "/etc/csf/csf.deny", O_RDWR | O_CREAT ) or error( __LINE__, "Could not open /etc/csf/csf.deny: $!" );
+    flock( $DENY, LOCK_EX )                                    or error( __LINE__, "Could not lock /etc/csf/csf.deny: $!" );
     my $text = join( "", <$DENY> );
     my @deny = split( /$slurpreg/, $text );
     chomp @deny;
@@ -1789,14 +1789,14 @@ sub dokill {
             }
             else {
                 print "Removing rule...\n";
-                &linefilter( $ipd, "deny", "", 1 );
+                linefilter( $ipd, "deny", "", 1 );
                 $hit = 1;
                 next;
             }
         }
         print $DENY $line . "\n";
     }
-    close($DENY) or &error( __LINE__, "Could not close /etc/csf/csf.deny: $!" );
+    close($DENY) or error( __LINE__, "Could not close /etc/csf/csf.deny: $!" );
 
     if ( $hit and ( $config{LF_PERMBLOCK} or $config{LF_NETBLOCK} ) ) {
         sysopen( my $TEMPIP, "/var/lib/csf/csf.tempip", O_RDWR | O_CREAT );
@@ -1824,10 +1824,10 @@ sub dokill {
 # start dokillall
 sub dokillall {
 
-    &getethdev;
+    getethdev();
 
-    sysopen( my $DENY, "/etc/csf/csf.deny", O_RDWR | O_CREAT ) or &error( __LINE__, "Could not open /etc/csf/csf.deny: $!" );
-    flock( $DENY, LOCK_EX )                                    or &error( __LINE__, "Could not lock /etc/csf/csf.deny: $!" );
+    sysopen( my $DENY, "/etc/csf/csf.deny", O_RDWR | O_CREAT ) or error( __LINE__, "Could not open /etc/csf/csf.deny: $!" );
+    flock( $DENY, LOCK_EX )                                    or error( __LINE__, "Could not lock /etc/csf/csf.deny: $!" );
     my $text = join( "", <$DENY> );
     my @deny = split( /$slurpreg/, $text );
     chomp @deny;
@@ -1846,10 +1846,10 @@ sub dokillall {
         }
         else {
             my ( $ipd, $commentd ) = split( /\s/, $line, 2 );
-            &linefilter( $ipd, "deny", "", 1 );
+            linefilter( $ipd, "deny", "", 1 );
         }
     }
-    close($DENY) or &error( __LINE__, "Could not close /etc/csf/csf.deny: $!" );
+    close($DENY) or error( __LINE__, "Could not close /etc/csf/csf.deny: $!" );
     print "csf: all entries removed from csf.deny\n";
     return;
 }
@@ -1865,10 +1865,10 @@ sub doakill {
         return;
     }
 
-    &getethdev;
+    getethdev();
 
-    sysopen( my $ALLOW, "/etc/csf/csf.allow", O_RDWR | O_CREAT ) or &error( __LINE__, "Could not open /etc/csf/csf.allow: $!" );
-    flock( $ALLOW, LOCK_EX )                                     or &error( __LINE__, "Could not lock /etc/csf/csf.allow: $!" );
+    sysopen( my $ALLOW, "/etc/csf/csf.allow", O_RDWR | O_CREAT ) or error( __LINE__, "Could not open /etc/csf/csf.allow: $!" );
+    flock( $ALLOW, LOCK_EX )                                     or error( __LINE__, "Could not lock /etc/csf/csf.allow: $!" );
     my $text  = join( "", <$ALLOW> );
     my @allow = split( /$slurpreg/, $text );
     chomp @allow;
@@ -1882,13 +1882,13 @@ sub doakill {
         checkip( \$ipd );
         if ( uc $ipd eq uc $ip ) {
             print "Removing rule...\n";
-            &linefilter( $ipd, "allow", "", 1 );
+            linefilter( $ipd, "allow", "", 1 );
             $hit = 1;
             next;
         }
         print $ALLOW $line . "\n";
     }
-    close($ALLOW) or &error( __LINE__, "Could not close /etc/csf/csf.allow: $!" );
+    close($ALLOW) or error( __LINE__, "Could not close /etc/csf/csf.allow: $!" );
     unless ($hit) {
         print "csf: $ip not found in csf.allow\n";
     }
@@ -1910,67 +1910,67 @@ sub dohelp {
 sub dopacketfilters {
     if ( $config{PACKET_FILTER} and $config{LF_SPI} ) {
         if ( $config{FASTSTART} ) { $faststart = 1 }
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N INVDROP" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N INVALID" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVALID $statemodule INVALID -j INVDROP" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp --tcp-flags ALL NONE -j INVDROP" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp --tcp-flags ALL ALL -j INVDROP" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp --tcp-flags SYN,FIN SYN,FIN -j INVDROP" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp --tcp-flags SYN,RST SYN,RST -j INVDROP" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp --tcp-flags FIN,RST FIN,RST -j INVDROP" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp --tcp-flags ACK,FIN FIN -j INVDROP" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp --tcp-flags ACK,PSH PSH -j INVDROP" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp --tcp-flags ACK,URG URG -j INVDROP" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp ! --syn $statemodulenew -j INVDROP" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N INVDROP" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N INVALID" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVALID $statemodule INVALID -j INVDROP" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp --tcp-flags ALL NONE -j INVDROP" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp --tcp-flags ALL ALL -j INVDROP" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp --tcp-flags SYN,FIN SYN,FIN -j INVDROP" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp --tcp-flags SYN,RST SYN,RST -j INVDROP" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp --tcp-flags FIN,RST FIN,RST -j INVDROP" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp --tcp-flags ACK,FIN FIN -j INVDROP" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp --tcp-flags ACK,PSH PSH -j INVDROP" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp --tcp-flags ACK,URG URG -j INVDROP" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp ! --syn $statemodulenew -j INVDROP" );
 
         if ( $config{IPV6} and $config{IPV6_SPI} ) {
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N INVDROP" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N INVALID" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVALID $statemodule INVALID -j INVDROP" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp --tcp-flags ALL NONE -j INVDROP" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp --tcp-flags ALL ALL -j INVDROP" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp --tcp-flags SYN,FIN SYN,FIN -j INVDROP" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp --tcp-flags SYN,RST SYN,RST -j INVDROP" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp --tcp-flags FIN,RST FIN,RST -j INVDROP" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp --tcp-flags ACK,FIN FIN -j INVDROP" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp --tcp-flags ACK,PSH PSH -j INVDROP" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp --tcp-flags ACK,URG URG -j INVDROP" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp ! --syn $statemodule6new -j INVDROP" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N INVDROP" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -N INVALID" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVALID $statemodule INVALID -j INVDROP" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp --tcp-flags ALL NONE -j INVDROP" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp --tcp-flags ALL ALL -j INVDROP" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp --tcp-flags SYN,FIN SYN,FIN -j INVDROP" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp --tcp-flags SYN,RST SYN,RST -j INVDROP" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp --tcp-flags FIN,RST FIN,RST -j INVDROP" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp --tcp-flags ACK,FIN FIN -j INVDROP" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp --tcp-flags ACK,PSH PSH -j INVDROP" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp --tcp-flags ACK,URG URG -j INVDROP" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVALID -p tcp ! --syn $statemodule6new -j INVDROP" );
         }
-        if ( $config{FASTSTART} ) { &faststart("Packet Filter") }
+        if ( $config{FASTSTART} ) { faststart("Packet Filter") }
 
         if ( $config{DROP_PF_LOGGING} ) {
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVDROP $statemodule INVALID -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INVALID* '" );
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp --tcp-flags ALL NONE -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_AN* '" );
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp --tcp-flags ALL ALL -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_AA* '" );
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp --tcp-flags SYN,FIN SYN,FIN -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_SFSF* '" );
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp --tcp-flags SYN,RST SYN,RST -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_SRSR* '" );
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp --tcp-flags FIN,RST FIN,RST -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_FRFR* '" );
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp --tcp-flags ACK,FIN FIN -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_AFF* '" );
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp --tcp-flags ACK,PSH PSH -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_APP* '" );
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp --tcp-flags ACK,URG URG -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_AUU* '" );
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp ! --syn $statemodulenew -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_NOSYN* '" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVDROP $statemodule INVALID -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INVALID* '" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp --tcp-flags ALL NONE -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_AN* '" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp --tcp-flags ALL ALL -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_AA* '" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp --tcp-flags SYN,FIN SYN,FIN -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_SFSF* '" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp --tcp-flags SYN,RST SYN,RST -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_SRSR* '" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp --tcp-flags FIN,RST FIN,RST -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_FRFR* '" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp --tcp-flags ACK,FIN FIN -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_AFF* '" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp --tcp-flags ACK,PSH PSH -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_APP* '" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp --tcp-flags ACK,URG URG -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_AUU* '" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp ! --syn $statemodulenew -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_NOSYN* '" );
 
             if ( $config{IPV6} and $config{IPV6_SPI} ) {
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVDROP $statemodule INVALID -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INVALID* '" );
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp --tcp-flags ALL NONE -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_AN* '" );
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp --tcp-flags ALL ALL -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_AA* '" );
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp --tcp-flags SYN,FIN SYN,FIN -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_SFSF* '" );
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp --tcp-flags SYN,RST SYN,RST -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_SRSR* '" );
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp --tcp-flags FIN,RST FIN,RST -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_FRFR* '" );
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp --tcp-flags ACK,FIN FIN -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_AFF* '" );
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp --tcp-flags ACK,PSH PSH -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_APP* '" );
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp --tcp-flags ACK,URG URG -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_AUU* '" );
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp ! --syn $statemodule6new -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_NOSYN* '" );
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVDROP $statemodule INVALID -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INVALID* '" );
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp --tcp-flags ALL NONE -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_AN* '" );
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp --tcp-flags ALL ALL -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_AA* '" );
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp --tcp-flags SYN,FIN SYN,FIN -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_SFSF* '" );
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp --tcp-flags SYN,RST SYN,RST -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_SRSR* '" );
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp --tcp-flags FIN,RST FIN,RST -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_FRFR* '" );
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp --tcp-flags ACK,FIN FIN -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_AFF* '" );
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp --tcp-flags ACK,PSH PSH -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_APP* '" );
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp --tcp-flags ACK,URG URG -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_AUU* '" );
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -p tcp ! --syn $statemodule6new -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *INV_NOSYN* '" );
             }
         }
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -j $config{DROP}" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I INPUT $ethdevin -p tcp -j INVALID" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -p tcp -j INVALID" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -j $config{DROP}" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I INPUT $ethdevin -p tcp -j INVALID" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $ethdevout -p tcp -j INVALID" );
         if ( $config{IPV6} and $config{IPV6_SPI} ) {
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -j $config{DROP}" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I INPUT $eth6devin -p tcp -j INVALID" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $eth6devout -p tcp -j INVALID" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INVDROP -j $config{DROP}" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I INPUT $eth6devin -p tcp -j INVALID" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I OUTPUT $eth6devout -p tcp -j INVALID" );
         }
     }
     return;
@@ -1999,12 +1999,12 @@ sub doportfilters {
         my ( $ip, $comment ) = split( /\s/, $line, 2 );
         my $iptype = checkip( \$ip );
         if ( $iptype == 4 ) {
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT $ethdevin -d $ip -j $dropin" );
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOCALOUTPUT $ethdevout -s $ip -j $dropout" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT $ethdevin -d $ip -j $dropin" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOCALOUTPUT $ethdevout -s $ip -j $dropout" );
         }
         elsif ( $iptype == 6 ) {
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT $eth6devin -d $ip -j $dropin" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOCALOUTPUT $eth6devout -s $ip -j $dropout" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT $eth6devin -d $ip -j $dropin" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOCALOUTPUT $eth6devout -s $ip -j $dropout" );
         }
     }
 
@@ -2014,13 +2014,13 @@ sub doportfilters {
             my $pktout = $config{DROP_OUT};
             if ( $config{DROP_IP_LOGGING} )  { $pktin  = "LOGDROPIN" }
             if ( $config{DROP_OUT_LOGGING} ) { $pktout = "LOGDROPOUT" }
-            &ipsetcreate("chain_GDENY");
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A GDENYIN -m set --match-set chain_GDENY src -j $pktin" );
-            unless ( $config{LF_BLOCKINONLY} ) { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A GDENYOUT -m set --match-set chain_GDENY dst -j $pktout" ) }
+            ipsetcreate("chain_GDENY");
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A GDENYIN -m set --match-set chain_GDENY src -j $pktin" );
+            unless ( $config{LF_BLOCKINONLY} ) { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A GDENYOUT -m set --match-set chain_GDENY dst -j $pktout" ) }
             if     ( $config{IPV6} ) {
-                &ipsetcreate("chain_6_GDENY");
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A GDENYIN -m set --match-set chain_6_GDENY src -j $pktin" );
-                unless ( $config{LF_BLOCKINONLY} ) { &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A GDENYOUT -m set --match-set chain_6_GDENY dst -j $pktout" ) }
+                ipsetcreate("chain_6_GDENY");
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A GDENYIN -m set --match-set chain_6_GDENY src -j $pktin" );
+                unless ( $config{LF_BLOCKINONLY} ) { syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A GDENYOUT -m set --match-set chain_6_GDENY dst -j $pktout" ) }
             }
         }
         if ( -e "/var/lib/csf/csf.gdeny" ) {
@@ -2029,15 +2029,15 @@ sub doportfilters {
                 $line =~ s/$cleanreg//g;
                 if ( $line =~ /^(\s|\#|$)/ ) { next }
                 my ( $ip, $comment ) = split( /\s/, $line, 2 );
-                &linefilter( $ip, "deny", "GDENY" );
+                linefilter( $ip, "deny", "GDENY" );
             }
-            if ( $config{FASTSTART} ) { &faststart("Global Deny") }
+            if ( $config{FASTSTART} ) { faststart("Global Deny") }
         }
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT $ethdevin -j GDENYIN" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOCALOUTPUT $ethdevout -j GDENYOUT" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT $ethdevin -j GDENYIN" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOCALOUTPUT $ethdevout -j GDENYOUT" );
         if ( $config{IPV6} ) {
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT $eth6devin -j GDENYIN" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOCALOUTPUT $eth6devout -j GDENYOUT" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT $eth6devin -j GDENYIN" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOCALOUTPUT $eth6devout -j GDENYOUT" );
         }
     }
 
@@ -2054,13 +2054,13 @@ sub doportfilters {
         my $pktout = $config{DROP_OUT};
         if ( $config{DROP_IP_LOGGING} )  { $pktin  = "LOGDROPIN" }
         if ( $config{DROP_OUT_LOGGING} ) { $pktout = "LOGDROPOUT" }
-        &ipsetcreate("chain_DENY");
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A DENYIN -m set --match-set chain_DENY src -j $pktin" );
-        unless ( $config{LF_BLOCKINONLY} ) { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A DENYOUT -m set --match-set chain_DENY dst -j $pktout" ) }
+        ipsetcreate("chain_DENY");
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A DENYIN -m set --match-set chain_DENY src -j $pktin" );
+        unless ( $config{LF_BLOCKINONLY} ) { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A DENYOUT -m set --match-set chain_DENY dst -j $pktout" ) }
         if     ( $config{IPV6} ) {
-            &ipsetcreate("chain_6_DENY");
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A DENYIN -m set --match-set chain_6_DENY src -j $pktin" );
-            unless ( $config{LF_BLOCKINONLY} ) { &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A DENYOUT -m set --match-set chain_6_DENY dst -j $pktout" ) }
+            ipsetcreate("chain_6_DENY");
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A DENYIN -m set --match-set chain_6_DENY src -j $pktin" );
+            unless ( $config{LF_BLOCKINONLY} ) { syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A DENYOUT -m set --match-set chain_6_DENY dst -j $pktout" ) }
         }
     }
     foreach my $line (@deny) {
@@ -2068,9 +2068,9 @@ sub doportfilters {
         if ( $line eq "" )               { next }
         if ( $line =~ /^\s*\#|Include/ ) { next }
         my ( $ip, $comment ) = split( /\s/, $line, 2 );
-        &linefilter( $ip, "deny" );
+        linefilter( $ip, "deny" );
     }
-    if ( $config{FASTSTART} ) { &faststart("csf.deny") }
+    if ( $config{FASTSTART} ) { faststart("csf.deny") }
 
     if ( !-z "/var/lib/csf/csf.tempban" ) {
         my $dropin  = $config{DROP};
@@ -2096,23 +2096,23 @@ sub doportfilters {
                             $dport = $tport;
                             if ( $proto eq "" ) { $proto = "tcp" }
                             if ( $iptype == 6 ) {
-                                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A DENYIN $eth6devin -p $proto --dport $dport -s $ip -j $dropin" );
-                                if ( $messengerports{$dport} and $config{MESSENGER6} and $config{MESSENGER_TEMP} ) { &domessenger( $ip, "A", $dport ) }
+                                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A DENYIN $eth6devin -p $proto --dport $dport -s $ip -j $dropin" );
+                                if ( $messengerports{$dport} and $config{MESSENGER6} and $config{MESSENGER_TEMP} ) { domessenger( $ip, "A", $dport ) }
                             }
                             else {
-                                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A DENYIN $ethdevin -p $proto --dport $dport -s $ip -j $dropin" );
-                                if ( $messengerports{$dport} and $config{MESSENGER} and $config{MESSENGER_TEMP} ) { &domessenger( $ip, "A", $dport ) }
+                                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A DENYIN $ethdevin -p $proto --dport $dport -s $ip -j $dropin" );
+                                if ( $messengerports{$dport} and $config{MESSENGER} and $config{MESSENGER_TEMP} ) { domessenger( $ip, "A", $dport ) }
                             }
                         }
                     }
                     else {
                         if ( $iptype == 6 ) {
-                            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A DENYIN $eth6devin -s $ip -j $dropin" );
-                            if ( $config{MESSENGER6} and $config{MESSENGER_TEMP} ) { &domessenger( $ip, "A" ) }
+                            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A DENYIN $eth6devin -s $ip -j $dropin" );
+                            if ( $config{MESSENGER6} and $config{MESSENGER_TEMP} ) { domessenger( $ip, "A" ) }
                         }
                         else {
-                            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A DENYIN $ethdevin -s $ip -j $dropin" );
-                            if ( $config{MESSENGER} and $config{MESSENGER_TEMP} ) { &domessenger( $ip, "A" ) }
+                            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A DENYIN $ethdevin -s $ip -j $dropin" );
+                            if ( $config{MESSENGER} and $config{MESSENGER_TEMP} ) { domessenger( $ip, "A" ) }
                         }
                     }
                 }
@@ -2123,19 +2123,19 @@ sub doportfilters {
                             $dport = $tport;
                             if ( $proto eq "" ) { $proto = "tcp" }
                             if ( $iptype == 6 ) {
-                                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A DENYOUT $eth6devout -p $proto --dport $dport -d $ip -j $dropout" );
+                                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A DENYOUT $eth6devout -p $proto --dport $dport -d $ip -j $dropout" );
                             }
                             else {
-                                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A DENYOUT $ethdevout -p $proto --dport $dport -d $ip -j $dropout" );
+                                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A DENYOUT $ethdevout -p $proto --dport $dport -d $ip -j $dropout" );
                             }
                         }
                     }
                     else {
                         if ( $iptype == 6 ) {
-                            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A DENYOUT $eth6devout -d $ip -j $dropout" );
+                            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A DENYOUT $eth6devout -d $ip -j $dropout" );
                         }
                         else {
-                            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A DENYOUT $ethdevout -d $ip -j $dropout" );
+                            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A DENYOUT $ethdevout -d $ip -j $dropout" );
                         }
                     }
                 }
@@ -2167,19 +2167,19 @@ sub doportfilters {
                             $dport = $tport;
                             if ( $proto eq "" ) { $proto = "tcp" }
                             if ( $iptype == 6 ) {
-                                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I ALLOWIN $eth6devin -p $proto --dport $dport -s $ip -j $accept" );
+                                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I ALLOWIN $eth6devin -p $proto --dport $dport -s $ip -j $accept" );
                             }
                             else {
-                                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I ALLOWIN $ethdevin -p $proto --dport $dport -s $ip -j $accept" );
+                                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I ALLOWIN $ethdevin -p $proto --dport $dport -s $ip -j $accept" );
                             }
                         }
                     }
                     else {
                         if ( $iptype == 6 ) {
-                            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I ALLOWIN $eth6devin -s $ip -j $accept" );
+                            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I ALLOWIN $eth6devin -s $ip -j $accept" );
                         }
                         else {
-                            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I ALLOWIN $ethdevin -s $ip -j $accept" );
+                            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I ALLOWIN $ethdevin -s $ip -j $accept" );
                         }
                     }
                 }
@@ -2190,19 +2190,19 @@ sub doportfilters {
                             $dport = $tport;
                             if ( $proto eq "" ) { $proto = "tcp" }
                             if ( $iptype == 6 ) {
-                                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I ALLOWOUT $eth6devout -p $proto --dport $dport -d $ip -j $accept" );
+                                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I ALLOWOUT $eth6devout -p $proto --dport $dport -d $ip -j $accept" );
                             }
                             else {
-                                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I ALLOWOUT $ethdevout -p $proto --dport $dport -d $ip -j $accept" );
+                                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I ALLOWOUT $ethdevout -p $proto --dport $dport -d $ip -j $accept" );
                             }
                         }
                     }
                     else {
                         if ( $iptype == 6 ) {
-                            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I ALLOWOUT $eth6devout -d $ip -j $accept" );
+                            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I ALLOWOUT $eth6devout -d $ip -j $accept" );
                         }
                         else {
-                            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I ALLOWOUT $ethdevout -d $ip -j $accept" );
+                            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I ALLOWOUT $ethdevout -d $ip -j $accept" );
                         }
                     }
                 }
@@ -2217,13 +2217,13 @@ sub doportfilters {
 
     if ( $config{GLOBAL_ALLOW} ) {
         if ( $config{LF_IPSET} ) {
-            &ipsetcreate("chain_GALLOW");
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A GALLOWIN -m set --match-set chain_GALLOW src -j $accept" );
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A GALLOWOUT -m set --match-set chain_GALLOW dst -j $accept" );
+            ipsetcreate("chain_GALLOW");
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A GALLOWIN -m set --match-set chain_GALLOW src -j $accept" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A GALLOWOUT -m set --match-set chain_GALLOW dst -j $accept" );
             if ( $config{IPV6} ) {
-                &ipsetcreate("chain_6_GALLOW");
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A GALLOWIN -m set --match-set chain_6_GALLOW src -j $accept" );
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A GALLOWOUT -m set --match-set chain_6_GALLOW dst -j $accept" );
+                ipsetcreate("chain_6_GALLOW");
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A GALLOWIN -m set --match-set chain_6_GALLOW src -j $accept" );
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A GALLOWOUT -m set --match-set chain_6_GALLOW dst -j $accept" );
             }
         }
         if ( -e "/var/lib/csf/csf.gallow" ) {
@@ -2232,15 +2232,15 @@ sub doportfilters {
                 $line =~ s/$cleanreg//g;
                 if ( $line =~ /^(\s|\#|$)/ ) { next }
                 my ( $ip, $comment ) = split( /\s/, $line, 2 );
-                &linefilter( $ip, "allow", "GALLOW" );
+                linefilter( $ip, "allow", "GALLOW" );
             }
-            if ( $config{FASTSTART} ) { &faststart("Global Allow") }
+            if ( $config{FASTSTART} ) { faststart("Global Allow") }
         }
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I LOCALINPUT $ethdevin -j GALLOWIN" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I LOCALOUTPUT $ethdevout -j GALLOWOUT" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I LOCALINPUT $ethdevin -j GALLOWIN" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I LOCALOUTPUT $ethdevout -j GALLOWOUT" );
         if ( $config{IPV6} ) {
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I LOCALINPUT $eth6devin -j GALLOWIN" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I LOCALOUTPUT $eth6devout -j GALLOWOUT" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I LOCALINPUT $eth6devin -j GALLOWIN" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I LOCALOUTPUT $eth6devout -j GALLOWOUT" );
         }
     }
 
@@ -2249,11 +2249,11 @@ sub doportfilters {
         foreach my $cc ( split( /\,/, $config{CC_ALLOW} ) ) {
             $cc = lc $cc;
             if ( $config{LF_IPSET} ) {
-                &ipsetcreate("cc_$cc");
-                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOW -m set --match-set cc_$cc src -j $accept" );
+                ipsetcreate("cc_$cc");
+                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOW -m set --match-set cc_$cc src -j $accept" );
                 if ( $config{CC6_LOOKUPS} and $config{IPV6} ) {
-                    &ipsetcreate("cc_6_$cc");
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOW -m set --match-set cc_6_$cc src -j $accept" );
+                    ipsetcreate("cc_6_$cc");
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOW -m set --match-set cc_6_$cc src -j $accept" );
                 }
             }
             if ( -e "/var/lib/csf/zone/$cc.zone" ) {
@@ -2270,7 +2270,7 @@ sub doportfilters {
                         }
                         if ( cccheckip( \$ip ) ) { push @ipset, "add -exist cc_$cc $ip" }
                     }
-                    &ipsetrestore("cc_$cc");
+                    ipsetrestore("cc_$cc");
                 }
                 else {
                     if ( $config{FASTSTART} ) { $faststart = 1 }
@@ -2284,10 +2284,10 @@ sub doportfilters {
                                 if ( $drop_cidr eq "" )                   { $drop_cidr = "32" }
                                 if ( $drop_cidr > $config{CC_DROP_CIDR} ) { next }
                             }
-                            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOW -s $ip -j $accept" );
+                            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOW -s $ip -j $accept" );
                         }
                     }
-                    if ( $config{FASTSTART} ) { &faststart("CC_ALLOW [$cc]") }
+                    if ( $config{FASTSTART} ) { faststart("CC_ALLOW [$cc]") }
                 }
             }
             if ( $config{CC6_LOOKUPS} and -e "/var/lib/csf/zone/$cc.zone6" ) {
@@ -2299,7 +2299,7 @@ sub doportfilters {
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
                         if ( cccheckip( \$ip ) ) { push @ipset, "add -exist cc_6_$cc $ip" }
                     }
-                    &ipsetrestore("cc_6_$cc");
+                    ipsetrestore("cc_6_$cc");
                 }
                 else {
                     if ( $config{FASTSTART} ) { $faststart = 1 }
@@ -2308,28 +2308,28 @@ sub doportfilters {
                         if ( $line =~ /^(\s|\#|$)/ ) { next }
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
                         if ( cccheckip( \$ip ) ) {
-                            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOW -s $ip -j $accept" );
+                            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOW -s $ip -j $accept" );
                         }
                     }
-                    if ( $config{FASTSTART} ) { &faststart("CC_ALLOW [$cc]") }
+                    if ( $config{FASTSTART} ) { faststart("CC_ALLOW [$cc]") }
                 }
             }
         }
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I LOCALINPUT $ethdevin -j CC_ALLOW" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I LOCALINPUT $ethdevin -j CC_ALLOW" );
         if ( $config{IPV6} ) {
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I LOCALINPUT $ethdevin -j CC_ALLOW" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I LOCALINPUT $ethdevin -j CC_ALLOW" );
         }
     }
 
     if ( $config{DYNDNS} ) {
         if ( $config{LF_IPSET} ) {
-            &ipsetcreate("chain_ALLOWDYN");
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A ALLOWDYNIN -m set --match-set chain_ALLOWDYN src -j $accept" );
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A ALLOWDYNOUT -m set --match-set chain_ALLOWDYN dst -j $accept" );
+            ipsetcreate("chain_ALLOWDYN");
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A ALLOWDYNIN -m set --match-set chain_ALLOWDYN src -j $accept" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A ALLOWDYNOUT -m set --match-set chain_ALLOWDYN dst -j $accept" );
             if ( $config{IPV6} ) {
-                &ipsetcreate("chain_6_ALLOWDYN");
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A ALLOWDYNIN -m set --match-set chain_6_ALLOWDYN src -j $accept" );
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A ALLOWDYNOUT -m set --match-set chain_6_ALLOWDYN dst -j $accept" );
+                ipsetcreate("chain_6_ALLOWDYN");
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A ALLOWDYNIN -m set --match-set chain_6_ALLOWDYN src -j $accept" );
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A ALLOWDYNOUT -m set --match-set chain_6_ALLOWDYN dst -j $accept" );
             }
         }
         if ( -e "/var/lib/csf/csf.tempdyn" ) {
@@ -2337,25 +2337,25 @@ sub doportfilters {
                 $line =~ s/$cleanreg//g;
                 if ( $line =~ /^(\s|\#|$)/ ) { next }
                 my ( $ip, $comment ) = split( /\s/, $line, 2 );
-                &linefilter( $ip, "allow", "ALLOWDYN" );
+                linefilter( $ip, "allow", "ALLOWDYN" );
             }
         }
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I LOCALINPUT $ethdevin -j ALLOWDYNIN" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I LOCALOUTPUT $ethdevout -j ALLOWDYNOUT" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I LOCALINPUT $ethdevin -j ALLOWDYNIN" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I LOCALOUTPUT $ethdevout -j ALLOWDYNOUT" );
         if ( $config{IPV6} ) {
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I LOCALINPUT $ethdevin -j ALLOWDYNIN" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I LOCALOUTPUT $ethdevout -j ALLOWDYNOUT" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I LOCALINPUT $ethdevin -j ALLOWDYNIN" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I LOCALOUTPUT $ethdevout -j ALLOWDYNOUT" );
         }
     }
     if ( $config{GLOBAL_DYNDNS} ) {
         if ( $config{LF_IPSET} ) {
-            &ipsetcreate("chain_GDYN");
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A GDYNIN -m set --match-set chain_GDYN src -j $accept" );
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A GDYNOUT -m set --match-set chain_GDYN dst -j $accept" );
+            ipsetcreate("chain_GDYN");
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A GDYNIN -m set --match-set chain_GDYN src -j $accept" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A GDYNOUT -m set --match-set chain_GDYN dst -j $accept" );
             if ( $config{IPV6} ) {
-                &ipsetcreate("chain_6_GDYN");
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A GDYNIN -m set --match-set chain_6_GDYN src -j $accept" );
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A GDYNOUT -m set --match-set chain_6_GDYN dst -j $accept" );
+                ipsetcreate("chain_6_GDYN");
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A GDYNIN -m set --match-set chain_6_GDYN src -j $accept" );
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A GDYNOUT -m set --match-set chain_6_GDYN dst -j $accept" );
             }
         }
         if ( -e "/var/lib/csf/csf.tempgdyn" ) {
@@ -2364,15 +2364,15 @@ sub doportfilters {
                 $line =~ s/$cleanreg//g;
                 if ( $line =~ /^(\s|\#|$)/ ) { next }
                 my ( $ip, $comment ) = split( /\s/, $line, 2 );
-                &linefilter( $ip, "allow", "GDYN" );
+                linefilter( $ip, "allow", "GDYN" );
             }
-            if ( $config{FASTSTART} ) { &faststart("Global Dynamic DNS") }
+            if ( $config{FASTSTART} ) { faststart("Global Dynamic DNS") }
         }
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I LOCALINPUT $ethdevin -j GDYNIN" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I LOCALOUTPUT $ethdevout -j GDYNOUT" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I LOCALINPUT $ethdevin -j GDYNIN" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I LOCALOUTPUT $ethdevout -j GDYNOUT" );
         if ( $config{IPV6} ) {
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I LOCALINPUT $ethdevin -j GDYNIN" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I LOCALOUTPUT $ethdevout -j GDYNOUT" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I LOCALINPUT $ethdevin -j GDYNIN" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I LOCALOUTPUT $ethdevout -j GDYNOUT" );
         }
     }
 
@@ -2385,13 +2385,13 @@ sub doportfilters {
     }
     if ( $config{FASTSTART} ) { $faststart = 1 }
     if ( $config{LF_IPSET} ) {
-        &ipsetcreate("chain_ALLOW");
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A ALLOWIN -m set --match-set chain_ALLOW src -j $accept" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A ALLOWOUT -m set --match-set chain_ALLOW dst -j $accept" );
+        ipsetcreate("chain_ALLOW");
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A ALLOWIN -m set --match-set chain_ALLOW src -j $accept" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A ALLOWOUT -m set --match-set chain_ALLOW dst -j $accept" );
         if ( $config{IPV6} ) {
-            &ipsetcreate("chain_6_ALLOW");
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A ALLOWIN -m set --match-set chain_6_ALLOW src -j $accept" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A ALLOWOUT -m set --match-set chain_6_ALLOW dst -j $accept" );
+            ipsetcreate("chain_6_ALLOW");
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A ALLOWIN -m set --match-set chain_6_ALLOW src -j $accept" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A ALLOWOUT -m set --match-set chain_6_ALLOW dst -j $accept" );
         }
     }
     foreach my $line (@allow) {
@@ -2399,19 +2399,19 @@ sub doportfilters {
         if ( $line eq "" )               { next }
         if ( $line =~ /^\s*\#|Include/ ) { next }
         my ( $ip, $comment ) = split( /\s/, $line, 2 );
-        &linefilter( $ip, "allow" );
+        linefilter( $ip, "allow" );
     }
-    if ( $config{FASTSTART} ) { &faststart("csf.allow") }
+    if ( $config{FASTSTART} ) { faststart("csf.allow") }
 
     foreach my $name ( keys %blocklists ) {
         my $drop = $config{DROP};
         if ( $config{DROP_IP_LOGGING} ) { $drop = "BLOCKDROP" }
         if ( $config{LF_IPSET} ) {
-            &ipsetcreate("bl_$name");
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A $name -m set --match-set bl_$name src -j $drop" );
+            ipsetcreate("bl_$name");
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A $name -m set --match-set bl_$name src -j $drop" );
             if ( $config{IPV6} ) {
-                &ipsetcreate("bl_6_$name");
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A $name -m set --match-set bl_6_$name src -j $drop" );
+                ipsetcreate("bl_6_$name");
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A $name -m set --match-set bl_6_$name src -j $drop" );
             }
         }
         if ( -e "/var/lib/csf/csf.block.$name" ) {
@@ -2430,10 +2430,10 @@ sub doportfilters {
                         push @ipset6, "add -exist bl_6_$name $ip";
                     }
                 }
-                &ipsetrestore("bl_$name");
+                ipsetrestore("bl_$name");
                 if ( $config{IPV6} ) {
                     @ipset = @ipset6;
-                    &ipsetrestore("bl_6_$name");
+                    ipsetrestore("bl_6_$name");
                 }
             }
             else {
@@ -2444,31 +2444,31 @@ sub doportfilters {
                     my ( $ip, $comment ) = split( /\s/, $line, 2 );
                     my $iptype = checkip( \$ip );
                     if ( $iptype == 4 ) {
-                        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A $name -s $ip -j $drop" );
+                        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A $name -s $ip -j $drop" );
                     }
                     elsif ( $iptype == 6 and $config{IPV6} ) {
-                        &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A $name -s $ip -j $drop" );
+                        syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A $name -s $ip -j $drop" );
                     }
                 }
-                if ( $config{FASTSTART} ) { &faststart("Blocklist $name") }
+                if ( $config{FASTSTART} ) { faststart("Blocklist $name") }
             }
         }
         $config{LF_BOGON_SKIP} =~ s/\s//g;
         if ( $name eq "BOGON" and $config{LF_BOGON_SKIP} ne "" ) {
             foreach my $device ( split( /\,/, $config{LF_BOGON_SKIP} ) ) {
-                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I BOGON -i $device -j RETURN" );
+                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I BOGON -i $device -j RETURN" );
             }
         }
         if ( $cxsreputation and $name =~ /^CXS_/ and $name ne "CXS_ALL" and $cxsports{$name} ne "" ) {
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT -p tcp -m multiport --dport $cxsports{$name} $ethdevin -j $name" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT -p tcp -m multiport --dport $cxsports{$name} $ethdevin -j $name" );
             if ( $config{IPV6} ) {
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT -p tcp -m multiport --dport $cxsports{$name} $ethdevin -j $name" );
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT -p tcp -m multiport --dport $cxsports{$name} $ethdevin -j $name" );
             }
         }
         else {
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT $ethdevin -j $name" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT $ethdevin -j $name" );
             if ( $config{IPV6} ) {
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT $ethdevin -j $name" );
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT $ethdevin -j $name" );
             }
         }
     }
@@ -2545,11 +2545,11 @@ sub doportfilters {
             my $drop = $config{DROP};
             if ( $config{DROP_IP_LOGGING} ) { $drop = "CCDROP" }
             if ( $config{LF_IPSET} ) {
-                &ipsetcreate("cc_$cc");
-                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I CC_DENY -m set --match-set cc_$cc src -j $drop" );
+                ipsetcreate("cc_$cc");
+                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I CC_DENY -m set --match-set cc_$cc src -j $drop" );
                 if ( $config{CC6_LOOKUPS} and $config{IPV6} ) {
-                    &ipsetcreate("cc_6_$cc");
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I CC_DENY -m set --match-set cc_6_$cc src -j $drop" );
+                    ipsetcreate("cc_6_$cc");
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I CC_DENY -m set --match-set cc_6_$cc src -j $drop" );
                 }
             }
             if ( -e "/var/lib/csf/zone/$cc.zone" ) {
@@ -2566,7 +2566,7 @@ sub doportfilters {
                         }
                         if ( cccheckip( \$ip ) ) { push @ipset, "add -exist cc_$cc $ip" }
                     }
-                    &ipsetrestore("cc_$cc");
+                    ipsetrestore("cc_$cc");
                 }
                 else {
                     if ( $config{FASTSTART} ) { $faststart = 1 }
@@ -2580,10 +2580,10 @@ sub doportfilters {
                             if ( $drop_cidr > $config{CC_DROP_CIDR} ) { next }
                         }
                         if ( cccheckip( \$ip ) ) {
-                            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I CC_DENY -s $ip -j $drop" );
+                            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I CC_DENY -s $ip -j $drop" );
                         }
                     }
-                    if ( $config{FASTSTART} ) { &faststart("CC_DENY [$cc]") }
+                    if ( $config{FASTSTART} ) { faststart("CC_DENY [$cc]") }
                 }
             }
             if ( $config{CC6_LOOKUPS} and -e "/var/lib/csf/zone/$cc.zone6" ) {
@@ -2595,7 +2595,7 @@ sub doportfilters {
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
                         if ( cccheckip( \$ip ) ) { push @ipset, "add -exist cc_6_$cc $ip" }
                     }
-                    &ipsetrestore("cc_6_$cc");
+                    ipsetrestore("cc_6_$cc");
                 }
                 else {
                     if ( $config{FASTSTART} ) { $faststart = 1 }
@@ -2604,16 +2604,16 @@ sub doportfilters {
                         if ( $line =~ /^(\s|\#|$)/ ) { next }
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
                         if ( cccheckip( \$ip ) ) {
-                            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I CC_DENY -s $ip -j $drop" );
+                            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I CC_DENY -s $ip -j $drop" );
                         }
                     }
-                    if ( $config{FASTSTART} ) { &faststart("CC_DENY [$cc]") }
+                    if ( $config{FASTSTART} ) { faststart("CC_DENY [$cc]") }
                 }
             }
         }
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT $ethdevin -j CC_DENY" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT $ethdevin -j CC_DENY" );
         if ( $config{IPV6} ) {
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT $ethdevin -j CC_DENY" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT $ethdevin -j CC_DENY" );
         }
     }
 
@@ -2624,11 +2624,11 @@ sub doportfilters {
         foreach my $cc ( split( /\,/, $config{CC_ALLOW_FILTER} ) ) {
             $cc = lc $cc;
             if ( $config{LF_IPSET} ) {
-                &ipsetcreate("cc_$cc");
-                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOWF -m set --match-set cc_$cc src -j RETURN" );
+                ipsetcreate("cc_$cc");
+                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOWF -m set --match-set cc_$cc src -j RETURN" );
                 if ( $config{CC6_LOOKUPS} and $config{IPV6} ) {
-                    &ipsetcreate("cc_6_$cc");
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOWF -m set --match-set cc_6_$cc src -j RETURN" );
+                    ipsetcreate("cc_6_$cc");
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOWF -m set --match-set cc_6_$cc src -j RETURN" );
                 }
             }
             if ( -e "/var/lib/csf/zone/$cc.zone" ) {
@@ -2648,7 +2648,7 @@ sub doportfilters {
                             $cnt++;
                         }
                     }
-                    &ipsetrestore("cc_$cc");
+                    ipsetrestore("cc_$cc");
                 }
                 else {
                     if ( $config{FASTSTART} ) { $faststart = 1 }
@@ -2662,11 +2662,11 @@ sub doportfilters {
                                 if ( $drop_cidr eq "" )                   { $drop_cidr = "32" }
                                 if ( $drop_cidr > $config{CC_DROP_CIDR} ) { next }
                             }
-                            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOWF -s $ip -j RETURN" );
+                            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOWF -s $ip -j RETURN" );
                             $cnt++;
                         }
                     }
-                    if ( $config{FASTSTART} ) { &faststart("CC_ALLOW_FILTER [$cc]") }
+                    if ( $config{FASTSTART} ) { faststart("CC_ALLOW_FILTER [$cc]") }
                 }
             }
             if ( $config{CC6_LOOKUPS} and -e "/var/lib/csf/zone/$cc.zone6" ) {
@@ -2681,7 +2681,7 @@ sub doportfilters {
                             $cnt6++;
                         }
                     }
-                    &ipsetrestore("cc_6_$cc");
+                    ipsetrestore("cc_6_$cc");
                 }
                 else {
                     if ( $config{FASTSTART} ) { $faststart = 1 }
@@ -2690,41 +2690,41 @@ sub doportfilters {
                         if ( $line =~ /^(\s|\#|$)/ ) { next }
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
                         if ( cccheckip( \$ip ) ) {
-                            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOWF -s $ip -j RETURN" );
+                            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOWF -s $ip -j RETURN" );
                             $cnt6++;
                         }
                     }
-                    if ( $config{FASTSTART} ) { &faststart("CC_ALLOW_FILTER [$cc]") }
+                    if ( $config{FASTSTART} ) { faststart("CC_ALLOW_FILTER [$cc]") }
                 }
             }
         }
         my $drop = $config{DROP};
         if ( $config{DROP_IP_LOGGING} ) { $drop = "CCDROP" }
-        if ( $cnt > 0 )                 { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOWF -j $drop" ) }
+        if ( $cnt > 0 )                 { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOWF -j $drop" ) }
         if ( $config{LF_SPI} ) {
             if ( $config{USE_FTPHELPER} ) {
-                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I CC_ALLOWF $ethdevin $statemodule RELATED -m helper --helper ftp -j $accept" );
+                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I CC_ALLOWF $ethdevin $statemodule RELATED -m helper --helper ftp -j $accept" );
 
-                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I CC_ALLOWF $ethdevin $statemodule ESTABLISHED -j $accept" );
+                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I CC_ALLOWF $ethdevin $statemodule ESTABLISHED -j $accept" );
             }
             else {
-                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I CC_ALLOWF $ethdevin $statemodule ESTABLISHED,RELATED -j $accept" );
+                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I CC_ALLOWF $ethdevin $statemodule ESTABLISHED,RELATED -j $accept" );
             }
         }
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT $ethdevin -j CC_ALLOWF" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT $ethdevin -j CC_ALLOWF" );
         if ( $config{IPV6} ) {
-            if ( $cnt6 > 0 ) { &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOWF -j $drop" ) }
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT $ethdevin -j CC_ALLOWF" );
+            if ( $cnt6 > 0 ) { syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOWF -j $drop" ) }
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT $ethdevin -j CC_ALLOWF" );
             if ( $config{IPV6_SPI} ) {
                 if ( $config{USE_FTPHELPER} ) {
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I CC_ALLOWF $ethdevin $statemodule RELATED -m helper --helper ftp -j $accept" );
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I CC_ALLOWF $ethdevin $statemodule RELATED -m helper --helper ftp -j $accept" );
 
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I CC_ALLOWF $ethdevin $statemodule ESTABLISHED -j $accept" );
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I CC_ALLOWF $ethdevin $statemodule ESTABLISHED -j $accept" );
                 }
                 else {
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I CC_ALLOWF $ethdevin $statemodule ESTABLISHED,RELATED -j $accept" );
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I CC_ALLOWF $ethdevin $statemodule ESTABLISHED,RELATED -j $accept" );
                 }
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -I CC_ALLOWF $eth6devin -p icmpv6 -j $accept" );
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -I CC_ALLOWF $eth6devin -p icmpv6 -j $accept" );
             }
         }
     }
@@ -2736,20 +2736,20 @@ sub doportfilters {
         if ( $config{CC_ALLOW_PORTS_TCP} ne "" ) {
             foreach my $port ( split( /\,/, $config{CC_ALLOW_PORTS_TCP} ) ) {
                 if ( $port eq "" )         { next }
-                if ( $port !~ /^[\d:]*$/ ) { &error( __LINE__, "Invalid CC_ALLOW_PORTS_TCP port [$port]" ) }
-                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOWPORTS $ethdevin -p tcp $statemodulenew --dport $port -j $accept" );
+                if ( $port !~ /^[\d:]*$/ ) { error( __LINE__, "Invalid CC_ALLOW_PORTS_TCP port [$port]" ) }
+                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOWPORTS $ethdevin -p tcp $statemodulenew --dport $port -j $accept" );
                 if ( $config{CC6_LOOKUPS} and $config{IPV6} ) {
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOWPORTS $ethdevin -p tcp $statemodulenew --dport $port -j $accept" );
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOWPORTS $ethdevin -p tcp $statemodulenew --dport $port -j $accept" );
                 }
             }
         }
         if ( $config{CC_ALLOW_PORTS_UDP} ne "" ) {
             foreach my $port ( split( /\,/, $config{CC_ALLOW_PORTS_UDP} ) ) {
                 if ( $port eq "" )         { next }
-                if ( $port !~ /^[\d:]*$/ ) { &error( __LINE__, "Invalid CC_ALLOW_PORTS_UDP port [$port]" ) }
-                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOWPORTS $ethdevin -p udp $statemodulenew --dport $port -j $accept" );
+                if ( $port !~ /^[\d:]*$/ ) { error( __LINE__, "Invalid CC_ALLOW_PORTS_UDP port [$port]" ) }
+                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOWPORTS $ethdevin -p udp $statemodulenew --dport $port -j $accept" );
                 if ( $config{CC6_LOOKUPS} and $config{IPV6} ) {
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOWPORTS $ethdevin -p udp $statemodulenew --dport $port -j $accept" );
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOWPORTS $ethdevin -p udp $statemodulenew --dport $port -j $accept" );
                 }
             }
         }
@@ -2757,11 +2757,11 @@ sub doportfilters {
         foreach my $cc ( split( /\,/, $config{CC_ALLOW_PORTS} ) ) {
             $cc = lc $cc;
             if ( $config{LF_IPSET} ) {
-                &ipsetcreate("cc_$cc");
-                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOWP -m set --match-set cc_$cc src -j CC_ALLOWPORTS" );
+                ipsetcreate("cc_$cc");
+                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOWP -m set --match-set cc_$cc src -j CC_ALLOWPORTS" );
                 if ( $config{CC6_LOOKUPS} and $config{IPV6} ) {
-                    &ipsetcreate("cc_6_$cc");
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOWP -m set --match-set cc_6_$cc src -j CC_ALLOWPORTS" );
+                    ipsetcreate("cc_6_$cc");
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOWP -m set --match-set cc_6_$cc src -j CC_ALLOWPORTS" );
                 }
             }
             if ( -e "/var/lib/csf/zone/$cc.zone" ) {
@@ -2778,7 +2778,7 @@ sub doportfilters {
                         }
                         if ( cccheckip( \$ip ) ) { push @ipset, "add -exist cc_$cc $ip" }
                     }
-                    &ipsetrestore("cc_$cc");
+                    ipsetrestore("cc_$cc");
                 }
                 else {
                     if ( $config{FASTSTART} ) { $faststart = 1 }
@@ -2792,11 +2792,11 @@ sub doportfilters {
                                 if ( $drop_cidr eq "" )                   { $drop_cidr = "32" }
                                 if ( $drop_cidr > $config{CC_DROP_CIDR} ) { next }
                             }
-                            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOWP -s $ip -j CC_ALLOWPORTS" );
+                            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOWP -s $ip -j CC_ALLOWPORTS" );
                             $cnt++;
                         }
                     }
-                    if ( $config{FASTSTART} ) { &faststart("CC_ALLOW_PORTS [$cc]") }
+                    if ( $config{FASTSTART} ) { faststart("CC_ALLOW_PORTS [$cc]") }
                 }
             }
             if ( $config{CC6_LOOKUPS} and -e "/var/lib/csf/zone/$cc.zone6" ) {
@@ -2808,7 +2808,7 @@ sub doportfilters {
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
                         if ( cccheckip( \$ip ) ) { push @ipset, "add -exist cc_6_$cc $ip" }
                     }
-                    &ipsetrestore("cc_6_$cc");
+                    ipsetrestore("cc_6_$cc");
                 }
                 else {
                     if ( $config{FASTSTART} ) { $faststart = 1 }
@@ -2817,17 +2817,17 @@ sub doportfilters {
                         if ( $line =~ /^(\s|\#|$)/ ) { next }
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
                         if ( cccheckip( \$ip ) ) {
-                            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOWP -s $ip -j CC_ALLOWPORTS" );
+                            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOWP -s $ip -j CC_ALLOWPORTS" );
                             $cnt++;
                         }
                     }
-                    if ( $config{FASTSTART} ) { &faststart("CC_ALLOW_PORTS [$cc]") }
+                    if ( $config{FASTSTART} ) { faststart("CC_ALLOW_PORTS [$cc]") }
                 }
             }
         }
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT $ethdevin -j CC_ALLOWP" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT $ethdevin -j CC_ALLOWP" );
         if ( $config{IPV6} ) {
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT $ethdevin -j CC_ALLOWP" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT $ethdevin -j CC_ALLOWP" );
         }
     }
 
@@ -2838,20 +2838,20 @@ sub doportfilters {
         if ( $config{CC_DENY_PORTS_TCP} ne "" ) {
             foreach my $port ( split( /\,/, $config{CC_DENY_PORTS_TCP} ) ) {
                 if ( $port eq "" )         { next }
-                if ( $port !~ /^[\d:]*$/ ) { &error( __LINE__, "Invalid CC_DENY_PORTS_TCP port [$port]" ) }
-                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CC_DENYPORTS $ethdevin -p tcp --dport $port -j $config{DROP}" );
+                if ( $port !~ /^[\d:]*$/ ) { error( __LINE__, "Invalid CC_DENY_PORTS_TCP port [$port]" ) }
+                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CC_DENYPORTS $ethdevin -p tcp --dport $port -j $config{DROP}" );
                 if ( $config{CC6_LOOKUPS} and $config{IPV6} ) {
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A CC_DENYPORTS $ethdevin -p tcp --dport $port -j $config{DROP}" );
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A CC_DENYPORTS $ethdevin -p tcp --dport $port -j $config{DROP}" );
                 }
             }
         }
         if ( $config{CC_DENY_PORTS_UDP} ne "" ) {
             foreach my $port ( split( /\,/, $config{CC_DENY_PORTS_UDP} ) ) {
                 if ( $port eq "" )         { next }
-                if ( $port !~ /^[\d:]*$/ ) { &error( __LINE__, "Invalid CC_DENY_PORTS_UDP port [$port]" ) }
-                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CC_DENYPORTS $ethdevin -p udp --dport $port -j $config{DROP}" );
+                if ( $port !~ /^[\d:]*$/ ) { error( __LINE__, "Invalid CC_DENY_PORTS_UDP port [$port]" ) }
+                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CC_DENYPORTS $ethdevin -p udp --dport $port -j $config{DROP}" );
                 if ( $config{CC6_LOOKUPS} and $config{IPV6} ) {
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A CC_DENYPORTS $ethdevin -p udp --dport $port -j $config{DROP}" );
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A CC_DENYPORTS $ethdevin -p udp --dport $port -j $config{DROP}" );
 
                 }
             }
@@ -2860,11 +2860,11 @@ sub doportfilters {
         foreach my $cc ( split( /\,/, $config{CC_DENY_PORTS} ) ) {
             $cc = lc $cc;
             if ( $config{LF_IPSET} ) {
-                &ipsetcreate("cc_$cc");
-                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I CC_DENYP -m set --match-set cc_$cc src -j CC_DENYPORTS" );
+                ipsetcreate("cc_$cc");
+                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I CC_DENYP -m set --match-set cc_$cc src -j CC_DENYPORTS" );
                 if ( $config{CC6_LOOKUPS} and $config{IPV6} ) {
-                    &ipsetcreate("cc_6_$cc");
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I CC_DENYP -m set --match-set cc_6_$cc src -j CC_DENYPORTS" );
+                    ipsetcreate("cc_6_$cc");
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I CC_DENYP -m set --match-set cc_6_$cc src -j CC_DENYPORTS" );
                 }
             }
             if ( -e "/var/lib/csf/zone/$cc.zone" ) {
@@ -2881,7 +2881,7 @@ sub doportfilters {
                         }
                         if ( cccheckip( \$ip ) ) { push @ipset, "add -exist cc_$cc $ip" }
                     }
-                    &ipsetrestore("cc_$cc");
+                    ipsetrestore("cc_$cc");
                 }
                 else {
                     if ( $config{FASTSTART} ) { $faststart = 1 }
@@ -2895,11 +2895,11 @@ sub doportfilters {
                                 if ( $drop_cidr eq "" )                   { $drop_cidr = "32" }
                                 if ( $drop_cidr > $config{CC_DROP_CIDR} ) { next }
                             }
-                            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CC_DENYP -s $ip -j CC_DENYPORTS" );
+                            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CC_DENYP -s $ip -j CC_DENYPORTS" );
                             $cnt++;
                         }
                     }
-                    if ( $config{FASTSTART} ) { &faststart("CC_DENY_PORTS [$cc]") }
+                    if ( $config{FASTSTART} ) { faststart("CC_DENY_PORTS [$cc]") }
                 }
             }
             if ( $config{CC6_LOOKUPS} and -e "/var/lib/csf/zone/$cc.zone6" ) {
@@ -2911,7 +2911,7 @@ sub doportfilters {
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
                         if ( cccheckip( \$ip ) ) { push @ipset, "add -exist cc_6_$cc $ip" }
                     }
-                    &ipsetrestore("cc_6_$cc");
+                    ipsetrestore("cc_6_$cc");
                 }
                 else {
                     if ( $config{FASTSTART} ) { $faststart = 1 }
@@ -2920,41 +2920,41 @@ sub doportfilters {
                         if ( $line =~ /^(\s|\#|$)/ ) { next }
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
                         if ( cccheckip( \$ip ) ) {
-                            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A CC_DENYP -s $ip -j CC_DENYPORTS" );
+                            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A CC_DENYP -s $ip -j CC_DENYPORTS" );
                             $cnt++;
                         }
                     }
-                    if ( $config{FASTSTART} ) { &faststart("CC_DENY_PORTS [$cc]") }
+                    if ( $config{FASTSTART} ) { faststart("CC_DENY_PORTS [$cc]") }
                 }
             }
         }
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT $ethdevin -j CC_DENYP" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT $ethdevin -j CC_DENYP" );
         if ( $config{IPV6} ) {
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT $ethdevin -j CC_DENYP" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOCALINPUT $ethdevin -j CC_DENYP" );
         }
     }
 
     if ( $config{CLUSTER_SENDTO} ) {
         foreach my $ip ( split( /\,/, $config{CLUSTER_SENDTO} ) ) {
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I LOCALOUTPUT $ethdevout -p tcp -d $ip --dport $config{CLUSTER_PORT} -j $accept" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I LOCALOUTPUT $ethdevout -p tcp -d $ip --dport $config{CLUSTER_PORT} -j $accept" );
         }
     }
     if ( $config{CLUSTER_RECVFROM} ) {
         foreach my $ip ( split( /\,/, $config{CLUSTER_RECVFROM} ) ) {
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I LOCALINPUT $ethdevin -p tcp -s $ip --dport $config{CLUSTER_PORT} -j $accept" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I LOCALINPUT $ethdevin -p tcp -s $ip --dport $config{CLUSTER_PORT} -j $accept" );
         }
     }
 
     if ( $config{SYNFLOOD} ) {
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A SYNFLOOD -m limit --limit $config{SYNFLOOD_RATE} --limit-burst $config{SYNFLOOD_BURST} -j RETURN" );
-        if ( $config{DROP_LOGGING} ) { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A SYNFLOOD -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *SYNFLOOD Blocked* '" ) }
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A SYNFLOOD -j DROP" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I INPUT $ethdevin -p tcp --syn -j SYNFLOOD" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A SYNFLOOD -m limit --limit $config{SYNFLOOD_RATE} --limit-burst $config{SYNFLOOD_BURST} -j RETURN" );
+        if ( $config{DROP_LOGGING} ) { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A SYNFLOOD -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *SYNFLOOD Blocked* '" ) }
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A SYNFLOOD -j DROP" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I INPUT $ethdevin -p tcp --syn -j SYNFLOOD" );
         if ( $config{IPV6} ) {
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A SYNFLOOD -m limit --limit $config{SYNFLOOD_RATE} --limit-burst $config{SYNFLOOD_BURST} -j RETURN" );
-            if ( $config{DROP_LOGGING} ) { &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A SYNFLOOD -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *SYNFLOOD Blocked* '" ) }
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A SYNFLOOD -j DROP" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I INPUT $ethdevin -p tcp --syn -j SYNFLOOD" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A SYNFLOOD -m limit --limit $config{SYNFLOOD_RATE} --limit-burst $config{SYNFLOOD_BURST} -j RETURN" );
+            if ( $config{DROP_LOGGING} ) { syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A SYNFLOOD -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *SYNFLOOD Blocked* '" ) }
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A SYNFLOOD -j DROP" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I INPUT $ethdevin -p tcp --syn -j SYNFLOOD" );
         }
     }
 
@@ -2971,22 +2971,22 @@ sub doportfilters {
         }
         foreach my $portflood ( split( /\,/, $config{PORTFLOOD} ) ) {
             my ( $port, $proto, $count, $seconds ) = split( /\;/, $portflood );
-            if ( ( ( $port < 0 ) or ( $port > 65535 ) ) or ( $proto !~ /icmp|tcp|udp/ ) or ( $seconds !~ /\d+/ ) ) { &error( __LINE__, "csf: Incorrect PORTFLOOD setting: [$portflood]" ) }
+            if ( ( ( $port < 0 ) or ( $port > 65535 ) ) or ( $proto !~ /icmp|tcp|udp/ ) or ( $seconds !~ /\d+/ ) ) { error( __LINE__, "csf: Incorrect PORTFLOOD setting: [$portflood]" ) }
             if ( ( $count < 1 ) or ( $count > $maxrecent ) ) {
                 print "WARNING: count in PORTFLOOD setting must be between 1 and $maxrecent: [$portflood]\n";
             }
             else {
-                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p $proto --dport $port $statemodulenew -m recent --set --name $port" );
-                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p $proto --dport $port $statemodulenew -m recent --update --seconds $seconds --hitcount $count --name $port -j PORTFLOOD" );
+                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p $proto --dport $port $statemodulenew -m recent --set --name $port" );
+                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p $proto --dport $port $statemodulenew -m recent --update --seconds $seconds --hitcount $count --name $port -j PORTFLOOD" );
                 if ( $config{PORTFLOOD6} ) {
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p $proto --dport $port $statemodulenew -m recent --set --name $port" );
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p $proto --dport $port $statemodulenew -m recent --update --seconds $seconds --hitcount $count --name $port -j PORTFLOOD" );
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p $proto --dport $port $statemodulenew -m recent --set --name $port" );
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p $proto --dport $port $statemodulenew -m recent --update --seconds $seconds --hitcount $count --name $port -j PORTFLOOD" );
                 }
             }
         }
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A PORTFLOOD -j $config{DROP}" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A PORTFLOOD -j $config{DROP}" );
         if ( $config{PORTFLOOD6} ) {
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A PORTFLOOD -j $config{DROP}" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A PORTFLOOD -j $config{DROP}" );
         }
     }
 
@@ -2994,17 +2994,17 @@ sub doportfilters {
     if ( $config{CONNLIMIT} ) {
         foreach my $connlimit ( split( /\,/, $config{CONNLIMIT} ) ) {
             my ( $port, $limit ) = split( /\;/, $connlimit );
-            if ( ( $port < 0 ) or ( $port > 65535 ) or ( $limit < 1 ) or ( $limit !~ /\d+/ ) ) { &error( __LINE__, "csf: Incorrect CONNLIMIT setting: [$connlimit]" ) }
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p tcp --syn --dport $port -m connlimit --connlimit-above $limit -j CONNLIMIT" );
+            if ( ( $port < 0 ) or ( $port > 65535 ) or ( $limit < 1 ) or ( $limit !~ /\d+/ ) ) { error( __LINE__, "csf: Incorrect CONNLIMIT setting: [$connlimit]" ) }
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p tcp --syn --dport $port -m connlimit --connlimit-above $limit -j CONNLIMIT" );
             if ( $config{CONNLIMIT6} ) {
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p tcp --syn --dport $port -m connlimit --connlimit-above $limit -j CONNLIMIT" );
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p tcp --syn --dport $port -m connlimit --connlimit-above $limit -j CONNLIMIT" );
             }
         }
-        if ( $config{CONNLIMIT_LOGGING} ) { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CONNLIMIT -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *ConnLimit* '" ); }
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CONNLIMIT -p tcp -j REJECT --reject-with tcp-reset" );
+        if ( $config{CONNLIMIT_LOGGING} ) { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CONNLIMIT -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *ConnLimit* '" ); }
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CONNLIMIT -p tcp -j REJECT --reject-with tcp-reset" );
         if ( $config{CONNLIMIT6} ) {
-            if ( $config{CONNLIMIT_LOGGING} ) { &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A CONNLIMIT -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *ConnLimit* '" ); }
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A CONNLIMIT -p tcp -j REJECT --reject-with tcp-reset" );
+            if ( $config{CONNLIMIT_LOGGING} ) { syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A CONNLIMIT -m limit --limit 30/m --limit-burst 5 -j $logintarget 'Firewall: *ConnLimit* '" ); }
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A CONNLIMIT -p tcp -j REJECT --reject-with tcp-reset" );
         }
     }
 
@@ -3013,23 +3013,23 @@ sub doportfilters {
             $item =~ s/\s//g;
             my $uid = ( getpwnam($item) )[2];
             if ($uid) {
-                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A UDPFLOOD -p udp -m owner --uid-owner $uid -j RETURN", 1 );
+                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A UDPFLOOD -p udp -m owner --uid-owner $uid -j RETURN", 1 );
                 if ( $config{IPV6} ) {
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A UDPFLOOD -p udp -m owner --uid-owner $uid -j RETURN", 1 );
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A UDPFLOOD -p udp -m owner --uid-owner $uid -j RETURN", 1 );
                 }
             }
         }
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A UDPFLOOD -p udp -m owner --uid-owner 0 -j RETURN", 1 );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A UDPFLOOD $ethdevout -p udp -m limit --limit $config{UDPFLOOD_LIMIT} --limit-burst $config{UDPFLOOD_BURST} -j RETURN" );
-        if ( $config{UDPFLOOD_LOGGING} ) { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A UDPFLOOD -m limit --limit 30/m --limit-burst 5 -j $logouttarget 'Firewall: *UDPFLOOD* '" ); }
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A UDPFLOOD $ethdevout -p udp -j $config{DROP_OUT}" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOCALOUTPUT $ethdevout -p udp -j UDPFLOOD" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A UDPFLOOD -p udp -m owner --uid-owner 0 -j RETURN", 1 );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A UDPFLOOD $ethdevout -p udp -m limit --limit $config{UDPFLOOD_LIMIT} --limit-burst $config{UDPFLOOD_BURST} -j RETURN" );
+        if ( $config{UDPFLOOD_LOGGING} ) { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A UDPFLOOD -m limit --limit 30/m --limit-burst 5 -j $logouttarget 'Firewall: *UDPFLOOD* '" ); }
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A UDPFLOOD $ethdevout -p udp -j $config{DROP_OUT}" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A LOCALOUTPUT $ethdevout -p udp -j UDPFLOOD" );
         if ( $config{IPV6} ) {
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A UDPFLOOD -p udp -m owner --uid-owner 0 -j RETURN", 1 );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A UDPFLOOD $ethdevout -p udp -m limit --limit $config{UDPFLOOD_LIMIT} --limit-burst $config{UDPFLOOD_BURST} -j RETURN" );
-            if ( $config{UDPFLOOD_LOGGING} ) { &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A UDPFLOOD -m limit --limit 30/m --limit-burst 5 -j $logouttarget 'Firewall: *UDPFLOOD* '" ); }
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A UDPFLOOD $ethdevout -p udp -j $config{DROP_OUT}" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOCALOUTPUT $ethdevout -p udp -j UDPFLOOD" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A UDPFLOOD -p udp -m owner --uid-owner 0 -j RETURN", 1 );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A UDPFLOOD $ethdevout -p udp -m limit --limit $config{UDPFLOOD_LIMIT} --limit-burst $config{UDPFLOOD_BURST} -j RETURN" );
+            if ( $config{UDPFLOOD_LOGGING} ) { syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A UDPFLOOD -m limit --limit 30/m --limit-burst 5 -j $logouttarget 'Firewall: *UDPFLOOD* '" ); }
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A UDPFLOOD $ethdevout -p udp -j $config{DROP_OUT}" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A LOCALOUTPUT $ethdevout -p udp -j UDPFLOOD" );
         }
     }
     my $icmp_in_rate  = "";
@@ -3039,101 +3039,101 @@ sub doportfilters {
 
     if ( $config{ICMP_IN} ) {
         if ( $config{ICMP_IN_RATE} ) {
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p icmp --icmp-type echo-request $icmp_in_rate -j $accept" );
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p icmp --icmp-type echo-request -j $dropin" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p icmp --icmp-type echo-request $icmp_in_rate -j $accept" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p icmp --icmp-type echo-request -j $dropin" );
         }
     }
     else {
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p icmp --icmp-type echo-request -j $dropin" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p icmp --icmp-type echo-request -j $dropin" );
     }
     if ( $config{ICMP_TIMESTAMPDROP} ) {
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p icmp --icmp-type timestamp-request -j $dropin" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p icmp --icmp-type timestamp-request -j $dropin" );
     }
-    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p icmp -j $accept" );
+    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p icmp -j $accept" );
 
     if ( $config{ICMP_OUT} ) {
         if ( $config{ICMP_OUT_RATE} ) {
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $ethdevout -p icmp --icmp-type echo-request $icmp_out_rate -j $accept" );
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $ethdevout -p icmp --icmp-type echo-request -j $dropout" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $ethdevout -p icmp --icmp-type echo-request $icmp_out_rate -j $accept" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $ethdevout -p icmp --icmp-type echo-request -j $dropout" );
         }
     }
     else {
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $ethdevout -p icmp --icmp-type echo-request -j $dropout" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $ethdevout -p icmp --icmp-type echo-request -j $dropout" );
     }
     if ( $config{ICMP_TIMESTAMPDROP} ) {
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $ethdevout -p icmp --icmp-type timestamp-reply -j $dropout" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $ethdevout -p icmp --icmp-type timestamp-reply -j $dropout" );
     }
-    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $ethdevout -p icmp -j $accept" );
+    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $ethdevout -p icmp -j $accept" );
 
     if ( $config{IPV6} ) {
         if ( $config{IPV6_ICMP_STRICT} ) {
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type destination-unreachable -j $accept" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type packet-too-big -j $accept" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type time-exceeded -j $accept" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type parameter-problem -j $accept" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type echo-request -j $accept" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type echo-reply -j $accept" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type router-advertisement -m hl --hl-eq 255 -j $accept" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type neighbor-solicitation -m hl --hl-eq 255 -j $accept" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type neighbor-advertisement -m hl --hl-eq 255 -j $accept" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type redirect -m hl --hl-eq 255 -j $accept" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type destination-unreachable -j $accept" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type packet-too-big -j $accept" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type time-exceeded -j $accept" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type parameter-problem -j $accept" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type echo-request -j $accept" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type echo-reply -j $accept" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type router-advertisement -m hl --hl-eq 255 -j $accept" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type neighbor-solicitation -m hl --hl-eq 255 -j $accept" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type neighbor-advertisement -m hl --hl-eq 255 -j $accept" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type redirect -m hl --hl-eq 255 -j $accept" );
         }
         else {
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 -j $accept" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 -j $accept" );
         }
 
-        &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 -j $accept" );
+        syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 -j $accept" );
 
-        #		&syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type destination-unreachable -j $accept");
-        #		&syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type packet-too-big -j $accept");
-        #		&syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type time-exceeded -j $accept");
-        #		&syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type parameter-problem -j $accept");
-        #		&syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type echo-request -j $accept");
-        #		&syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type echo-reply -j $accept");
-        #		&syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type router-advertisement -m hl --hl-eq 255 -j $accept");
-        #		&syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type neighbor-solicitation -m hl --hl-eq 255 -j $accept");
-        #		&syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type neighbor-advertisement -m hl --hl-eq 255 -j $accept");
-        #		&syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type redirect -m hl --hl-eq 255 -j $accept");
+        #		syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type destination-unreachable -j $accept");
+        #		syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type packet-too-big -j $accept");
+        #		syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type time-exceeded -j $accept");
+        #		syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type parameter-problem -j $accept");
+        #		syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type echo-request -j $accept");
+        #		syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type echo-reply -j $accept");
+        #		syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type router-advertisement -m hl --hl-eq 255 -j $accept");
+        #		syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type neighbor-solicitation -m hl --hl-eq 255 -j $accept");
+        #		syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type neighbor-advertisement -m hl --hl-eq 255 -j $accept");
+        #		syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type redirect -m hl --hl-eq 255 -j $accept");
     }
 
     if ( $config{LF_SPI} ) {
         if ( $config{USE_FTPHELPER} ) {
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t raw -A PREROUTING -p tcp --dport $config{USE_FTPHELPER} -j CT --helper ftp" );
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t raw -A OUTPUT -p tcp --dport $config{USE_FTPHELPER} -j CT --helper ftp" );
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin $statemodule RELATED -m helper --helper ftp -j $accept" );
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $ethdevout $statemodule RELATED -m helper --helper ftp -j $accept" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t raw -A PREROUTING -p tcp --dport $config{USE_FTPHELPER} -j CT --helper ftp" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t raw -A OUTPUT -p tcp --dport $config{USE_FTPHELPER} -j CT --helper ftp" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin $statemodule RELATED -m helper --helper ftp -j $accept" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $ethdevout $statemodule RELATED -m helper --helper ftp -j $accept" );
 
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin $statemodule ESTABLISHED -j $accept" );
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $ethdevout $statemodule ESTABLISHED -j $accept" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin $statemodule ESTABLISHED -j $accept" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $ethdevout $statemodule ESTABLISHED -j $accept" );
         }
         else {
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin $statemodule ESTABLISHED,RELATED -j $accept" );
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $ethdevout $statemodule ESTABLISHED,RELATED -j $accept" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin $statemodule ESTABLISHED,RELATED -j $accept" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $ethdevout $statemodule ESTABLISHED,RELATED -j $accept" );
         }
     }
     else {
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p udp -m udp --dport 32768:61000 -j $accept" );
-        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p tcp -m tcp --dport 32768:61000 ! --syn -j $accept" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p udp -m udp --dport 32768:61000 -j $accept" );
+        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p tcp -m tcp --dport 32768:61000 ! --syn -j $accept" );
     }
     if ( $config{IPV6} ) {
         if ( $config{IPV6_SPI} ) {
             if ( $config{USE_FTPHELPER} ) {
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -t raw -A PREROUTING -p tcp --dport $config{USE_FTPHELPER} -j CT --helper ftp" );
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -t raw -A OUTPUT -p tcp --dport $config{USE_FTPHELPER} -j CT --helper ftp" );
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin $statemodule RELATED -m helper --helper ftp -j $accept" );
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $ethdevout $statemodule RELATED -m helper --helper ftp -j $accept" );
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -t raw -A PREROUTING -p tcp --dport $config{USE_FTPHELPER} -j CT --helper ftp" );
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -t raw -A OUTPUT -p tcp --dport $config{USE_FTPHELPER} -j CT --helper ftp" );
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin $statemodule RELATED -m helper --helper ftp -j $accept" );
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $ethdevout $statemodule RELATED -m helper --helper ftp -j $accept" );
 
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INPUT $eth6devin $statemodule ESTABLISHED -j $accept" );
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $eth6devout $statemodule ESTABLISHED -j $accept" );
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INPUT $eth6devin $statemodule ESTABLISHED -j $accept" );
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $eth6devout $statemodule ESTABLISHED -j $accept" );
             }
             else {
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INPUT $eth6devin $statemodule ESTABLISHED,RELATED -j $accept" );
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $eth6devout $statemodule ESTABLISHED,RELATED -j $accept" );
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INPUT $eth6devin $statemodule ESTABLISHED,RELATED -j $accept" );
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $eth6devout $statemodule ESTABLISHED,RELATED -j $accept" );
             }
         }
         else {
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INPUT $eth6devin -p udp -m udp --dport 32768:61000 -j $accept" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INPUT $eth6devin -p tcp -m tcp --dport 32768:61000 ! --syn -j $accept" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INPUT $eth6devin -p udp -m udp --dport 32768:61000 -j $accept" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INPUT $eth6devin -p tcp -m tcp --dport 32768:61000 ! --syn -j $accept" );
         }
     }
 
@@ -3150,21 +3150,21 @@ sub doportfilters {
             for ( my $step = 1; $step < $nsteps + 1; $step++ ) {
                 my $ar = $step - 1;
                 if ( $step == 1 ) {
-                    if ( $config{PORTKNOCKING_LOG} ) { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p $proto --dport $steps[$ar] $statemodulenew -m limit --limit 30/m --limit-burst 5 -j LOG --log-prefix 'Knock: *$port\_S$step* '" ) }
-                    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p $proto --dport $steps[$ar] $statemodulenew -m recent --set --name PK\_$port\_S$step" );
-                    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p $proto --dport $steps[$ar] $statemodulenew -j DROP" );
+                    if ( $config{PORTKNOCKING_LOG} ) { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p $proto --dport $steps[$ar] $statemodulenew -m limit --limit 30/m --limit-burst 5 -j LOG --log-prefix 'Knock: *$port\_S$step* '" ) }
+                    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p $proto --dport $steps[$ar] $statemodulenew -m recent --set --name PK\_$port\_S$step" );
+                    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p $proto --dport $steps[$ar] $statemodulenew -j DROP" );
                 }
                 else {
-                    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N PK\_$port\_S$step\_IN" );
-                    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A PK\_$port\_S$step\_IN -m recent --name PK\_$port\_S" . ( $step - 1 ) . " --remove" );
-                    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A PK\_$port\_S$step\_IN -m recent --name PK\_$port\_S$step --set" );
-                    if ( $config{PORTKNOCKING_LOG} ) { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A PK\_$port\_S$step\_IN -m limit --limit 30/m --limit-burst 5 -j LOG --log-prefix 'Knock: *$port\_S$step* '" ) }
-                    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A PK\_$port\_S$step\_IN -j DROP" );
-                    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p $proto --dport $steps[$ar] $statemodulenew -m recent --rcheck --seconds $timeout --name PK\_$port\_S" . ( $step - 1 ) . " -j PK\_$port\_S$step\_IN" );
+                    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -N PK\_$port\_S$step\_IN" );
+                    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A PK\_$port\_S$step\_IN -m recent --name PK\_$port\_S" . ( $step - 1 ) . " --remove" );
+                    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A PK\_$port\_S$step\_IN -m recent --name PK\_$port\_S$step --set" );
+                    if ( $config{PORTKNOCKING_LOG} ) { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A PK\_$port\_S$step\_IN -m limit --limit 30/m --limit-burst 5 -j LOG --log-prefix 'Knock: *$port\_S$step* '" ) }
+                    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A PK\_$port\_S$step\_IN -j DROP" );
+                    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p $proto --dport $steps[$ar] $statemodulenew -m recent --rcheck --seconds $timeout --name PK\_$port\_S" . ( $step - 1 ) . " -j PK\_$port\_S$step\_IN" );
                 }
             }
-            if ( $config{PORTKNOCKING_LOG} ) { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p $proto --dport $port $statemodulenew -m recent --rcheck --seconds $timeout --name PK\_$port\_S$nsteps -m limit --limit 30/m --limit-burst 5 -j LOG --log-prefix 'Knock: *$port\_IN* '" ) }
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p $proto --dport $port $statemodulenew -m recent --rcheck --seconds $timeout --name PK\_$port\_S$nsteps -j ACCEPT" );
+            if ( $config{PORTKNOCKING_LOG} ) { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p $proto --dport $port $statemodulenew -m recent --rcheck --seconds $timeout --name PK\_$port\_S$nsteps -m limit --limit 30/m --limit-burst 5 -j LOG --log-prefix 'Knock: *$port\_IN* '" ) }
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p $proto --dport $port $statemodulenew -m recent --rcheck --seconds $timeout --name PK\_$port\_S$nsteps -j ACCEPT" );
         }
     }
 
@@ -3173,91 +3173,91 @@ sub doportfilters {
     if ( $config{TCP_IN} ne "" ) {
         foreach my $port ( split( /\,/, $config{TCP_IN} ) ) {
             if ( $port eq "" )         { next }
-            if ( $port !~ /^[\d:]*$/ ) { &error( __LINE__, "Invalid TCP_IN port [$port]" ) }
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p tcp $statemodulenew --dport $port -j $accept" );
+            if ( $port !~ /^[\d:]*$/ ) { error( __LINE__, "Invalid TCP_IN port [$port]" ) }
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p tcp $statemodulenew --dport $port -j $accept" );
         }
     }
-    if ( $config{FASTSTART} ) { &faststart("TCP_IN") }
+    if ( $config{FASTSTART} ) { faststart("TCP_IN") }
 
     if ( $config{FASTSTART} ) { $faststart = 1 }
     $config{TCP6_IN} =~ s/\s//g;
     if ( $config{IPV6} and $config{TCP6_IN} ne "" ) {
         foreach my $port ( split( /\,/, $config{TCP6_IN} ) ) {
             if ( $port eq "" )         { next }
-            if ( $port !~ /^[\d:]*$/ ) { &error( __LINE__, "Invalid TCP6_IN port [$port]" ) }
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INPUT $eth6devin -p tcp $statemodule6new --dport $port -j $accept" );
+            if ( $port !~ /^[\d:]*$/ ) { error( __LINE__, "Invalid TCP6_IN port [$port]" ) }
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INPUT $eth6devin -p tcp $statemodule6new --dport $port -j $accept" );
         }
     }
-    if ( $config{FASTSTART} ) { &faststart("TCP6_IN") }
+    if ( $config{FASTSTART} ) { faststart("TCP6_IN") }
 
     if ( $config{FASTSTART} ) { $faststart = 1 }
     $config{TCP_OUT} =~ s/\s//g;
     if ( $config{TCP_OUT} ne "" ) {
         foreach my $port ( split( /\,/, $config{TCP_OUT} ) ) {
             if ( $port eq "" )         { next }
-            if ( $port !~ /^[\d:]*$/ ) { &error( __LINE__, "Invalid TCP_OUT port [$port]" ) }
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $ethdevout -p tcp $statemodulenew --dport $port -j $accept" );
+            if ( $port !~ /^[\d:]*$/ ) { error( __LINE__, "Invalid TCP_OUT port [$port]" ) }
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $ethdevout -p tcp $statemodulenew --dport $port -j $accept" );
         }
     }
-    if ( $config{FASTSTART} ) { &faststart("TCP_OUT") }
+    if ( $config{FASTSTART} ) { faststart("TCP_OUT") }
 
     if ( $config{FASTSTART} ) { $faststart = 1 }
     $config{TCP6_OUT} =~ s/\s//g;
     if ( $config{IPV6} and $config{TCP6_OUT} ne "" ) {
         foreach my $port ( split( /\,/, $config{TCP6_OUT} ) ) {
             if ( $port eq "" )         { next }
-            if ( $port !~ /^[\d:]*$/ ) { &error( __LINE__, "Invalid TCP6_OUT port [$port]" ) }
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $eth6devout -p tcp $statemodule6new --dport $port -j $accept" );
+            if ( $port !~ /^[\d:]*$/ ) { error( __LINE__, "Invalid TCP6_OUT port [$port]" ) }
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $eth6devout -p tcp $statemodule6new --dport $port -j $accept" );
         }
     }
-    if ( $config{FASTSTART} ) { &faststart("TCP6_OUT") }
+    if ( $config{FASTSTART} ) { faststart("TCP6_OUT") }
 
     if ( $config{FASTSTART} ) { $faststart = 1 }
     $config{UDP_IN} =~ s/\s//g;
     if ( $config{UDP_IN} ne "" ) {
         foreach my $port ( split( /\,/, $config{UDP_IN} ) ) {
             if ( $port eq "" )         { next }
-            if ( $port !~ /^[\d:]*$/ ) { &error( __LINE__, "Invalid UDP_IN port [$port]" ) }
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p udp $statemodulenew --dport $port -j $accept" );
+            if ( $port !~ /^[\d:]*$/ ) { error( __LINE__, "Invalid UDP_IN port [$port]" ) }
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p udp $statemodulenew --dport $port -j $accept" );
         }
     }
-    if ( $config{FASTSTART} ) { &faststart("UDP_IN") }
+    if ( $config{FASTSTART} ) { faststart("UDP_IN") }
 
     if ( $config{FASTSTART} ) { $faststart = 1 }
     $config{UDP6_IN} =~ s/\s//g;
     if ( $config{IPV6} and $config{UDP6_IN} ne "" ) {
         foreach my $port ( split( /\,/, $config{UDP6_IN} ) ) {
             if ( $port eq "" )         { next }
-            if ( $port !~ /^[\d:]*$/ ) { &error( __LINE__, "Invalid UDP6_IN port [$port]" ) }
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INPUT $eth6devin -p udp $statemodule6new --dport $port -j $accept" );
+            if ( $port !~ /^[\d:]*$/ ) { error( __LINE__, "Invalid UDP6_IN port [$port]" ) }
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INPUT $eth6devin -p udp $statemodule6new --dport $port -j $accept" );
         }
     }
-    if ( $config{FASTSTART} ) { &faststart("UDP6_IN") }
+    if ( $config{FASTSTART} ) { faststart("UDP6_IN") }
 
     if ( $config{FASTSTART} ) { $faststart = 1 }
     $config{UDP_OUT} =~ s/\s//g;
     if ( $config{UDP_OUT} ne "" ) {
         foreach my $port ( split( /\,/, $config{UDP_OUT} ) ) {
             if ( $port eq "" )         { next }
-            if ( $port !~ /^[\d:]*$/ ) { &error( __LINE__, "Invalid UDP_OUT port [$port]" ) }
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $ethdevout -p udp $statemodulenew --dport $port -j $accept" );
+            if ( $port !~ /^[\d:]*$/ ) { error( __LINE__, "Invalid UDP_OUT port [$port]" ) }
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $ethdevout -p udp $statemodulenew --dport $port -j $accept" );
         }
     }
-    if ( $config{FASTSTART} ) { &faststart("UDP_OUT") }
+    if ( $config{FASTSTART} ) { faststart("UDP_OUT") }
 
     if ( $config{FASTSTART} ) { $faststart = 1 }
     $config{UDP6_OUT} =~ s/\s//g;
     if ( $config{IPV6} and $config{UDP6_OUT} ne "" ) {
         foreach my $port ( split( /\,/, $config{UDP6_OUT} ) ) {
             if ( $port eq "" )         { next }
-            if ( $port !~ /^[\d:]*$/ ) { &error( __LINE__, "Invalid UDP6_OUT port [$port]" ) }
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $eth6devout -p udp $statemodule6new --dport $port -j $accept" );
+            if ( $port !~ /^[\d:]*$/ ) { error( __LINE__, "Invalid UDP6_OUT port [$port]" ) }
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $eth6devout -p udp $statemodule6new --dport $port -j $accept" );
         }
     }
-    if ( $config{FASTSTART} ) { &faststart("UDP6_OUT") }
+    if ( $config{FASTSTART} ) { faststart("UDP6_OUT") }
 
     #	if ($config{IPV6}) {
-    #		&syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INPUT $eth6devin -p udp -m frag --fraglast -j $accept");
+    #		syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A INPUT $eth6devin -p udp -m frag --fraglast -j $accept");
     #	}
 
     #	my $icmp_in_rate = "";
@@ -3266,48 +3266,48 @@ sub doportfilters {
     #	if ($config{ICMP_OUT_RATE}) {$icmp_out_rate = "-m limit --limit $config{ICMP_OUT_RATE}"}
     #
     #	if ($config{ICMP_IN}) {
-    #		&syscommand(__LINE__,"$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p icmp --icmp-type echo-request $icmp_in_rate -j $accept");
-    #		&syscommand(__LINE__,"$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $ethdevout -p icmp --icmp-type echo-reply $icmp_out_rate -j $accept");
+    #		syscommand(__LINE__,"$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p icmp --icmp-type echo-request $icmp_in_rate -j $accept");
+    #		syscommand(__LINE__,"$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $ethdevout -p icmp --icmp-type echo-reply $icmp_out_rate -j $accept");
     #	}
     #
     #	if ($config{ICMP_OUT}) {
-    #		&syscommand(__LINE__,"$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $ethdevout -p icmp --icmp-type echo-request $icmp_out_rate -j $accept");
-    #		&syscommand(__LINE__,"$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p icmp --icmp-type echo-reply $icmp_in_rate -j $accept");
+    #		syscommand(__LINE__,"$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $ethdevout -p icmp --icmp-type echo-request $icmp_out_rate -j $accept");
+    #		syscommand(__LINE__,"$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p icmp --icmp-type echo-reply $icmp_in_rate -j $accept");
     #	}
     #
-    #	&syscommand(__LINE__,"$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p icmp --icmp-type time-exceeded -j $accept");
-    #	&syscommand(__LINE__,"$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p icmp --icmp-type destination-unreachable -j $accept");
+    #	syscommand(__LINE__,"$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p icmp --icmp-type time-exceeded -j $accept");
+    #	syscommand(__LINE__,"$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A INPUT $ethdevin -p icmp --icmp-type destination-unreachable -j $accept");
     #
-    #	&syscommand(__LINE__,"$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $ethdevout -p icmp --icmp-type time-exceeded -j $accept");
-    #	&syscommand(__LINE__,"$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $ethdevout -p icmp --icmp-type destination-unreachable -j $accept");
+    #	syscommand(__LINE__,"$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $ethdevout -p icmp --icmp-type time-exceeded -j $accept");
+    #	syscommand(__LINE__,"$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A OUTPUT $ethdevout -p icmp --icmp-type destination-unreachable -j $accept");
     #
     #	if ($config{IPV6}) {
     #		if ($config{IPV6_ICMP_STRICT}) {
-    #			&syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type destination-unreachable -j $accept");
-    #			&syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type packet-too-big -j $accept");
-    #			&syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type time-exceeded -j $accept");
-    #			&syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type parameter-problem -j $accept");
-    #			&syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type echo-request -j $accept");
-    #			&syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type echo-reply -j $accept");
-    #			&syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type router-advertisement -m hl --hl-eq 255 -j $accept");
-    #			&syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type neighbor-solicitation -m hl --hl-eq 255 -j $accept");
-    #			&syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type neighbor-advertisement -m hl --hl-eq 255 -j $accept");
-    #			&syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type redirect -m hl --hl-eq 255 -j $accept");
+    #			syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type destination-unreachable -j $accept");
+    #			syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type packet-too-big -j $accept");
+    #			syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type time-exceeded -j $accept");
+    #			syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type parameter-problem -j $accept");
+    #			syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type echo-request -j $accept");
+    #			syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type echo-reply -j $accept");
+    #			syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type router-advertisement -m hl --hl-eq 255 -j $accept");
+    #			syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type neighbor-solicitation -m hl --hl-eq 255 -j $accept");
+    #			syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type neighbor-advertisement -m hl --hl-eq 255 -j $accept");
+    #			syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 --icmpv6-type redirect -m hl --hl-eq 255 -j $accept");
     #		} else {
-    #			&syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 -j $accept");
+    #			syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A INPUT $eth6devin -p icmpv6 -j $accept");
     #		}
     #
-    #		&syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 -j $accept");
-##		&syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type destination-unreachable -j $accept");
-##		&syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type packet-too-big -j $accept");
-##		&syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type time-exceeded -j $accept");
-##		&syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type parameter-problem -j $accept");
-##		&syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type echo-request -j $accept");
-##		&syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type echo-reply -j $accept");
-##		&syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type router-advertisement -m hl --hl-eq 255 -j $accept");
-##		&syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type neighbor-solicitation -m hl --hl-eq 255 -j $accept");
-##		&syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type neighbor-advertisement -m hl --hl-eq 255 -j $accept");
-##		&syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type redirect -m hl --hl-eq 255 -j $accept");
+    #		syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 -j $accept");
+##		syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type destination-unreachable -j $accept");
+##		syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type packet-too-big -j $accept");
+##		syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type time-exceeded -j $accept");
+##		syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type parameter-problem -j $accept");
+##		syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type echo-request -j $accept");
+##		syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type echo-reply -j $accept");
+##		syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type router-advertisement -m hl --hl-eq 255 -j $accept");
+##		syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type neighbor-solicitation -m hl --hl-eq 255 -j $accept");
+##		syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type neighbor-advertisement -m hl --hl-eq 255 -j $accept");
+##		syscommand(__LINE__,"$config{IP6TABLES} $config{IPTABLESWAIT} $verbose  -A OUTPUT $eth6devout -p icmpv6 --icmpv6-type redirect -m hl --hl-eq 255 -j $accept");
     #	}
 
     if ( -e "/etc/csf/csf.redirect" ) {
@@ -3325,15 +3325,15 @@ sub doportfilters {
             if ( $line =~ /^\s*\#|Include/ ) { next }
             my ( $redirect, $comment ) = split( /\s/, $line, 2 );
             my ( $ipx, $porta, $ipy, $portb, $proto ) = split( /\|/, $redirect );
-            unless ( $proto eq "tcp" or $proto eq "udp" )            { &error( __LINE__, "csf: Incorrect csf.redirect  setting ([$proto]): [$line]" ) }
-            unless ( $ipx eq "*" or checkip( \$ipx ) )               { &error( __LINE__, "csf: Incorrect csf.redirect  setting ([$ipx]): [$line]" ) }
-            unless ( $porta eq "*" or $porta > 0 or $porta < 65536 ) { &error( __LINE__, "csf: Incorrect csf.redirect  setting ([$porta]): [$line]" ) }
-            unless ( $ipy eq "*" or checkip( \$ipy ) )               { &error( __LINE__, "csf: Incorrect csf.redirect  setting ([$ipy]): [$line]" ) }
-            unless ( $portb eq "*" or $portb > 0 or $portb < 65536 ) { &error( __LINE__, "csf: Incorrect csf.redirect  setting ([$portb]): [$line]" ) }
+            unless ( $proto eq "tcp" or $proto eq "udp" )            { error( __LINE__, "csf: Incorrect csf.redirect  setting ([$proto]): [$line]" ) }
+            unless ( $ipx eq "*" or checkip( \$ipx ) )               { error( __LINE__, "csf: Incorrect csf.redirect  setting ([$ipx]): [$line]" ) }
+            unless ( $porta eq "*" or $porta > 0 or $porta < 65536 ) { error( __LINE__, "csf: Incorrect csf.redirect  setting ([$porta]): [$line]" ) }
+            unless ( $ipy eq "*" or checkip( \$ipy ) )               { error( __LINE__, "csf: Incorrect csf.redirect  setting ([$ipy]): [$line]" ) }
+            unless ( $portb eq "*" or $portb > 0 or $portb < 65536 ) { error( __LINE__, "csf: Incorrect csf.redirect  setting ([$portb]): [$line]" ) }
 
             if ( $ipy eq "*" ) {
-                if   ( $ipx eq "*" ) { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t nat -A PREROUTING $ethdevin -p $proto --dport $porta -j REDIRECT --to-ports $portb" ) }
-                else                 { &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t nat -A PREROUTING $ethdevin -p $proto -d $ipx --dport $porta -j REDIRECT --to-ports $portb" ) }
+                if   ( $ipx eq "*" ) { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t nat -A PREROUTING $ethdevin -p $proto --dport $porta -j REDIRECT --to-ports $portb" ) }
+                else                 { syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t nat -A PREROUTING $ethdevin -p $proto -d $ipx --dport $porta -j REDIRECT --to-ports $portb" ) }
             }
             else {
                 unless ($dnat) {
@@ -3344,21 +3344,21 @@ sub doportfilters {
                     $dnat = 1;
                 }
                 if ( $ipx ne "*" and $porta eq "*" ) {
-                    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t nat -A PREROUTING $ethdevin -p $proto -d $ipx -j DNAT --to-destination $ipy" );
-                    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t nat -A POSTROUTING $ethdevout -p $proto -d $ipy -j SNAT --to-source $ipx" );
-                    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A FORWARD $ethdevin -p $proto -d $ipy  $statemodulenew -j ACCEPT" );
+                    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t nat -A PREROUTING $ethdevin -p $proto -d $ipx -j DNAT --to-destination $ipy" );
+                    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t nat -A POSTROUTING $ethdevout -p $proto -d $ipy -j SNAT --to-source $ipx" );
+                    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A FORWARD $ethdevin -p $proto -d $ipy  $statemodulenew -j ACCEPT" );
                 }
                 elsif ( $ipx ne "*" and $porta ne "*" and $portb ne "*" ) {
-                    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t nat -A PREROUTING $ethdevin -p $proto -d $ipx --dport $porta -j DNAT --to-destination $ipy:$portb" );
-                    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t nat -A POSTROUTING $ethdevout -p $proto -d $ipy -j SNAT --to-source $ipx" );
-                    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A FORWARD $ethdevin -p $proto -d $ipy --dport $portb  $statemodulenew -j ACCEPT" );
+                    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t nat -A PREROUTING $ethdevin -p $proto -d $ipx --dport $porta -j DNAT --to-destination $ipy:$portb" );
+                    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t nat -A POSTROUTING $ethdevout -p $proto -d $ipy -j SNAT --to-source $ipx" );
+                    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A FORWARD $ethdevin -p $proto -d $ipy --dport $portb  $statemodulenew -j ACCEPT" );
                 }
-                else { &error( __LINE__, "csf: Invalid csf.redirect format [$line]" ) }
+                else { error( __LINE__, "csf: Invalid csf.redirect format [$line]" ) }
             }
         }
         if ( $dnat and $config{LF_SPI} ) {
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A FORWARD $ethdevin $statemodule ESTABLISHED,RELATED -j ACCEPT" );
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A FORWARD $ethdevin -j LOGDROPIN" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A FORWARD $ethdevin $statemodule ESTABLISHED,RELATED -j ACCEPT" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A FORWARD $ethdevin -j LOGDROPIN" );
         }
     }
     return;
@@ -3372,8 +3372,8 @@ sub dodisable {
     flock( $OUT, LOCK_EX );
     close($OUT);
 
-    sysopen( my $CONF, "/etc/chkserv.d/chkservd.conf", O_RDWR | O_CREAT ) or &error( __LINE__, "Could not open /etc/chkserv.d/chkservd.conf: $!" );
-    flock( $CONF, LOCK_EX )                                               or &error( __LINE__, "Could not lock /etc/chkserv.d/chkservd.conf: $!" );
+    sysopen( my $CONF, "/etc/chkserv.d/chkservd.conf", O_RDWR | O_CREAT ) or error( __LINE__, "Could not open /etc/chkserv.d/chkservd.conf: $!" );
+    flock( $CONF, LOCK_EX )                                               or error( __LINE__, "Could not lock /etc/chkserv.d/chkservd.conf: $!" );
 
     my $text = join( "", <$CONF> );
     my @conf = split( /$slurpreg/, $text );
@@ -3384,10 +3384,10 @@ sub dodisable {
         if ( $line =~ /^lfd:/ ) { $line = "lfd:0" }
         print $CONF $line . "\n";
     }
-    close($CONF) or &error( __LINE__, "Could not close /etc/conf: $!" );
+    close($CONF) or error( __LINE__, "Could not close /etc/conf: $!" );
 
     ConfigServer::Service::stoplfd();
-    &dostop(0);
+    dostop(0);
 
     print "csf and lfd have been disabled\n";
     return;
@@ -3402,10 +3402,10 @@ sub doenable {
         exit 0;
     }
     unlink("/etc/csf/csf.disable");
-    &dostart;
+    dostart();
     ConfigServer::Service::startlfd();
-    sysopen( my $CONF, "/etc/chkserv.d/chkservd.conf", O_RDWR | O_CREAT ) or &error( __LINE__, "Could not open /etc/chkserv.d/chkservd.conf: $!" );
-    flock( $CONF, LOCK_EX )                                               or &error( __LINE__, "Could not lock /etc/chkserv.d/chkservd.conf: $!" );
+    sysopen( my $CONF, "/etc/chkserv.d/chkservd.conf", O_RDWR | O_CREAT ) or error( __LINE__, "Could not open /etc/chkserv.d/chkservd.conf: $!" );
+    flock( $CONF, LOCK_EX )                                               or error( __LINE__, "Could not lock /etc/chkserv.d/chkservd.conf: $!" );
 
     my $text = join( "", <$CONF> );
     my @conf = split( /$slurpreg/, $text );
@@ -3416,7 +3416,7 @@ sub doenable {
         if ( $line =~ /^lfd:/ ) { $line = "lfd:1" }
         print $CONF $line . "\n";
     }
-    close($CONF) or &error( __LINE__, "Could not close /etc/conf: $!" );
+    close($CONF) or error( __LINE__, "Could not close /etc/conf: $!" );
 
     open( my $OUT, ">", "/etc/chkserv.d/lfd" );
     flock( $OUT, LOCK_EX );
@@ -3482,16 +3482,16 @@ sub error {
     system("$config{IPTABLES} $verbose --delete-chain");
 
     if ( $config{NAT} ) {
-        &syscommand( __LINE__, "$config{IPTABLES} $verbose -t nat --flush" );
-        &syscommand( __LINE__, "$config{IPTABLES} $verbose -t nat --delete-chain" );
+        syscommand( __LINE__, "$config{IPTABLES} $verbose -t nat --flush" );
+        syscommand( __LINE__, "$config{IPTABLES} $verbose -t nat --delete-chain" );
     }
     if ( $config{RAW} ) {
-        &syscommand( __LINE__, "$config{IPTABLES} $verbose -t raw --flush" );
-        &syscommand( __LINE__, "$config{IPTABLES} $verbose -t raw --delete-chain" );
+        syscommand( __LINE__, "$config{IPTABLES} $verbose -t raw --flush" );
+        syscommand( __LINE__, "$config{IPTABLES} $verbose -t raw --delete-chain" );
     }
     if ( $config{MANGLE} ) {
-        &syscommand( __LINE__, "$config{IPTABLES} $verbose -t mangle --flush" );
-        &syscommand( __LINE__, "$config{IPTABLES} $verbose -t mangle --delete-chain" );
+        syscommand( __LINE__, "$config{IPTABLES} $verbose -t mangle --flush" );
+        syscommand( __LINE__, "$config{IPTABLES} $verbose -t mangle --delete-chain" );
     }
 
     if ( $config{IPV6} ) {
@@ -3501,16 +3501,16 @@ sub error {
         system("$config{IP6TABLES} $verbose --flush");
         system("$config{IP6TABLES} $verbose --delete-chain");
         if ( $config{NAT6} ) {
-            &syscommand( __LINE__, "$config{IP6TABLES} $verbose -t nat --flush" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $verbose -t nat --delete-chain" );
+            syscommand( __LINE__, "$config{IP6TABLES} $verbose -t nat --flush" );
+            syscommand( __LINE__, "$config{IP6TABLES} $verbose -t nat --delete-chain" );
         }
         if ( $config{RAW6} ) {
-            &syscommand( __LINE__, "$config{IP6TABLES} $verbose -t raw --flush" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $verbose -t raw --delete-chain" );
+            syscommand( __LINE__, "$config{IP6TABLES} $verbose -t raw --flush" );
+            syscommand( __LINE__, "$config{IP6TABLES} $verbose -t raw --delete-chain" );
         }
         if ( $config{MANGLE6} ) {
-            &syscommand( __LINE__, "$config{IP6TABLES} $verbose -t mangle --flush" );
-            &syscommand( __LINE__, "$config{IP6TABLES} $verbose -t mangle --delete-chain" );
+            syscommand( __LINE__, "$config{IP6TABLES} $verbose -t mangle --flush" );
+            syscommand( __LINE__, "$config{IP6TABLES} $verbose -t mangle --delete-chain" );
         }
     }
 
@@ -3524,7 +3524,7 @@ sub error {
     flock( $OUT, LOCK_EX );
     print $OUT "Error: $error, at line $line in /usr/sbin/csf\n";
     close($OUT);
-    if ( $config{TESTING} ) { &crontab("remove") }
+    if ( $config{TESTING} ) { crontab("remove") }
     exit 1;
 }
 
@@ -3632,38 +3632,38 @@ sub linefilter {
     if ($checkip) {
         if ($chain) {
             if ( $config{LF_IPSET} ) {
-                if   ($ipv4) { &ipsetadd( "chain_$chainin",     $line ) }
-                else         { &ipsetadd( "chain_6_${chainin}", $line ) }
+                if   ($ipv4) { ipsetadd( "chain_$chainin",     $line ) }
+                else         { ipsetadd( "chain_6_${chainin}", $line ) }
             }
             else {
-                &syscommand( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose -A $chainin $linein -s $line -j $pktin" );
-                if ( ( $ad eq "deny" and !$config{LF_BLOCKINONLY} ) or ( $ad ne "deny" ) ) { &syscommand( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose -A $chainout $lineout -d $line -j $pktout" ) }
+                syscommand( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose -A $chainin $linein -s $line -j $pktin" );
+                if ( ( $ad eq "deny" and !$config{LF_BLOCKINONLY} ) or ( $ad ne "deny" ) ) { syscommand( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose -A $chainout $lineout -d $line -j $pktout" ) }
             }
         }
         else {
             if ($delete) {
                 if ( $config{LF_IPSET} ) {
-                    if   ($ipv4) { &ipsetdel( "chain_$localin",     $line ) }
-                    else         { &ipsetdel( "chain_6_${localin}", $line ) }
+                    if   ($ipv4) { ipsetdel( "chain_$localin",     $line ) }
+                    else         { ipsetdel( "chain_6_${localin}", $line ) }
                 }
                 else {
-                    &syscommand( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose -D $localin $linein -s $line -j $pktin" );
-                    if ( ( $ad eq "deny" and !$config{LF_BLOCKINONLY} ) or ( $ad ne "deny" ) ) { &syscommand( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose -D $localout $lineout -d $line -j $pktout" ) }
+                    syscommand( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose -D $localin $linein -s $line -j $pktin" );
+                    if ( ( $ad eq "deny" and !$config{LF_BLOCKINONLY} ) or ( $ad ne "deny" ) ) { syscommand( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose -D $localout $lineout -d $line -j $pktout" ) }
                 }
-                if ( ( $ad eq "deny" ) and ( $ipv4 and $config{MESSENGER}  and $config{MESSENGER_PERM} ) ) { &domessenger( $line, "D" ) }
-                if ( ( $ad eq "deny" ) and ( $ipv6 and $config{MESSENGER6} and $config{MESSENGER_PERM} ) ) { &domessenger( $line, "D" ) }
+                if ( ( $ad eq "deny" ) and ( $ipv4 and $config{MESSENGER}  and $config{MESSENGER_PERM} ) ) { domessenger( $line, "D" ) }
+                if ( ( $ad eq "deny" ) and ( $ipv6 and $config{MESSENGER6} and $config{MESSENGER_PERM} ) ) { domessenger( $line, "D" ) }
             }
             else {
                 if ( $config{LF_IPSET} ) {
-                    if   ($ipv4) { &ipsetadd( "chain_$localin",     $line ) }
-                    else         { &ipsetadd( "chain_6_${localin}", $line ) }
+                    if   ($ipv4) { ipsetadd( "chain_$localin",     $line ) }
+                    else         { ipsetadd( "chain_6_${localin}", $line ) }
                 }
                 else {
-                    &syscommand( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose $inadd $localin $linein -s $line -j $pktin" );
-                    if ( ( $ad eq "deny" and !$config{LF_BLOCKINONLY} ) or ( $ad ne "deny" ) ) { &syscommand( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose $inadd $localout $lineout -d $line -j $pktout" ) }
+                    syscommand( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose $inadd $localin $linein -s $line -j $pktin" );
+                    if ( ( $ad eq "deny" and !$config{LF_BLOCKINONLY} ) or ( $ad ne "deny" ) ) { syscommand( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose $inadd $localout $lineout -d $line -j $pktout" ) }
                 }
-                if ( ( $ad eq "deny" ) and ( $ipv4 and $config{MESSENGER}  and $config{MESSENGER_PERM} ) ) { &domessenger( $line, "A" ) }
-                if ( ( $ad eq "deny" ) and ( $ipv6 and $config{MESSENGER6} and $config{MESSENGER_PERM} ) ) { &domessenger( $line, "A" ) }
+                if ( ( $ad eq "deny" ) and ( $ipv4 and $config{MESSENGER}  and $config{MESSENGER_PERM} ) ) { domessenger( $line, "A" ) }
+                if ( ( $ad eq "deny" ) and ( $ipv6 and $config{MESSENGER6} and $config{MESSENGER_PERM} ) ) { domessenger( $line, "A" ) }
             }
         }
     }
@@ -3760,22 +3760,22 @@ sub linefilter {
             }
             else {
                 if ($chain) {
-                    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A $chainout $lineout $protocol $dport -m owner $uid $gid -j $pktout" );
+                    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A $chainout $lineout $protocol $dport -m owner $uid $gid -j $pktout" );
                     if ( $config{IPV6} ) {
-                        &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A $chainout $lineout $protocol $dport -m owner $uid $gid -j $pktout" );
+                        syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A $chainout $lineout $protocol $dport -m owner $uid $gid -j $pktout" );
                     }
                 }
                 else {
                     if ($delete) {
-                        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D $localout $lineout $protocol $dport -m owner $uid $gid -j $pktout" );
+                        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D $localout $lineout $protocol $dport -m owner $uid $gid -j $pktout" );
                         if ( $config{IPV6} ) {
-                            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D $localout $lineout $protocol $dport -m owner $uid $gid -j $pktout" );
+                            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D $localout $lineout $protocol $dport -m owner $uid $gid -j $pktout" );
                         }
                     }
                     else {
-                        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose $inadd $localout $lineout $protocol $dport -m owner $uid $gid -j $pktout" );
+                        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose $inadd $localout $lineout $protocol $dport -m owner $uid $gid -j $pktout" );
                         if ( $config{IPV6} ) {
-                            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose $inadd $localout $lineout $protocol $dport -m owner $uid $gid -j $pktout" );
+                            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose $inadd $localout $lineout $protocol $dport -m owner $uid $gid -j $pktout" );
                         }
                     }
                 }
@@ -3797,31 +3797,31 @@ sub linefilter {
                 my $bip = $sip;
                 $bip =~ s/-s //o;
                 if ($chain) {
-                    &syscommand( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose -A $chainin $linein $protocol $dip $sip $dport $sport -j $pktin" );
+                    syscommand( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose -A $chainin $linein $protocol $dip $sip $dport $sport -j $pktin" );
                 }
                 else {
                     if ($delete) {
-                        &syscommand( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose -D $localin $linein $protocol $dip $sip $dport $sport -j $pktin" );
-                        if ( $messengerports{$bport} and ( $ad eq "deny" ) and ( $ipv4 and $config{MESSENGER}  and $config{MESSENGER_PERM} ) ) { &domessenger( $bip, "D", "$bport" ) }
-                        if ( $messengerports{$bport} and ( $ad eq "deny" ) and ( $ipv6 and $config{MESSENGER6} and $config{MESSENGER_PERM} ) ) { &domessenger( $bip, "D", "$bport" ) }
+                        syscommand( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose -D $localin $linein $protocol $dip $sip $dport $sport -j $pktin" );
+                        if ( $messengerports{$bport} and ( $ad eq "deny" ) and ( $ipv4 and $config{MESSENGER}  and $config{MESSENGER_PERM} ) ) { domessenger( $bip, "D", "$bport" ) }
+                        if ( $messengerports{$bport} and ( $ad eq "deny" ) and ( $ipv6 and $config{MESSENGER6} and $config{MESSENGER_PERM} ) ) { domessenger( $bip, "D", "$bport" ) }
                     }
                     else {
-                        &syscommand( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose $inadd $localin $linein $protocol $dip $sip $dport $sport -j $pktin" );
-                        if ( $messengerports{$bport} and ( $ad eq "deny" ) and ( $ipv4 and $config{MESSENGER}  and $config{MESSENGER_PERM} ) ) { &domessenger( $bip, "A", "$bport" ) }
-                        if ( $messengerports{$bport} and ( $ad eq "deny" ) and ( $ipv6 and $config{MESSENGER6} and $config{MESSENGER_PERM} ) ) { &domessenger( $bip, "A", "$bport" ) }
+                        syscommand( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose $inadd $localin $linein $protocol $dip $sip $dport $sport -j $pktin" );
+                        if ( $messengerports{$bport} and ( $ad eq "deny" ) and ( $ipv4 and $config{MESSENGER}  and $config{MESSENGER_PERM} ) ) { domessenger( $bip, "A", "$bport" ) }
+                        if ( $messengerports{$bport} and ( $ad eq "deny" ) and ( $ipv6 and $config{MESSENGER6} and $config{MESSENGER_PERM} ) ) { domessenger( $bip, "A", "$bport" ) }
                     }
                 }
             }
             if ( $inout eq "out" ) {
                 if ($chain) {
-                    &syscommand( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose -A $chainout $lineout $protocol $dip $sip $dport $sport -j $pktout" );
+                    syscommand( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose -A $chainout $lineout $protocol $dip $sip $dport $sport -j $pktout" );
                 }
                 else {
                     if ($delete) {
-                        &syscommand( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose -D $localout $lineout $protocol $dip $sip $dport $sport -j $pktout" );
+                        syscommand( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose -D $localout $lineout $protocol $dip $sip $dport $sport -j $pktout" );
                     }
                     else {
-                        &syscommand( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose $inadd $localout $lineout $protocol $dip $sip $dport $sport -j $pktout" );
+                        syscommand( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose $inadd $localout $lineout $protocol $dip $sip $dport $sport -j $pktout" );
                     }
                 }
             }
@@ -3838,8 +3838,8 @@ sub autoupdates {
     my $minutes = int( rand(60) );
 
     unless ( -d "/etc/cron.d" ) { mkdir "/etc/cron.d" }
-    open( my $OUT, ">", "/etc/cron.d/csf_update" ) or &error( __LINE__, "Could not create /etc/cron.d/csf_update: $!" );
-    flock( $OUT, LOCK_EX )                         or &error( __LINE__, "Could not lock /etc/cron.d/csf_update: $!" );
+    open( my $OUT, ">", "/etc/cron.d/csf_update" ) or error( __LINE__, "Could not create /etc/cron.d/csf_update: $!" );
+    flock( $OUT, LOCK_EX )                         or error( __LINE__, "Could not lock /etc/cron.d/csf_update: $!" );
     print $OUT <<END;
 SHELL=/bin/sh
 $minutes $hour * * * root /usr/sbin/csf -u
@@ -4362,7 +4362,7 @@ sub dotempdeny {
         return;
     }
 
-    &getethdev;
+    getethdev();
 
     if ( $ips{$ip} or $ipscidr->find($ip) or $ipscidr6->find($ip) ) {
         print "deny failed: [$ip] is one of this servers addresses!\n";
@@ -4418,23 +4418,23 @@ sub dotempdeny {
                 $dport = $tport;
                 if ( $proto eq "" ) { $proto = "tcp" }
                 if ( $iptype == 6 ) {
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A DENYIN $eth6devin -p $proto --dport $dport -s $ip -j $dropin" );
-                    if ( $messengerports{$dport} and $config{MESSENGER6} and $config{MESSENGER_TEMP} ) { &domessenger( $ip, "A", $dport ) }
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A DENYIN $eth6devin -p $proto --dport $dport -s $ip -j $dropin" );
+                    if ( $messengerports{$dport} and $config{MESSENGER6} and $config{MESSENGER_TEMP} ) { domessenger( $ip, "A", $dport ) }
                 }
                 else {
-                    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A DENYIN $ethdevin -p $proto --dport $dport -s $ip -j $dropin" );
-                    if ( $messengerports{$dport} and $config{MESSENGER} and $config{MESSENGER_TEMP} ) { &domessenger( $ip, "A", $dport ) }
+                    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A DENYIN $ethdevin -p $proto --dport $dport -s $ip -j $dropin" );
+                    if ( $messengerports{$dport} and $config{MESSENGER} and $config{MESSENGER_TEMP} ) { domessenger( $ip, "A", $dport ) }
                 }
             }
         }
         else {
             if ( $iptype == 6 ) {
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A DENYIN $eth6devin -s $ip -j $dropin" );
-                if ( $config{MESSENGER6} and $config{MESSENGER_TEMP} ) { &domessenger( $ip, "A" ) }
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A DENYIN $eth6devin -s $ip -j $dropin" );
+                if ( $config{MESSENGER6} and $config{MESSENGER_TEMP} ) { domessenger( $ip, "A" ) }
             }
             else {
-                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A DENYIN $ethdevin -s $ip -j $dropin" );
-                if ( $config{MESSENGER} and $config{MESSENGER_TEMP} ) { &domessenger( $ip, "A" ) }
+                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A DENYIN $ethdevin -s $ip -j $dropin" );
+                if ( $config{MESSENGER} and $config{MESSENGER_TEMP} ) { domessenger( $ip, "A" ) }
             }
         }
     }
@@ -4445,26 +4445,26 @@ sub dotempdeny {
                 $dport = $tport;
                 if ( $proto eq "" ) { $proto = "tcp" }
                 if ( $iptype == 6 ) {
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A DENYOUT $eth6devout -p $proto --dport $dport -d $ip -j $dropout" );
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A DENYOUT $eth6devout -p $proto --dport $dport -d $ip -j $dropout" );
                 }
                 else {
-                    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A DENYOUT $ethdevout -p $proto --dport $dport -d $ip -j $dropout" );
+                    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A DENYOUT $ethdevout -p $proto --dport $dport -d $ip -j $dropout" );
                 }
             }
         }
         else {
             if ( $iptype == 6 ) {
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A DENYOUT $eth6devout -d $ip -j $dropout" );
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A DENYOUT $eth6devout -d $ip -j $dropout" );
             }
             else {
-                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A DENYOUT $ethdevout -d $ip -j $dropout" );
+                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A DENYOUT $ethdevout -d $ip -j $dropout" );
             }
         }
     }
 
     if ( $config{CF_ENABLE} and $cftemp ) { $comment .= " (CF_ENABLE)" }
 
-    sysopen( my $OUT, "/var/lib/csf/csf.tempban", O_WRONLY | O_APPEND | O_CREAT ) or &error( __LINE__, "Error: Can't append out file: $!" );
+    sysopen( my $OUT, "/var/lib/csf/csf.tempban", O_WRONLY | O_APPEND | O_CREAT ) or error( __LINE__, "Error: Can't append out file: $!" );
     flock( $OUT, LOCK_EX );
     print $OUT time . "|$ip|$port|$inout|$timeout|$comment\n";
     close($OUT);
@@ -4541,7 +4541,7 @@ sub dotempallow {
     if ( $timeout < 2 )  { $timeout = 3600 }
     if ( $port =~ /\*/ ) { $port    = "" }
 
-    &getethdev;
+    getethdev();
 
     if ( $inout =~ /in/ ) {
         if ($port) {
@@ -4550,19 +4550,19 @@ sub dotempallow {
                 $dport = $tport;
                 if ( $proto eq "" ) { $proto = "tcp" }
                 if ( $iptype == 6 ) {
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I ALLOWIN $eth6devin -p $proto --dport $dport -s $ip -j $accept" );
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I ALLOWIN $eth6devin -p $proto --dport $dport -s $ip -j $accept" );
                 }
                 else {
-                    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I ALLOWIN $ethdevin -p $proto --dport $dport -s $ip -j $accept" );
+                    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I ALLOWIN $ethdevin -p $proto --dport $dport -s $ip -j $accept" );
                 }
             }
         }
         else {
             if ( $iptype == 6 ) {
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I ALLOWIN $eth6devin -s $ip -j $accept" );
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I ALLOWIN $eth6devin -s $ip -j $accept" );
             }
             else {
-                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I ALLOWIN $ethdevin -s $ip -j $accept" );
+                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I ALLOWIN $ethdevin -s $ip -j $accept" );
             }
         }
     }
@@ -4573,26 +4573,26 @@ sub dotempallow {
                 $dport = $tport;
                 if ( $proto eq "" ) { $proto = "tcp" }
                 if ( $iptype == 6 ) {
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I ALLOWOUT $eth6devout -p $proto --dport $dport -d $ip -j $accept" );
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I ALLOWOUT $eth6devout -p $proto --dport $dport -d $ip -j $accept" );
                 }
                 else {
-                    &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I ALLOWOUT $ethdevout -p $proto --dport $dport -d $ip -j $accept" );
+                    syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I ALLOWOUT $ethdevout -p $proto --dport $dport -d $ip -j $accept" );
                 }
             }
         }
         else {
             if ( $iptype == 6 ) {
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I ALLOWOUT $eth6devout -d $ip -j $accept" );
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I ALLOWOUT $eth6devout -d $ip -j $accept" );
             }
             else {
-                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I ALLOWOUT $ethdevout -d $ip -j $accept" );
+                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -I ALLOWOUT $ethdevout -d $ip -j $accept" );
             }
         }
     }
 
     if ( $config{CF_ENABLE} and $cftemp ) { $comment .= " (CF_ENABLE)" }
 
-    sysopen( my $OUT, "/var/lib/csf/csf.tempallow", O_WRONLY | O_APPEND | O_CREAT ) or &error( __LINE__, "Error: Can't append out file: $!" );
+    sysopen( my $OUT, "/var/lib/csf/csf.tempallow", O_WRONLY | O_APPEND | O_CREAT ) or error( __LINE__, "Error: Can't append out file: $!" );
     flock( $OUT, LOCK_EX );
     print $OUT time . "|$ip|$port|$inout|$timeout|$comment\n";
     close($OUT);
@@ -4625,7 +4625,7 @@ sub dotemprm {
         print "csf: [$ip] is not a valid PUBLIC IP\n";
         return;
     }
-    &getethdev;
+    getethdev();
     if ( !-z "/var/lib/csf/csf.tempban" ) {
         my $unblock = 0;
         sysopen( my $TEMPBAN, "/var/lib/csf/csf.tempban", O_RDWR | O_CREAT );
@@ -4649,23 +4649,23 @@ sub dotemprm {
                             $dport = $tport;
                             if ( $proto eq "" ) { $proto = "tcp" }
                             if ( $iptype == 6 ) {
-                                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D DENYIN $eth6devin -p $proto --dport $dport -s $ip -j $dropin" );
-                                if ( $messengerports{$dport} and $config{MESSENGER6} and $config{MESSENGER_TEMP} ) { &domessenger( $ip, "D", $dport ) }
+                                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D DENYIN $eth6devin -p $proto --dport $dport -s $ip -j $dropin" );
+                                if ( $messengerports{$dport} and $config{MESSENGER6} and $config{MESSENGER_TEMP} ) { domessenger( $ip, "D", $dport ) }
                             }
                             else {
-                                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D DENYIN $ethdevin -p $proto --dport $dport -s $ip -j $dropin" );
-                                if ( $messengerports{$dport} and $config{MESSENGER} and $config{MESSENGER_TEMP} ) { &domessenger( $ip, "D", $dport ) }
+                                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D DENYIN $ethdevin -p $proto --dport $dport -s $ip -j $dropin" );
+                                if ( $messengerports{$dport} and $config{MESSENGER} and $config{MESSENGER_TEMP} ) { domessenger( $ip, "D", $dport ) }
                             }
                         }
                     }
                     else {
                         if ( $iptype == 6 ) {
-                            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D DENYIN $eth6devin -s $ip -j $dropin" );
-                            if ( $config{MESSENGER6} and $config{MESSENGER_TEMP} ) { &domessenger( $ip, "D" ) }
+                            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D DENYIN $eth6devin -s $ip -j $dropin" );
+                            if ( $config{MESSENGER6} and $config{MESSENGER_TEMP} ) { domessenger( $ip, "D" ) }
                         }
                         else {
-                            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D DENYIN $ethdevin -s $ip -j $dropin" );
-                            if ( $config{MESSENGER} and $config{MESSENGER_TEMP} ) { &domessenger( $ip, "D" ) }
+                            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D DENYIN $ethdevin -s $ip -j $dropin" );
+                            if ( $config{MESSENGER} and $config{MESSENGER_TEMP} ) { domessenger( $ip, "D" ) }
                         }
                     }
                 }
@@ -4676,19 +4676,19 @@ sub dotemprm {
                             $dport = $tport;
                             if ( $proto eq "" ) { $proto = "tcp" }
                             if ( $iptype == 6 ) {
-                                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D DENYOUT $eth6devout -p $proto --dport $dport -d $ip -j $dropout" );
+                                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D DENYOUT $eth6devout -p $proto --dport $dport -d $ip -j $dropout" );
                             }
                             else {
-                                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D DENYOUT $ethdevout -p $proto --dport $dport -d $ip -j $dropout" );
+                                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D DENYOUT $ethdevout -p $proto --dport $dport -d $ip -j $dropout" );
                             }
                         }
                     }
                     else {
                         if ( $iptype == 6 ) {
-                            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D DENYOUT $eth6devout -d $ip -j $dropout" );
+                            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D DENYOUT $eth6devout -d $ip -j $dropout" );
                         }
                         else {
-                            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D DENYOUT $ethdevout -d $ip -j $dropout" );
+                            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D DENYOUT $ethdevout -d $ip -j $dropout" );
                         }
                     }
                 }
@@ -4729,19 +4729,19 @@ sub dotemprm {
                             $dport = $tport;
                             if ( $proto eq "" ) { $proto = "tcp" }
                             if ( $iptype == 6 ) {
-                                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D ALLOWIN $eth6devin -p $proto --dport $dport -s $ip -j $accept" );
+                                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D ALLOWIN $eth6devin -p $proto --dport $dport -s $ip -j $accept" );
                             }
                             else {
-                                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D ALLOWIN $ethdevin -p $proto --dport $dport -s $ip -j $accept" );
+                                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D ALLOWIN $ethdevin -p $proto --dport $dport -s $ip -j $accept" );
                             }
                         }
                     }
                     else {
                         if ( $iptype == 6 ) {
-                            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D ALLOWIN $eth6devin -s $ip -j $accept" );
+                            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D ALLOWIN $eth6devin -s $ip -j $accept" );
                         }
                         else {
-                            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D ALLOWIN $ethdevin -s $ip -j $accept" );
+                            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D ALLOWIN $ethdevin -s $ip -j $accept" );
                         }
                     }
                 }
@@ -4752,19 +4752,19 @@ sub dotemprm {
                             $dport = $tport;
                             if ( $proto eq "" ) { $proto = "tcp" }
                             if ( $iptype == 6 ) {
-                                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D ALLOWOUT $eth6devout -p $proto --dport $dport -d $ip -j $accept" );
+                                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D ALLOWOUT $eth6devout -p $proto --dport $dport -d $ip -j $accept" );
                             }
                             else {
-                                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D ALLOWOUT $ethdevout -p $proto --dport $dport -d $ip -j $accept" );
+                                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D ALLOWOUT $ethdevout -p $proto --dport $dport -d $ip -j $accept" );
                             }
                         }
                     }
                     else {
                         if ( $iptype == 6 ) {
-                            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D ALLOWOUT $eth6devout -d $ip -j $accept" );
+                            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D ALLOWOUT $eth6devout -d $ip -j $accept" );
                         }
                         else {
-                            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D ALLOWOUT $ethdevout -d $ip -j $accept" );
+                            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D ALLOWOUT $ethdevout -d $ip -j $accept" );
                         }
                     }
                 }
@@ -4810,7 +4810,7 @@ sub dotemprmd {
         print "csf: [$ip] is not a valid PUBLIC IP\n";
         return;
     }
-    &getethdev;
+    getethdev();
     if ( !-z "/var/lib/csf/csf.tempban" ) {
         my $unblock = 0;
         sysopen( my $TEMPBAN, "/var/lib/csf/csf.tempban", O_RDWR | O_CREAT );
@@ -4834,23 +4834,23 @@ sub dotemprmd {
                             $dport = $tport;
                             if ( $proto eq "" ) { $proto = "tcp" }
                             if ( $iptype == 6 ) {
-                                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D DENYIN $eth6devin -p $proto --dport $dport -s $ip -j $dropin" );
-                                if ( $messengerports{$dport} and $config{MESSENGER6} and $config{MESSENGER_TEMP} ) { &domessenger( $ip, "D", $dport ) }
+                                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D DENYIN $eth6devin -p $proto --dport $dport -s $ip -j $dropin" );
+                                if ( $messengerports{$dport} and $config{MESSENGER6} and $config{MESSENGER_TEMP} ) { domessenger( $ip, "D", $dport ) }
                             }
                             else {
-                                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D DENYIN $ethdevin -p $proto --dport $dport -s $ip -j $dropin" );
-                                if ( $messengerports{$dport} and $config{MESSENGER} and $config{MESSENGER_TEMP} ) { &domessenger( $ip, "D", $dport ) }
+                                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D DENYIN $ethdevin -p $proto --dport $dport -s $ip -j $dropin" );
+                                if ( $messengerports{$dport} and $config{MESSENGER} and $config{MESSENGER_TEMP} ) { domessenger( $ip, "D", $dport ) }
                             }
                         }
                     }
                     else {
                         if ( $iptype == 6 ) {
-                            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D DENYIN $eth6devin -s $ip -j $dropin" );
-                            if ( $config{MESSENGER6} and $config{MESSENGER_TEMP} ) { &domessenger( $ip, "D" ) }
+                            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D DENYIN $eth6devin -s $ip -j $dropin" );
+                            if ( $config{MESSENGER6} and $config{MESSENGER_TEMP} ) { domessenger( $ip, "D" ) }
                         }
                         else {
-                            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D DENYIN $ethdevin -s $ip -j $dropin" );
-                            if ( $config{MESSENGER} and $config{MESSENGER_TEMP} ) { &domessenger( $ip, "D" ) }
+                            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D DENYIN $ethdevin -s $ip -j $dropin" );
+                            if ( $config{MESSENGER} and $config{MESSENGER_TEMP} ) { domessenger( $ip, "D" ) }
                         }
                     }
                 }
@@ -4861,19 +4861,19 @@ sub dotemprmd {
                             $dport = $tport;
                             if ( $proto eq "" ) { $proto = "tcp" }
                             if ( $iptype == 6 ) {
-                                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D DENYOUT $eth6devout -p $proto --dport $dport -d $ip -j $dropout" );
+                                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D DENYOUT $eth6devout -p $proto --dport $dport -d $ip -j $dropout" );
                             }
                             else {
-                                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D DENYOUT $ethdevout -p $proto --dport $dport -d $ip -j $dropout" );
+                                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D DENYOUT $ethdevout -p $proto --dport $dport -d $ip -j $dropout" );
                             }
                         }
                     }
                     else {
                         if ( $iptype == 6 ) {
-                            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D DENYOUT $eth6devout -d $ip -j $dropout" );
+                            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D DENYOUT $eth6devout -d $ip -j $dropout" );
                         }
                         else {
-                            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D DENYOUT $ethdevout -d $ip -j $dropout" );
+                            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D DENYOUT $ethdevout -d $ip -j $dropout" );
                         }
                     }
                 }
@@ -4920,7 +4920,7 @@ sub dotemprma {
         print "csf: [$ip] is not a valid PUBLIC IP\n";
         return;
     }
-    &getethdev;
+    getethdev();
     if ( !-z "/var/lib/csf/csf.tempallow" ) {
         my $unblock = 0;
         sysopen( my $TEMPALLOW, "/var/lib/csf/csf.tempallow", O_RDWR | O_CREAT );
@@ -4939,19 +4939,19 @@ sub dotemprma {
                             $dport = $tport;
                             if ( $proto eq "" ) { $proto = "tcp" }
                             if ( $iptype == 6 ) {
-                                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D ALLOWIN $eth6devin -p $proto --dport $dport -s $ip -j $accept" );
+                                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D ALLOWIN $eth6devin -p $proto --dport $dport -s $ip -j $accept" );
                             }
                             else {
-                                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D ALLOWIN $ethdevin -p $proto --dport $dport -s $ip -j $accept" );
+                                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D ALLOWIN $ethdevin -p $proto --dport $dport -s $ip -j $accept" );
                             }
                         }
                     }
                     else {
                         if ( $iptype == 6 ) {
-                            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D ALLOWIN $eth6devin -s $ip -j $accept" );
+                            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D ALLOWIN $eth6devin -s $ip -j $accept" );
                         }
                         else {
-                            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D ALLOWIN $ethdevin -s $ip -j $accept" );
+                            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D ALLOWIN $ethdevin -s $ip -j $accept" );
                         }
                     }
                 }
@@ -4962,19 +4962,19 @@ sub dotemprma {
                             $dport = $tport;
                             if ( $proto eq "" ) { $proto = "tcp" }
                             if ( $iptype == 6 ) {
-                                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D ALLOWOUT $eth6devout -p $proto --dport $dport -d $ip -j $accept" );
+                                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D ALLOWOUT $eth6devout -p $proto --dport $dport -d $ip -j $accept" );
                             }
                             else {
-                                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D ALLOWOUT $ethdevout -p $proto --dport $dport -d $ip -j $accept" );
+                                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D ALLOWOUT $ethdevout -p $proto --dport $dport -d $ip -j $accept" );
                             }
                         }
                     }
                     else {
                         if ( $iptype == 6 ) {
-                            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D ALLOWOUT $eth6devout -d $ip -j $accept" );
+                            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D ALLOWOUT $eth6devout -d $ip -j $accept" );
                         }
                         else {
-                            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D ALLOWOUT $ethdevout -d $ip -j $accept" );
+                            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D ALLOWOUT $ethdevout -d $ip -j $accept" );
                         }
                     }
                 }
@@ -5004,7 +5004,7 @@ sub dotemprma {
 ###############################################################################
 # start dotempf
 sub dotempf {
-    &getethdev;
+    getethdev();
     if ( !-z "/var/lib/csf/csf.tempban" ) {
         sysopen( my $TEMPBAN, "/var/lib/csf/csf.tempban", O_RDWR | O_CREAT );
         flock( $TEMPBAN, LOCK_EX );
@@ -5028,23 +5028,23 @@ sub dotempf {
                         $dport = $tport;
                         if ( $proto eq "" ) { $proto = "tcp" }
                         if ( $iptype == 6 ) {
-                            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D DENYIN $eth6devin -p $proto --dport $dport -s $ip -j $dropin" );
-                            if ( $messengerports{$dport} and $config{MESSENGER6} and $config{MESSENGER_TEMP} ) { &domessenger( $ip, "D", $dport ) }
+                            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D DENYIN $eth6devin -p $proto --dport $dport -s $ip -j $dropin" );
+                            if ( $messengerports{$dport} and $config{MESSENGER6} and $config{MESSENGER_TEMP} ) { domessenger( $ip, "D", $dport ) }
                         }
                         else {
-                            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D DENYIN $ethdevin -p $proto --dport $dport -s $ip -j $dropin" );
-                            if ( $messengerports{$dport} and $config{MESSENGER} and $config{MESSENGER_TEMP} ) { &domessenger( $ip, "D", $dport ) }
+                            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D DENYIN $ethdevin -p $proto --dport $dport -s $ip -j $dropin" );
+                            if ( $messengerports{$dport} and $config{MESSENGER} and $config{MESSENGER_TEMP} ) { domessenger( $ip, "D", $dport ) }
                         }
                     }
                 }
                 else {
                     if ( $iptype == 6 ) {
-                        &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D DENYIN $eth6devin -s $ip -j $dropin" );
-                        if ( $config{MESSENGER6} and $config{MESSENGER_TEMP} ) { &domessenger( $ip, "D" ) }
+                        syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D DENYIN $eth6devin -s $ip -j $dropin" );
+                        if ( $config{MESSENGER6} and $config{MESSENGER_TEMP} ) { domessenger( $ip, "D" ) }
                     }
                     else {
-                        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D DENYIN $ethdevin -s $ip -j $dropin" );
-                        if ( $config{MESSENGER} and $config{MESSENGER_TEMP} ) { &domessenger( $ip, "D" ) }
+                        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D DENYIN $ethdevin -s $ip -j $dropin" );
+                        if ( $config{MESSENGER} and $config{MESSENGER_TEMP} ) { domessenger( $ip, "D" ) }
                     }
                 }
             }
@@ -5055,19 +5055,19 @@ sub dotempf {
                         $dport = $tport;
                         if ( $proto eq "" ) { $proto = "tcp" }
                         if ( $iptype == 6 ) {
-                            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D DENYOUT $eth6devout -p $proto --dport $dport -d $ip -j $dropout" );
+                            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D DENYOUT $eth6devout -p $proto --dport $dport -d $ip -j $dropout" );
                         }
                         else {
-                            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D DENYOUT $ethdevout -p $proto --dport $dport -d $ip -j $dropout" );
+                            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D DENYOUT $ethdevout -p $proto --dport $dport -d $ip -j $dropout" );
                         }
                     }
                 }
                 else {
                     if ( $iptype == 6 ) {
-                        &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D DENYOUT $eth6devout -d $ip -j $dropout" );
+                        syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D DENYOUT $eth6devout -d $ip -j $dropout" );
                     }
                     else {
-                        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D DENYOUT $ethdevout -d $ip -j $dropout" );
+                        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D DENYOUT $ethdevout -d $ip -j $dropout" );
                     }
                 }
             }
@@ -5099,19 +5099,19 @@ sub dotempf {
                         $dport = $tport;
                         if ( $proto eq "" ) { $proto = "tcp" }
                         if ( $iptype == 6 ) {
-                            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D ALLOWIN $eth6devin -p $proto --dport $dport -s $ip -j $accept" );
+                            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D ALLOWIN $eth6devin -p $proto --dport $dport -s $ip -j $accept" );
                         }
                         else {
-                            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D ALLOWIN $ethdevin -p $proto --dport $dport -s $ip -j $accept" );
+                            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D ALLOWIN $ethdevin -p $proto --dport $dport -s $ip -j $accept" );
                         }
                     }
                 }
                 else {
                     if ( $iptype == 6 ) {
-                        &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D ALLOWIN $eth6devin -s $ip -j $accept" );
+                        syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D ALLOWIN $eth6devin -s $ip -j $accept" );
                     }
                     else {
-                        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D ALLOWIN $ethdevin -s $ip -j $accept" );
+                        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D ALLOWIN $ethdevin -s $ip -j $accept" );
                     }
                 }
             }
@@ -5122,19 +5122,19 @@ sub dotempf {
                         $dport = $tport;
                         if ( $proto eq "" ) { $proto = "tcp" }
                         if ( $iptype == 6 ) {
-                            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D ALLOWOUT $eth6devout -p $proto --dport $dport -d $ip -j $accept" );
+                            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D ALLOWOUT $eth6devout -p $proto --dport $dport -d $ip -j $accept" );
                         }
                         else {
-                            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D ALLOWOUT $ethdevout -p $proto --dport $dport -d $ip -j $accept" );
+                            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D ALLOWOUT $ethdevout -p $proto --dport $dport -d $ip -j $accept" );
                         }
                     }
                 }
                 else {
                     if ( $iptype == 6 ) {
-                        &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D ALLOWOUT $eth6devout -d $ip -j $accept" );
+                        syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D ALLOWOUT $eth6devout -d $ip -j $accept" );
                     }
                     else {
-                        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D ALLOWOUT $ethdevout -d $ip -j $accept" );
+                        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -D ALLOWOUT $ethdevout -d $ip -j $accept" );
                     }
                 }
             }
@@ -5179,19 +5179,19 @@ sub dotrace {
 
     if ( $cmd eq "add" ) {
         if ( $checkip == 4 ) {
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t raw -I PREROUTING -p tcp --syn --source $ip -j TRACE" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t raw -I PREROUTING -p tcp --syn --source $ip -j TRACE" );
         }
         else {
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -t raw -I PREROUTING -p tcp --syn --source $ip -j TRACE" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -t raw -I PREROUTING -p tcp --syn --source $ip -j TRACE" );
         }
         print "csf: Added trace for $ip\n";
     }
     elsif ( $cmd eq "remove" ) {
         if ( $checkip == 4 ) {
-            &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t raw -D PREROUTING -p tcp --syn --source $ip -j TRACE" );
+            syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t raw -D PREROUTING -p tcp --syn --source $ip -j TRACE" );
         }
         else {
-            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -t raw -D PREROUTING -p tcp --syn --source $ip -j TRACE" );
+            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -t raw -D PREROUTING -p tcp --syn --source $ip -j TRACE" );
         }
         print "csf: Removed trace for $ip\n";
     }
@@ -5207,7 +5207,7 @@ sub dotrace {
 # start dologrun
 sub dologrun {
     if ( $config{LOGSCANNER} ) {
-        open( my $OUT, ">", "/var/lib/csf/csf.logrun" ) or &error( __LINE__, "Could not create /var/lib/csf/csf.logrun: $!" );
+        open( my $OUT, ">", "/var/lib/csf/csf.logrun" ) or error( __LINE__, "Could not create /var/lib/csf/csf.logrun: $!" );
         flock( $OUT, LOCK_EX );
         close($OUT);
     }
@@ -5277,39 +5277,39 @@ sub domessenger {
             my $ip6 = $ip;
             $ip6 =~ s/MESSENGER src/MESSENGER_6 src/g;
             if ( $httpsports ne "" ) {
-                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t nat -A PREROUTING $ethdevin -p tcp $ip -m multiport --dports $httpsports -j REDIRECT --to-ports $config{MESSENGER_HTTPS}" );
+                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t nat -A PREROUTING $ethdevin -p tcp $ip -m multiport --dports $httpsports -j REDIRECT --to-ports $config{MESSENGER_HTTPS}" );
                 if ( $config{MESSENGER6} ) {
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -t nat -A PREROUTING $ethdevin -p tcp $ip6 -m multiport --dports $httpsports -j REDIRECT --to-ports $config{MESSENGER_HTTPS}" );
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -t nat -A PREROUTING $ethdevin -p tcp $ip6 -m multiport --dports $httpsports -j REDIRECT --to-ports $config{MESSENGER_HTTPS}" );
                 }
             }
             if ( $htmlports ne "" ) {
-                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t nat -A PREROUTING $ethdevin -p tcp $ip -m multiport --dports $htmlports -j REDIRECT --to-ports $config{MESSENGER_HTML}" );
+                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t nat -A PREROUTING $ethdevin -p tcp $ip -m multiport --dports $htmlports -j REDIRECT --to-ports $config{MESSENGER_HTML}" );
                 if ( $config{MESSENGER6} ) {
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -t nat -A PREROUTING $ethdevin -p tcp $ip6 -m multiport --dports $htmlports -j REDIRECT --to-ports $config{MESSENGER_HTML}" );
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -t nat -A PREROUTING $ethdevin -p tcp $ip6 -m multiport --dports $htmlports -j REDIRECT --to-ports $config{MESSENGER_HTML}" );
                 }
             }
             if ( $textports ne "" ) {
-                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t nat -A PREROUTING $ethdevin -p tcp $ip -m multiport --dports $textports -j REDIRECT --to-ports $config{MESSENGER_TEXT}" );
+                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t nat -A PREROUTING $ethdevin -p tcp $ip -m multiport --dports $textports -j REDIRECT --to-ports $config{MESSENGER_TEXT}" );
                 if ( $config{MESSENGER6} ) {
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -t nat -A PREROUTING $ethdevin -p tcp $ip6 -m multiport --dports $textports -j REDIRECT --to-ports $config{MESSENGER_TEXT}" );
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -t nat -A PREROUTING $ethdevin -p tcp $ip6 -m multiport --dports $textports -j REDIRECT --to-ports $config{MESSENGER_TEXT}" );
                 }
             }
         }
         else {
             if ( $delete eq "D" ) {
                 if ( $iptype == 4 ) {
-                    &ipsetdel( "MESSENGER", $ip );
+                    ipsetdel( "MESSENGER", $ip );
                 }
                 if ( $iptype == 6 and $config{MESSENGER6} ) {
-                    &ipsetdel( "MESSENGER_6", $ip );
+                    ipsetdel( "MESSENGER_6", $ip );
                 }
             }
             else {
                 if ( $iptype == 4 ) {
-                    &ipsetadd( "MESSENGER", $ip );
+                    ipsetadd( "MESSENGER", $ip );
                 }
                 if ( $iptype == 6 and $config{MESSENGER6} ) {
-                    &ipsetadd( "MESSENGER_6", $ip );
+                    ipsetadd( "MESSENGER_6", $ip );
                 }
             }
         }
@@ -5317,26 +5317,26 @@ sub domessenger {
     else {
         if ( $httpsports ne "" ) {
             if ( $iptype == 4 ) {
-                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -t nat $del PREROUTING $ethdevin -p tcp -s $ip -m multiport --dports $httpsports -j REDIRECT --to-ports $config{MESSENGER_HTTPS}" );
+                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -t nat $del PREROUTING $ethdevin -p tcp -s $ip -m multiport --dports $httpsports -j REDIRECT --to-ports $config{MESSENGER_HTTPS}" );
             }
             if ( $iptype == 6 and $config{MESSENGER6} ) {
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -t nat $del PREROUTING $ethdevin -p tcp -s $ip -m multiport --dports $httpsports -j REDIRECT --to-ports $config{MESSENGER_HTTPS}" );
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -t nat $del PREROUTING $ethdevin -p tcp -s $ip -m multiport --dports $httpsports -j REDIRECT --to-ports $config{MESSENGER_HTTPS}" );
             }
         }
         if ( $htmlports ne "" ) {
             if ( $iptype == 4 ) {
-                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t nat $del PREROUTING $ethdevin -p tcp -s $ip -m multiport --dports $htmlports -j REDIRECT --to-ports $config{MESSENGER_HTML}" );
+                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t nat $del PREROUTING $ethdevin -p tcp -s $ip -m multiport --dports $htmlports -j REDIRECT --to-ports $config{MESSENGER_HTML}" );
             }
             if ( $iptype == 6 and $config{MESSENGER6} ) {
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -t nat $del PREROUTING $ethdevin -p tcp -s $ip -m multiport --dports $htmlports -j REDIRECT --to-ports $config{MESSENGER_HTML}" );
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -t nat $del PREROUTING $ethdevin -p tcp -s $ip -m multiport --dports $htmlports -j REDIRECT --to-ports $config{MESSENGER_HTML}" );
             }
         }
         if ( $textports ne "" ) {
             if ( $iptype == 4 ) {
-                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t nat $del PREROUTING $ethdevin -p tcp -s $ip -m multiport --dports $textports -j REDIRECT --to-ports $config{MESSENGER_TEXT}" );
+                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -t nat $del PREROUTING $ethdevin -p tcp -s $ip -m multiport --dports $textports -j REDIRECT --to-ports $config{MESSENGER_TEXT}" );
             }
             if ( $iptype == 6 and $config{MESSENGER6} ) {
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -t nat $del PREROUTING $ethdevin -p tcp -s $ip -m multiport --dports $textports -j REDIRECT --to-ports $config{MESSENGER_TEXT}" );
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -t nat $del PREROUTING $ethdevin -p tcp -s $ip -m multiport --dports $textports -j REDIRECT --to-ports $config{MESSENGER_TEXT}" );
             }
         }
     }
@@ -5681,11 +5681,11 @@ $ip,             $domain,             $mode,     $date,                    $comm
         $input{argument} = [ $value, $config{CF_TEMP} ];
         if ( $setting eq "deny" ) {
             my $status = ConfigServer::CloudFlare::action( "deny", $value, $mode, "", $valuemorelist, 1 );
-            &dotempdeny("cf");
+            dotempdeny("cf");
         }
         elsif ( $setting eq "allow" ) {
             my $status = ConfigServer::CloudFlare::action( "allow", $value, $mode, "", $valuemorelist, 1 );
-            &dotempallow("cf");
+            dotempallow("cf");
         }
     }
     else {
@@ -5833,12 +5833,12 @@ sub syscommand {
     if ( $config{VPS} ) { $status = &checkvps }
 
     if ($status) {
-        &error( $line, $status );
+        error( $line, $status );
     }
     else {
         if ( $config{DEBUG} >= 1 ) { print "debug[$line]: Command:$command\n"; }
 
-        if ($iptableslock) { &iptableslock("lock") }
+        if ($iptableslock) { iptableslock("lock") }
         my @output;
         if ( $iptableslock and $config{WAITLOCK} ) {
             eval {
@@ -5853,7 +5853,7 @@ sub syscommand {
             };
             alarm(0);
             if ( $@ eq "alarm\n" ) {
-                &error( __LINE__, "*Error* timeout after iptables --wait for $config{WAITLOCK_TIMEOUT} seconds - WAITLOCK" );
+                error( __LINE__, "*Error* timeout after iptables --wait for $config{WAITLOCK_TIMEOUT} seconds - WAITLOCK" );
             }
         }
         else {
@@ -5862,7 +5862,7 @@ sub syscommand {
             @output = <$childout>;
             waitpid( $cmdpid, 0 );
         }
-        if ($iptableslock) { &iptableslock("unlock") }
+        if ($iptableslock) { iptableslock("unlock") }
 
         chomp @output;
         if ( $output[0] =~ /# Warning: iptables-legacy tables present/ ) { shift @output }
@@ -5876,33 +5876,33 @@ sub syscommand {
             while ( $cnt < $repeat ) {
                 sleep 1;
                 if ( $config{DEBUG} >= 1 ) { print "debug[$line]: Retry (" . ( $cnt + 1 ) . ") [$command] due to [$output[0]]" }
-                if ($iptableslock)         { &iptableslock("lock") }
+                if ($iptableslock)         { iptableslock("lock") }
                 my ( $childin, $childout );
                 my $cmdpid = open3( $childin, $childout, $childout, $command );
                 my @output = <$childout>;
                 waitpid( $cmdpid, 0 );
-                if ($iptableslock) { &iptableslock("unlock") }
+                if ($iptableslock) { iptableslock("unlock") }
                 chomp @output;
                 if ( $output[0] =~ /# Warning: iptables-legacy tables present/ ) { shift @output }
                 $cnt++;
-                if     ( $output[0] =~ /(^iptables: Unknown error 4294967295)|(xtables lock)/ and $cnt == $repeat ) { &error( $line, "Error processing command for line [$line] ($repeat times): [$output[0]]" ); }
+                if     ( $output[0] =~ /(^iptables: Unknown error 4294967295)|(xtables lock)/ and $cnt == $repeat ) { error( $line, "Error processing command for line [$line] ($repeat times): [$output[0]]" ); }
                 unless ( $output[0] =~ /(^iptables: Unknown error 4294967295)|(xtables lock)/ )                     { $cnt = $repeat }
             }
         }
         if ( $output[0] =~ /^(iptables|xtables|Bad|Another)/ and ( $config{TESTING} or $force ) ) {
             if ( $output[0] =~ /iptables: No chain\/target\/match by that name/ ) {
-                &error( $line, "iptables command [$command] failed, you appear to be missing a required iptables module" );
+                error( $line, "iptables command [$command] failed, you appear to be missing a required iptables module" );
             }
             else {
-                &error( $line, "iptables command [$command] failed" );
+                error( $line, "iptables command [$command] failed" );
             }
         }
         if ( $output[0] =~ /^(ip6tables|Bad|Another)/ and ( $config{TESTING} or $force ) ) {
             if ( $output[0] =~ /ip6tables: No chain\/target\/match by that name/ ) {
-                &error( $line, "ip6tables command [$command] failed, you appear to be missing a required ip6tables module" );
+                error( $line, "ip6tables command [$command] failed, you appear to be missing a required ip6tables module" );
             }
             else {
-                &error( $line, "ip6tables command [$command] failed" );
+                error( $line, "ip6tables command [$command] failed" );
             }
         }
         if ( $output[0] =~ /xtables lock/ ) {
@@ -5960,7 +5960,7 @@ sub modprobe {
     if ( -e $config{MODPROBE} ) {
         my @modules = ( "ip_tables", "ipt_multiport", "iptable_filter", "ipt_limit", "ipt_LOG", "ipt_REJECT", "ipt_conntrack", "ip_conntrack", "ip_conntrack_ftp", "iptable_mangle", "ipt_REDIRECT", "iptable_nat" );
 
-        unless ( &loadmodule("xt_multiport") ) {
+        unless ( loadmodule("xt_multiport") ) {
             @modules = ( "ip_tables", "xt_multiport", "iptable_filter", "xt_limit", "ipt_LOG", "ipt_REJECT", "ip_conntrack_ftp", "iptable_mangle", "xt_conntrack", "ipt_REDIRECT", "iptable_nat", "nf_conntrack_ftp", "nf_nat_ftp" );
         }
 
@@ -5975,7 +5975,7 @@ sub modprobe {
             push @modules, "xt_connlimit";
         }
 
-        foreach my $module (@modules) { &loadmodule($module) }
+        foreach my $module (@modules) { loadmodule($module) }
     }
     return;
 }
@@ -5988,10 +5988,10 @@ sub faststart {
     if (@faststart4) {
         if ($verbose) { print "csf: FASTSTART loading $text (IPv4)\n" }
         my $status;
-        if ( $config{VPS} )        { $status = &fastvps( scalar @faststart4 ) }
-        if ($status)               { &error( __LINE__, $status ) }
+        if ( $config{VPS} )        { $status = fastvps( scalar @faststart4 ) }
+        if ($status)               { error( __LINE__, $status ) }
         if ( $config{DEBUG} >= 2 ) { print join( "\n", @faststart4 ) . "\n" }
-        &iptableslock("lock");
+        iptableslock("lock");
         my ( $childin, $childout );
         my $cmdpid = open3( $childin, $childout, $childout, "$config{IPTABLES_RESTORE} $config{IPTABLESWAIT} -n" );
         print $childin "*filter\n" . join( "\n", @faststart4 ) . "\nCOMMIT\n";
@@ -6004,17 +6004,17 @@ sub faststart {
         if ( $results[0] =~ /^(iptables|ip6tables|xtables|Bad|Another)/ ) {
             my $cmd;
             if ( $results[1] =~ /^Error occurred at line: (\d+)$/ ) { $cmd = $faststart4[ $1 - 1 ] }
-            &error( __LINE__, "FASTSTART: ($text IPv4) [$cmd] [$results[0]]. Try restarting csf with FASTSTART disabled" );
+            error( __LINE__, "FASTSTART: ($text IPv4) [$cmd] [$results[0]]. Try restarting csf with FASTSTART disabled" );
         }
-        &iptableslock( "unlock", 1 );
+        iptableslock( "unlock", 1 );
     }
     if (@faststart4nat) {
         if ($verbose) { print "csf: FASTSTART loading $text (IPv4 nat)\n" }
         my $status;
-        if ( $config{VPS} )        { $status = &fastvps( scalar @faststart4nat ) }
-        if ($status)               { &error( __LINE__, $status ) }
+        if ( $config{VPS} )        { $status = fastvps( scalar @faststart4nat ) }
+        if ($status)               { error( __LINE__, $status ) }
         if ( $config{DEBUG} >= 2 ) { print join( "\n", @faststart4nat ) . "\n" }
-        &iptableslock("lock");
+        iptableslock("lock");
         my ( $childin, $childout );
         my $cmdpid = open3( $childin, $childout, $childout, "$config{IPTABLES_RESTORE} $config{IPTABLESWAIT} -n" );
         print $childin "*nat\n" . join( "\n", @faststart4nat ) . "\nCOMMIT\n";
@@ -6027,17 +6027,17 @@ sub faststart {
         if ( $results[0] =~ /^(iptables|ip6tables|xtables|Bad|Another)/ ) {
             my $cmd;
             if ( $results[1] =~ /^Error occurred at line: (\d+)$/ ) { $cmd = $faststart4[ $1 - 1 ] }
-            &error( __LINE__, "FASTSTART: ($text IPv4nat) [$cmd] [$results[0]]. Try restarting csf with FASTSTART disabled" );
+            error( __LINE__, "FASTSTART: ($text IPv4nat) [$cmd] [$results[0]]. Try restarting csf with FASTSTART disabled" );
         }
-        &iptableslock( "unlock", 1 );
+        iptableslock( "unlock", 1 );
     }
     if ( @faststart6 and $config{IPV6} ) {
         if ($verbose) { print "csf: FASTSTART loading $text (IPv6)\n" }
         my $status;
-        if ( $config{VPS} )        { $status = &fastvps( scalar @faststart6 ) }
-        if ($status)               { &error( __LINE__, $status ) }
+        if ( $config{VPS} )        { $status = fastvps( scalar @faststart6 ) }
+        if ($status)               { error( __LINE__, $status ) }
         if ( $config{DEBUG} >= 2 ) { print join( "\n", @faststart6 ) . "\n" }
-        &iptableslock("lock");
+        iptableslock("lock");
         my ( $childin, $childout );
         my $cmdpid = open3( $childin, $childout, $childout, "$config{IP6TABLES_RESTORE} $config{IPTABLESWAIT} -n" );
         print $childin "*filter\n" . join( "\n", @faststart6 ) . "\nCOMMIT\n";
@@ -6050,17 +6050,17 @@ sub faststart {
         if ( $results[0] =~ /^(iptables|ip6tables|xtables|Bad|Another)/ ) {
             my $cmd;
             if ( $results[1] =~ /^Error occurred at line: (\d+)$/ ) { $cmd = $faststart4[ $1 - 1 ] }
-            &error( __LINE__, "FASTSTART: ($text IPv6) [$cmd] [$results[0]]. Try restarting csf with FASTSTART disabled" );
+            error( __LINE__, "FASTSTART: ($text IPv6) [$cmd] [$results[0]]. Try restarting csf with FASTSTART disabled" );
         }
-        &iptableslock( "unlock", 1 );
+        iptableslock( "unlock", 1 );
     }
     if ( @faststart6nat and $config{IPV6} ) {
         if ($verbose) { print "csf: FASTSTART loading $text (IPv6 nat)\n" }
         my $status;
-        if ( $config{VPS} )        { $status = &fastvps( scalar @faststart6nat ) }
-        if ($status)               { &error( __LINE__, $status ) }
+        if ( $config{VPS} )        { $status = fastvps( scalar @faststart6nat ) }
+        if ($status)               { error( __LINE__, $status ) }
         if ( $config{DEBUG} >= 2 ) { print join( "\n", @faststart6nat ) . "\n" }
-        &iptableslock("lock");
+        iptableslock("lock");
         my ( $childin, $childout );
         my $cmdpid = open3( $childin, $childout, $childout, "$config{IP6TABLES_RESTORE} $config{IPTABLESWAIT} -n" );
         print $childin "*nat\n" . join( "\n", @faststart6nat ) . "\nCOMMIT\n";
@@ -6073,9 +6073,9 @@ sub faststart {
         if ( $results[0] =~ /^(iptables|ip6tables|xtables|Bad|Another)/ ) {
             my $cmd;
             if ( $results[1] =~ /^Error occurred at line: (\d+)$/ ) { $cmd = $faststart6[ $1 - 1 ] }
-            &error( __LINE__, "FASTSTART: ($text IPv6nat) [$cmd] [$results[0]]. Try restarting csf with FASTSTART disabled" );
+            error( __LINE__, "FASTSTART: ($text IPv6nat) [$cmd] [$results[0]]. Try restarting csf with FASTSTART disabled" );
         }
-        &iptableslock( "unlock", 1 );
+        iptableslock( "unlock", 1 );
     }
     if (@faststartipset) {
         if ($verbose) { print "csf: FASTSTART loading $text (IPSET)\n" }

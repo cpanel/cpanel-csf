@@ -293,13 +293,13 @@ sub urlget {
     if ( !defined $url ) { Carp::carp("url not specified"); return }
 
     if ( $option == 3 ) {
-        ( $status, $text ) = &binget( $url, $file, $quiet );
+        ( $status, $text ) = binget( $url, $file, $quiet );
     }
     elsif ( $option == 2 ) {
-        ( $status, $text ) = &urlgetLWP( $url, $file, $quiet );
+        ( $status, $text ) = urlgetLWP( $url, $file, $quiet );
     }
     else {
-        ( $status, $text ) = &urlgetTINY( $url, $file, $quiet );
+        ( $status, $text ) = urlgetTINY( $url, $file, $quiet );
     }
     return ( $status, $text );
 }
@@ -371,7 +371,7 @@ sub urlgetTINY {
         else {
             my $reason = $res->{reason};
             if ( $res->{status} == 599 ) { $reason = $res->{content} }
-            ( $status, $text ) = &binget( $url, $file, $quiet, $reason );
+            ( $status, $text ) = binget( $url, $file, $quiet, $reason );
             return ( $status, $text );
         }
     };
@@ -447,7 +447,7 @@ sub urlgetLWP {
             }
         }
         else {
-            ( $status, $text ) = &binget( $url, $file, $quiet, $res->message );
+            ( $status, $text ) = binget( $url, $file, $quiet, $res->message );
             return ( $status, $text );
         }
     };
