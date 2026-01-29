@@ -184,7 +184,7 @@ subtest 'urlget - HTTP::Tiny success with file' => sub {
     ok( -e $testfile, 'File was created' );
 };
 
-subtest 'urlget - HTTP::Tiny failure triggers binget' => sub {
+subtest 'urlget - HTTP::Tiny failure triggers _binget' => sub {
     set_config(
         CURL => '',
         WGET => '',
@@ -247,7 +247,7 @@ subtest 'urlget - binary option with curl' => sub {
     # Mock file existence check
     my $file_test_mock = mock 'ConfigServer::URLGet' => (
         override => [
-            binget => sub {
+            _binget => sub {
                 my ( $url, $file, $quiet, $errormsg ) = @_;
 
                 # Simulate successful curl download

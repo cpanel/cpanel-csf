@@ -143,19 +143,15 @@ L<ConfigServer::Config>, L<HTTP::Tiny>, L<LWP::UserAgent>
 
 =cut
 
-use strict;
-use warnings;
+use cPstrict;
 
 use Fcntl      ();
 use Carp       ();
 use IPC::Open3 ();
 
-use ConfigServer::Config;
+use ConfigServer::Config ();
 
-use Exporter qw(import);
-our $VERSION   = 2.00;
-our @ISA       = qw(Exporter);
-our @EXPORT_OK = qw();
+our $VERSION = 2.00;
 
 my $agent  = "ConfigServer";
 my $option = 1;
@@ -293,18 +289,18 @@ sub urlget {
     if ( !defined $url ) { Carp::carp("url not specified"); return }
 
     if ( $option == 3 ) {
-        ( $status, $text ) = binget( $url, $file, $quiet );
+        ( $status, $text ) = _binget( $url, $file, $quiet );
     }
     elsif ( $option == 2 ) {
-        ( $status, $text ) = urlgetLWP( $url, $file, $quiet );
+        ( $status, $text ) = _urlgetLWP( $url, $file, $quiet );
     }
     else {
-        ( $status, $text ) = urlgetTINY( $url, $file, $quiet );
+        ( $status, $text ) = _urlgetTINY( $url, $file, $quiet );
     }
     return ( $status, $text );
 }
 
-sub urlgetTINY {
+sub _urlgetTINY {
     my $url     = shift;
     my $file    = shift;
     my $quiet   = shift;
@@ -371,7 +367,7 @@ sub urlgetTINY {
         else {
             my $reason = $res->{reason};
             if ( $res->{status} == 599 ) { $reason = $res->{content} }
-            ( $status, $text ) = binget( $url, $file, $quiet, $reason );
+            ( $status, $text ) = _binget( $url, $file, $quiet, $reason );
             return ( $status, $text );
         }
     };
@@ -380,7 +376,7 @@ sub urlgetTINY {
     return ( $status, $text );
 }
 
-sub urlgetLWP {
+sub _urlgetLWP {
     my $url     = shift;
     my $file    = shift;
     my $quiet   = shift;
@@ -447,7 +443,7 @@ sub urlgetLWP {
             }
         }
         else {
-            ( $status, $text ) = binget( $url, $file, $quiet, $res->message );
+            ( $status, $text ) = _binget( $url, $file, $quiet, $res->message );
             return ( $status, $text );
         }
     };
@@ -463,7 +459,7 @@ sub urlgetLWP {
     }
 }
 
-sub binget {
+sub _binget {
     my $url      = shift;
     my $file     = shift;
     my $quiet    = shift;
