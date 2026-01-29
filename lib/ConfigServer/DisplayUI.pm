@@ -59,8 +59,8 @@ use ConfigServer::Service     ();
 use ConfigServer::RBLCheck    ();
 use ConfigServer::GetEthDev   ();
 
+use ConfigServer::Sanity  ();
 use ConfigServer::CheckIP qw(checkip);
-use ConfigServer::Sanity  qw(sanity);
 use ConfigServer::Slurp   qw(slurp slurpee);
 
 use Cpanel::Config ();
@@ -1296,7 +1296,7 @@ EOF
                 if ( $end =~ /\"(.*)\"/ ) { $end = $1 }
                 my $size  = length($end) + 4;
                 my $class = "value-default";
-                my ( $status, $range, $default ) = sanity( $start, $end );
+                my ( $status, $range, $default ) = ConfigServer::Sanity::sanity( $start, $end );
                 my $showrange = "";
                 my $showfrom;
                 my $showto;
@@ -1439,7 +1439,7 @@ EOD
         my $newconfig = ConfigServer::Config->loadconfig();
         my %newconfig = $config->config;
         foreach my $key ( keys %newconfig ) {
-            my ( $insane, $range, $default ) = sanity( $key, $newconfig{$key} );
+            my ( $insane, $range, $default ) = ConfigServer::Sanity::sanity( $key, $newconfig{$key} );
             if ($insane) { print "<br>WARNING: $key sanity check. $key = \"$newconfig{$key}\". Recommended range: $range (Default: $default)\n" }
         }
 

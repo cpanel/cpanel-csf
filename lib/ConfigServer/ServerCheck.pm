@@ -76,7 +76,7 @@ use IPC::Open3;
 
 use lib '/usr/local/csf/lib';
 use ConfigServer::Slurp  qw(slurp);
-use ConfigServer::Sanity qw(sanity);
+use ConfigServer::Sanity ();
 use ConfigServer::Config;
 use ConfigServer::GetIPs  qw(getips);
 use ConfigServer::CheckIP qw(checkip);
@@ -444,7 +444,7 @@ sub _firewallcheck {
             my $name = $start;
             $name =~ s/\s/\_/g;
             if ( $end =~ /\"(.*)\"/ ) { $end = $1 }
-            my ( $insane, $range, $default ) = sanity( $start, $end );
+            my ( $insane, $range, $default ) = ConfigServer::Sanity::sanity( $start, $end );
             if ($insane) {
                 _addline( 1, "$start sanity check", "$start = $end. Recommended range: $range (Default: $default)" );
             }
