@@ -31,7 +31,7 @@ use ConfigServer::Slurp   qw(slurp slurpee);
 use ConfigServer::CheckIP qw(checkip cccheckip);
 use ConfigServer::Ports;
 use ConfigServer::URLGet;
-use ConfigServer::Sanity qw(sanity);
+use ConfigServer::Sanity ();
 use ConfigServer::ServerCheck;
 use ConfigServer::ServerStats;
 use ConfigServer::Service;
@@ -184,14 +184,13 @@ elsif ( -e "/etc/cron.d/csf_update" ) { unlink "/etc/cron.d/csf_update" }
 if ( ( $input{command} eq "--start" ) or ( $input{command} eq "-s" ) or ( $input{command} eq "--restart" ) or ( $input{command} eq "-r" ) or ( $input{command} eq "--restartall" ) or ( $input{command} eq "-ra" ) ) {
     if ($warning) { print $warning }
     foreach my $key ( keys %config ) {
-        my ( $insane, $range, $default ) = sanity( $key, $config{$key} );
+        my ( $insane, $range, $default ) = ConfigServer::Sanity::sanity( $key, $config{$key} );
         if ($insane) { print "*WARNING* $key sanity check. $key = $config{$key}. Recommended range: $range (Default: $default)\n" }
     }
     unless ( $config{RESTRICT_SYSLOG} ) { print "\n*WARNING* RESTRICT_SYSLOG is disabled. See SECURITY WARNING in /etc/csf/csf.conf.\n" }
 }
 
 exit 0;
-
 
 sub csflock {
     my $lock = shift;
@@ -205,7 +204,6 @@ sub csflock {
     }
     return;
 }
-
 
 sub load_config {
     my $config = ConfigServer::Config->loadconfig();
@@ -340,7 +338,6 @@ sub load_config {
     return;
 }
 
-
 sub process_input {
 
     # Make a copy of @ARGV to avoid modifying it as it is used elsewhere in the script
@@ -352,7 +349,6 @@ sub process_input {
     $input{comment} = join( " ", @arguments[ 1 .. $#arguments ] );
     return;
 }
-
 
 sub dostatus {
     print "iptables filter table\n";
@@ -378,7 +374,6 @@ sub dostatus {
     }
     return;
 }
-
 
 sub dostatus6 {
     if ( $config{IPV6} ) {
@@ -410,12 +405,10 @@ sub dostatus6 {
     return;
 }
 
-
 sub doversion {
     print "csf: v$version (cPanel)\n";
     return;
 }
-
 
 sub dolfd {
     my $lfd = $input{argument}[0];
@@ -427,7 +420,6 @@ sub dolfd {
     return;
 }
 
-
 sub dorestartall {
     csflock("lock");
     dostop(1);
@@ -436,7 +428,6 @@ sub dorestartall {
     ConfigServer::Service::restartlfd();
     return;
 }
-
 
 sub doinitup {
     csflock("lock");
@@ -510,7 +501,6 @@ sub doinitup {
     return;
 }
 
-
 sub doinitdown {
     if ( $config{FASTSTART} ) {
         if ( -x $config{IPTABLES_SAVE} ) {
@@ -562,7 +552,6 @@ sub doinitdown {
     return;
 }
 
-
 sub doclusterdeny {
     my $ip      = $input{argument}[0];
     my $comment = $input{comment};
@@ -575,7 +564,6 @@ sub doclusterdeny {
     clustersend("D $ip 1 * inout 3600 $comment");
     return;
 }
-
 
 sub doclustertempdeny {
     my ( $ip, $timeout, $portdir ) = @{ $input{argument} }[ 0 .. 2 ];
@@ -628,7 +616,6 @@ sub doclustertempdeny {
     return;
 }
 
-
 sub doclusterrm {
     my $ip      = $input{argument}[0];
     my $comment = $input{comment};
@@ -641,7 +628,6 @@ sub doclusterrm {
     clustersend("R $ip");
     return;
 }
-
 
 sub doclusterarm {
     my $ip      = $input{argument}[0];
@@ -656,7 +642,6 @@ sub doclusterarm {
     return;
 }
 
-
 sub doclusterallow {
     my $ip      = $input{argument}[0];
     my $comment = $input{comment};
@@ -669,7 +654,6 @@ sub doclusterallow {
     clustersend("A $ip 1 * inout 3600 $comment");
     return;
 }
-
 
 sub doclustertempallow {
     my ( $ip, $timeout, $portdir ) = @{ $input{argument} }[ 0 .. 2 ];
@@ -722,7 +706,6 @@ sub doclustertempallow {
     return;
 }
 
-
 sub doclusterignore {
     my $ip      = $input{argument}[0];
     my $comment = $input{comment};
@@ -735,7 +718,6 @@ sub doclusterignore {
     clustersend("I $ip     $comment");
     return;
 }
-
 
 sub doclusterirm {
     my $ip      = $input{argument}[0];
@@ -750,7 +732,6 @@ sub doclusterirm {
     return;
 }
 
-
 sub docconfig {
     my ( $name, $value ) = @{ $input{argument} }[ 0, 1 ];
     unless ( $config{CLUSTER_CONFIG} ) { print "No configuration setting requests allowed\n"; return }
@@ -759,7 +740,6 @@ sub docconfig {
     clustersend("C $name $value");
     return;
 }
-
 
 sub doclustergrep {
     my $ip = $input{argument}[0];
@@ -771,7 +751,6 @@ sub doclustergrep {
     clustersend("G $ip");
     return;
 }
-
 
 sub docfile {
     my $name = $input{argument}[0];
@@ -793,12 +772,10 @@ sub docfile {
     return;
 }
 
-
 sub docrestart {
     clustersend("RESTART");
     return;
 }
-
 
 sub clustersend {
     my $text = shift;
@@ -904,7 +881,6 @@ sub dostop {
     if ( $config{TESTING} ) { crontab("remove") }
     return;
 }
-
 
 sub dostart {
     if ( ConfigServer::Service::type() eq "systemd" ) {
@@ -1429,7 +1405,6 @@ sub dostart {
     return;
 }
 
-
 sub doadd {
     my $ip      = $input{argument}[0];
     my $comment = $input{comment};
@@ -1515,7 +1490,6 @@ sub doadd {
     close($ALLOW) or error( __LINE__, "Could not close /etc/csf/csf.allow: $!" );
     return;
 }
-
 
 sub dodeny {
     my $ip      = $input{argument}[0];
@@ -1690,7 +1664,6 @@ sub dodeny {
     return;
 }
 
-
 sub dokill {
     my $ip    = $input{argument}[0];
     my $is_ip = 0;
@@ -1758,7 +1731,6 @@ sub dokill {
     return;
 }
 
-
 sub dokillall {
 
     getethdev();
@@ -1790,7 +1762,6 @@ sub dokillall {
     print "csf: all entries removed from csf.deny\n";
     return;
 }
-
 
 sub doakill {
     my $ip = $input{argument}[0];
@@ -1830,13 +1801,11 @@ sub doakill {
     return;
 }
 
-
 sub dohelp {
     print "csf: v$version (cPanel)\n";
     print slurpee( "/usr/local/csf/lib/csf.help", 'fatal' => 1, 'wantarray' => 0 );
     return;
 }
-
 
 sub dopacketfilters {
     if ( $config{PACKET_FILTER} and $config{LF_SPI} ) {
@@ -1906,7 +1875,6 @@ sub dopacketfilters {
     }
     return;
 }
-
 
 sub doportfilters {
     my $dropin  = $config{DROP};
@@ -3293,7 +3261,6 @@ sub doportfilters {
     return;
 }
 
-
 sub dodisable {
     open( my $OUT, ">", "/etc/csf/csf.disable" );
     flock( $OUT, LOCK_EX );
@@ -3319,7 +3286,6 @@ sub dodisable {
     print "csf and lfd have been disabled\n";
     return;
 }
-
 
 sub doenable {
     unless ( -e "/etc/csf/csf.disable" ) {
@@ -3351,7 +3317,6 @@ sub doenable {
     print "csf and lfd have been enabled\n";
     return;
 }
-
 
 sub crontab {
     my $act     = shift;
@@ -3389,7 +3354,6 @@ sub crontab {
     }
     return;
 }
-
 
 sub error {
     my $line  = shift;
@@ -3449,13 +3413,11 @@ sub error {
     exit 1;
 }
 
-
 sub version {
     my ($myv) = slurpee( "/etc/csf/version.txt", 'fatal' => 1 );
     chomp $myv;
     return $myv;
 }
-
 
 sub getethdev {
     my $ethdev   = ConfigServer::GetEthDev->new();
@@ -3496,7 +3458,6 @@ sub getethdev {
     }
     return;
 }
-
 
 sub linefilter {
     my $line     = shift;
@@ -3745,7 +3706,6 @@ sub linefilter {
     return;
 }
 
-
 sub autoupdates {
     my $hour    = int( rand(24) );
     my $minutes = int( rand(60) );
@@ -3760,7 +3720,6 @@ END
     close($OUT);
     return;
 }
-
 
 sub doupdate {
     my $force = 0;
@@ -3809,7 +3768,6 @@ sub doupdate {
     return;
 }
 
-
 sub docheck {
     my $url = "https://$config{DOWNLOADSERVER}/csf/version.txt";
     if ( $config{URLGET} == 1 ) { $url = "http://$config{DOWNLOADSERVER}/csf/version.txt"; }
@@ -3833,7 +3791,6 @@ sub docheck {
     return;
 }
 
-
 sub doiplookup {
     my $ip = $input{argument}[0];
 
@@ -3847,7 +3804,6 @@ sub doiplookup {
 
     return;
 }
-
 
 sub dogrep {
     my $ipmatch = $input{argument}[0];
@@ -4161,7 +4117,6 @@ $table, $chain, $rest
     return;
 }
 
-
 sub dotempban {
     my ( $ip, $deny, $ports, $inout, $time, $timeout, $message );
     format TEMPBAN =
@@ -4237,7 +4192,6 @@ $deny, $ip,                                   $ports,  $inout,$time,$message
     }
     return;
 }
-
 
 sub dotempdeny {
     my $cftemp = shift;
@@ -4378,7 +4332,6 @@ sub dotempdeny {
     return;
 }
 
-
 sub dotempallow {
     my $cftemp = shift;
     my ( $ip, $timeout, $portdir ) = @{ $input{argument} }[ 0 .. 2 ];
@@ -4503,7 +4456,6 @@ sub dotempallow {
     print "csf: $ip allowed on port $port for $timeout seconds $inout\n";
     return;
 }
-
 
 sub dotemprm {
     my $ip = $input{argument}[0];
@@ -4687,7 +4639,6 @@ sub dotemprm {
     return;
 }
 
-
 sub dotemprmd {
     my $ip = $input{argument}[0];
 
@@ -4795,7 +4746,6 @@ sub dotemprmd {
     return;
 }
 
-
 sub dotemprma {
     my $ip = $input{argument}[0];
 
@@ -4892,7 +4842,6 @@ sub dotemprma {
     }
     return;
 }
-
 
 sub dotempf {
     getethdev();
@@ -5042,12 +4991,10 @@ sub dotempf {
     return;
 }
 
-
 sub dowatch {
     print "csf: --watch, -w is no longer supported. Use --trace instead\n";
     return;
 }
-
 
 sub dotrace {
     my $cmd = $ARGV[1];
@@ -5089,7 +5036,6 @@ sub dotrace {
     return;
 }
 
-
 sub dologrun {
     if ( $config{LOGSCANNER} ) {
         open( my $OUT, ">", "/var/lib/csf/csf.logrun" ) or error( __LINE__, "Could not create /var/lib/csf/csf.logrun: $!" );
@@ -5101,7 +5047,6 @@ sub dologrun {
     }
     return;
 }
-
 
 sub domessenger {
     my $ip     = shift;
@@ -5226,7 +5171,6 @@ sub domessenger {
     return;
 }
 
-
 sub domail {
     my $output = ConfigServer::ServerCheck::report();
 
@@ -5247,7 +5191,6 @@ sub domail {
     }
     return;
 }
-
 
 sub dorbls {
     my ( $failures, $output ) = ConfigServer::RBLCheck::report( 1, "", 0 );
@@ -5271,7 +5214,6 @@ sub dorbls {
     }
     return;
 }
-
 
 sub doprofile {
     my $cmd      = $ARGV[1];
@@ -5437,7 +5379,6 @@ sub doprofile {
     return;
 }
 
-
 sub doports {
     my ( $fport, $fopen, $fconn, $fpid, $fexe, $fcmd );
     format PORTS =
@@ -5469,14 +5410,12 @@ $fport,    $fopen,$fconn,$fpid,            $fcmd,                               
     return;
 }
 
-
 sub domessengerv2 {
     print "csf - MESSENGERV2 /etc/apache2/conf.d/csf_messenger.conf regeneration:\n\n";
     ConfigServer::Messenger::messengerv2();
     print "\n...Done.\n";
     return;
 }
-
 
 sub docloudflare {
     my $cmd       = $ARGV[1];
@@ -5567,7 +5506,6 @@ $ip,             $domain,             $mode,     $date,                    $comm
     return;
 }
 
-
 sub dographs {
     my ( $type, $dir ) = @{ $input{argument} }[ 0, 1 ];
     my %types = (
@@ -5639,7 +5577,6 @@ sub dographs {
     return;
 }
 
-
 sub loadmodule {
     my $module = shift;
     my @output;
@@ -5658,7 +5595,6 @@ sub loadmodule {
 
     return @output;
 }
-
 
 sub syscommand {
     my $line         = shift;
@@ -5780,7 +5716,6 @@ sub syscommand {
     return;
 }
 
-
 sub iptableslock {
     my $lock      = shift;
     my $iptablesx = shift;
@@ -5799,7 +5734,6 @@ sub iptableslock {
     return;
 }
 
-
 sub checkvps {
     if ( -e "/proc/user_beancounters" and !( -e "/proc/vz/version" ) ) {
         my @data = slurp("/proc/user_beancounters");
@@ -5813,7 +5747,6 @@ sub checkvps {
     }
     return 0;
 }
-
 
 sub modprobe {
     if ( -e $config{MODPROBE} ) {
@@ -5838,7 +5771,6 @@ sub modprobe {
     }
     return;
 }
-
 
 sub faststart {
     my $text = shift;
@@ -5957,7 +5889,6 @@ sub faststart {
     return;
 }
 
-
 sub fastvps {
     my $size = shift;
     if ( -e "/proc/user_beancounters" and !( -e "/proc/vz/version" ) ) {
@@ -5972,7 +5903,6 @@ sub fastvps {
     }
     return 0;
 }
-
 
 sub ipsetcreate {
     my $set = shift;
@@ -5994,7 +5924,6 @@ sub ipsetcreate {
     return;
 }
 
-
 sub ipsetrestore {
     my $set = shift;
     $SIG{PIPE} = 'IGNORE';
@@ -6014,7 +5943,6 @@ sub ipsetrestore {
     undef @ipset;
     return;
 }
-
 
 sub ipsetadd {
     my $set = shift;
@@ -6042,7 +5970,6 @@ sub ipsetadd {
     }
     return;
 }
-
 
 sub ipsetdel {
     my $set = shift;
