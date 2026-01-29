@@ -30,6 +30,42 @@ For example `ConfigServer::AbuseIP` package, which exists on disk at `lib/Config
 
 The correct shebang points to the cPanel-specific Perl installation which includes all required dependencies and ensures consistency across environments.
 
+### Use cPstrict (REQUIRED)
+
+**Every test file MUST use `use cPstrict;` immediately after the shebang (or copyright header if present):**
+
+```perl
+#!/usr/local/cpanel/3rdparty/bin/perl
+
+use cPstrict;
+
+use Test2::V0;
+# ... rest of imports
+```
+
+**CRITICAL RULES:**
+- ✅ **ALWAYS use:** `use cPstrict;`
+- ❌ **NEVER use:** `use strict;` and `use warnings;` separately
+- `cPstrict` is a cPanel pragma that provides `strict`, `warnings`, and other cPanel coding standards
+- Place it immediately after shebang (or copyright block) and before Test2 imports
+- This is mandatory even though `Test2::V0` also enables strict/warnings - it ensures consistency with cPanel standards
+
+**Example with copyright header:**
+
+```perl
+#!/usr/local/cpanel/3rdparty/bin/perl
+
+#                                      Copyright 2026 WebPros International, LLC
+#                                                           All rights reserved.
+# copyright@cpanel.net                                         http://cpanel.net
+# This code is subject to the cPanel license. Unauthorized copying is prohibited.
+
+use cPstrict;
+
+use Test2::V0;
+use Test2::Plugin::NoWarnings;
+```
+
 ## Test Framework
 
 When writing tests prefer using Test2 framework.
