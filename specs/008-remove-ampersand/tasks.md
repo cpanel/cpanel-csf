@@ -17,11 +17,11 @@
 
 **Purpose**: Establish clean baseline and backup strategy before transformations
 
-- [ ] T001 [US3] Verify clean git working directory: `git status` shows no uncommitted changes
-- [ ] T002 [US3] Run baseline test suite: `make test > /tmp/baseline-test-results.txt 2>&1`
-- [ ] T003 [US3] Record baseline exit code: `echo $? > /tmp/baseline-exit-code.txt`
-- [ ] T004 [US3] Syntax-check all Perl files: `find . -type f \( -name '*.pl' -o -name '*.pm' -o -name '*.t' \) ! -path './etc/*' ! -path './.git/*' ! -path './tpl/*' | xargs -I {} sh -c 'perl -cw -Ilib {} 2>&1 || echo "FAIL: {}"' > /tmp/baseline-syntax-check.txt`
-- [ ] T005 [US1] Count ampersand instances: `grep -r '&\w\+(' --include='*.pl' --include='*.pm' --include='*.t' . 2>/dev/null | wc -l > /tmp/baseline-ampersand-count.txt`
+- [X] T001 [US3] Verify clean git working directory: `git status` shows no uncommitted changes
+- [X] T002 [US3] Run baseline test suite: `make test > /tmp/baseline-test-results.txt 2>&1`
+- [X] T003 [US3] Record baseline exit code: `echo $? > /tmp/baseline-exit-code.txt`
+- [X] T004 [US3] Syntax-check all Perl files: `find . -type f \( -name '*.pl' -o -name '*.pm' -o -name '*.t' \) ! -path './etc/*' ! -path './.git/*' ! -path './tpl/*' | xargs -I {} sh -c 'perl -cw -Ilib {} 2>&1 || echo "FAIL: {}"' > /tmp/baseline-syntax-check.txt`
+- [X] T005 [US1] Count ampersand instances: `grep -r '&\w\+(' --include='*.pl' --include='*.pm' --include='*.t' . 2>/dev/null | wc -l > /tmp/baseline-ampersand-count.txt`
 
 **Checkpoint**: Baseline established, ready for transformation
 
@@ -35,15 +35,15 @@
 
 ### User Story 1 - Modernize Test Files
 
-- [ ] T006 [US1] Find all test files: `find t/ -name '*.t' > /tmp/test-files.txt`
-- [ ] T007 [US1] Create test files backup: `tar czf /tmp/csf-tests-backup-$(date +%Y%m%d-%H%M%S).tar.gz t/`
-- [ ] T008 [US1] Transform test files - Iteration 1: `find t/ -name '*.t' | while read file; do perl -i.bak -pe 's/(?<!\\\\)(?<!goto\\s)&(\\w+)\\s*\\(/$1(/g' "$file"; done`
-- [ ] T009 [US1] Transform test files - Iteration 2 (nested): `find t/ -name '*.t' | while read file; do perl -i -pe 's/(?<!\\\\)(?<!goto\\s)&(\\w+)\\s*\\(/$1(/g' "$file"; done`
-- [ ] T010 [US2] Manual review of test files for preserved patterns: Check t/*.t for `\&`, `goto &` remain unchanged
-- [ ] T011 [US3] Validate test syntax: `find t/ -name '*.t' | xargs -I {} perl -cw -Ilib {} 2>&1 | tee /tmp/tests-syntax-check.txt`
-- [ ] T012 [US3] Run test suite after test transformation: `make test | tee /tmp/tests-after-transformation.txt`
-- [ ] T013 [US3] Verify test exit code is 0: Check `$?` equals 0
-- [ ] T014 [US1] Remove .bak files from tests: `find t/ -name '*.bak' -delete`
+- [X] T006 [US1] Find all test files: `find t/ -name '*.t' > /tmp/test-files.txt`
+- [X] T007 [US1] Create test files backup: `tar czf /tmp/csf-tests-backup-$(date +%Y%m%d-%H%M%S).tar.gz t/`
+- [X] T008 [US1] Transform test files - Iteration 1: `find t/ -name '*.t' | while read file; do perl -i.bak -pe 's/(?<!\\\\)(?<!goto\\s)&(\\w+)\\s*\\(/$1(/g' "$file"; done`
+- [X] T009 [US1] Transform test files - Iteration 2 (nested): `find t/ -name '*.t' | while read file; do perl -i -pe 's/(?<!\\\\)(?<!goto\\s)&(\\w+)\\s*\\(/$1(/g' "$file"; done`
+- [X] T010 [US2] Manual review of test files for preserved patterns: Check t/*.t for `\&`, `goto &` remain unchanged
+- [X] T011 [US3] Validate test syntax: `find t/ -name '*.t' | xargs -I {} perl -cw -Ilib {} 2>&1 | tee /tmp/tests-syntax-check.txt`
+- [X] T012 [US3] Run test suite after test transformation: `make test | tee /tmp/tests-after-transformation.txt`
+- [X] T013 [US3] Verify test exit code is 0: Check `$?` equals 0
+- [X] T014 [US1] Remove .bak files from tests: `find t/ -name '*.bak' -delete`
 
 **Checkpoint**: Test files modernized and validated - proceed to modules
 
@@ -55,16 +55,16 @@
 
 ### User Story 1 - Modernize Library Modules
 
-- [ ] T015 [US1] Find all module files: `find lib/ConfigServer/ -name '*.pm' > /tmp/module-files.txt`
-- [ ] T016 [US1] Create modules backup: `tar czf /tmp/csf-lib-backup-$(date +%Y%m%d-%H%M%S).tar.gz lib/`
-- [ ] T017 [US1] Transform modules - Iteration 1: `find lib/ConfigServer/ -name '*.pm' | while read file; do perl -i.bak -pe 's/(?<!\\\\)(?<!goto\\s)&(\\w+)\\s*\\(/$1(/g' "$file"; done`
-- [ ] T018 [US1] Transform modules - Iteration 2 (nested): `find lib/ConfigServer/ -name '*.pm' | while read file; do perl -i -pe 's/(?<!\\\\)(?<!goto\\s)&(\\w+)\\s*\\(/$1(/g' "$file"; done`
-- [ ] T019 [US2] Check for prototyped functions in modules: `grep -rn 'sub \\w\\+\\s*([^)]*)\\s*{' lib/ConfigServer/ --include='*.pm'` (flag any legacy prototypes for manual review per FR-012)
-- [ ] T020 [US2] Manual review of modules for preserved patterns: Check lib/ConfigServer/*.pm for `\&`, `goto &` remain unchanged
-- [ ] T021 [US3] Validate module syntax: `find lib/ConfigServer/ -name '*.pm' | xargs -I {} perl -cw -Ilib {} 2>&1 | tee /tmp/modules-syntax-check.txt`
-- [ ] T022 [US3] Run test suite after module transformation: `make test | tee /tmp/modules-after-transformation.txt`
-- [ ] T023 [US3] Verify module test exit code is 0
-- [ ] T024 [US1] Remove .bak files from modules: `find lib/ConfigServer/ -name '*.bak' -delete`
+- [X] T015 [US1] Find all module files: `find lib/ConfigServer/ -name '*.pm' > /tmp/module-files.txt`
+- [X] T016 [US1] Create modules backup: `tar czf /tmp/csf-lib-backup-$(date +%Y%m%d-%H%M%S).tar.gz lib/`
+- [X] T017 [US1] Transform modules - Iteration 1: `find lib/ConfigServer/ -name '*.pm' | while read file; do perl -i.bak -pe 's/(?<!\\\\)(?<!goto\\s)&(\\w+)\\s*\\(/$1(/g' "$file"; done`
+- [X] T018 [US1] Transform modules - Iteration 2 (nested): `find lib/ConfigServer/ -name '*.pm' | while read file; do perl -i -pe 's/(?<!\\\\)(?<!goto\\s)&(\\w+)\\s*\\(/$1(/g' "$file"; done`
+- [X] T019 [US2] Check for prototyped functions in modules: `grep -rn 'sub \\w\\+\\s*([^)]*)\\s*{' lib/ConfigServer/ --include='*.pm'` (flag any legacy prototypes for manual review per FR-012)
+- [X] T020 [US2] Manual review of modules for preserved patterns: Check lib/ConfigServer/*.pm for `\&`, `goto &` remain unchanged
+- [X] T021 [US3] Validate module syntax: `find lib/ConfigServer/ -name '*.pm' | xargs -I {} perl -cw -Ilib {} 2>&1 | tee /tmp/modules-syntax-check.txt`
+- [X] T022 [US3] Run test suite after module transformation: `make test | tee /tmp/modules-after-transformation.txt`
+- [X] T023 [US3] Verify module test exit code is 0
+- [X] T024 [US1] Remove .bak files from modules: `find lib/ConfigServer/ -name '*.bak' -delete`
 
 **Checkpoint**: Library modules modernized and validated - proceed to scripts
 
@@ -76,15 +76,15 @@
 
 ### User Story 1 - Modernize Root Scripts
 
-- [ ] T025 [US1] Find root-level Perl scripts: `find . -maxdepth 1 -name '*.pl' > /tmp/root-scripts.txt`
-- [ ] T026 [US1] Create root scripts backup: `tar czf /tmp/csf-root-scripts-backup-$(date +%Y%m%d-%H%M%S).tar.gz *.pl`
-- [ ] T027 [US1] Transform root scripts - Iteration 1: `find . -maxdepth 1 -name '*.pl' | while read file; do perl -i.bak -pe 's/(?<!\\\\)(?<!goto\\s)&(\\w+)\\s*\\(/$1(/g' "$file"; done`
-- [ ] T028 [US1] Transform root scripts - Iteration 2 (nested): `find . -maxdepth 1 -name '*.pl' | while read file; do perl -i -pe 's/(?<!\\\\)(?<!goto\\s)&(\\w+)\\s*\\(/$1(/g' "$file"; done`
-- [ ] T029 [US2] Manual review of root scripts for preserved patterns: Check *.pl for `\&`, `goto &` remain unchanged
-- [ ] T030 [US3] Validate root script syntax: `find . -maxdepth 1 -name '*.pl' | xargs -I {} perl -cw -Ilib {} 2>&1 | tee /tmp/scripts-syntax-check.txt`
-- [ ] T031 [US3] Run test suite after script transformation: `make test | tee /tmp/scripts-after-transformation.txt`
-- [ ] T032 [US3] Verify script test exit code is 0
-- [ ] T033 [US1] Remove .bak files from root scripts: `find . -maxdepth 1 -name '*.bak' -delete`
+- [X] T025 [US1] Find root-level Perl scripts: `find . -maxdepth 1 -name '*.pl' > /tmp/root-scripts.txt`
+- [X] T026 [US1] Create root scripts backup: `tar czf /tmp/csf-root-scripts-backup-$(date +%Y%m%d-%H%M%S).tar.gz *.pl`
+- [X] T027 [US1] Transform root scripts - Iteration 1: `find . -maxdepth 1 -name '*.pl' | while read file; do perl -i.bak -pe 's/(?<!\\\\)(?<!goto\\s)&(\\w+)\\s*\\(/$1(/g' "$file"; done`
+- [X] T028 [US1] Transform root scripts - Iteration 2 (nested): `find . -maxdepth 1 -name '*.pl' | while read file; do perl -i -pe 's/(?<!\\\\)(?<!goto\\s)&(\\w+)\\s*\\(/$1(/g' "$file"; done`
+- [X] T029 [US2] Manual review of root scripts for preserved patterns: Check *.pl for `\&`, `goto &` remain unchanged
+- [X] T030 [US3] Validate root script syntax: `find . -maxdepth 1 -name '*.pl' | xargs -I {} perl -cw -Ilib {} 2>&1 | tee /tmp/scripts-syntax-check.txt`
+- [X] T031 [US3] Run test suite after script transformation: `make test | tee /tmp/scripts-after-transformation.txt`
+- [X] T032 [US3] Verify script test exit code is 0
+- [X] T033 [US1] Remove .bak files from root scripts: `find . -maxdepth 1 -name '*.bak' -delete`
 
 **Checkpoint**: Root scripts modernized and validated - proceed to utilities
 
@@ -96,15 +96,15 @@
 
 ### User Story 1 - Modernize Utilities and CGI Scripts
 
-- [ ] T034 [P] [US1] Transform bin/ utilities - Iteration 1: `find bin/ -name '*.pl' | while read file; do perl -i.bak -pe 's/(?<!\\\\)(?<!goto\\s)&(\\w+)\\s*\\(/$1(/g' "$file"; done`
-- [ ] T035 [P] [US1] Transform bin/ utilities - Iteration 2: `find bin/ -name '*.pl' | while read file; do perl -i -pe 's/(?<!\\\\)(?<!goto\\s)&(\\w+)\\s*\\(/$1(/g' "$file"; done`
-- [ ] T036 [P] [US1] Transform cpanel/ CGI - Iteration 1: `find cpanel/ \( -name '*.cgi' -o -name '*.pl' \) | while read file; do perl -i.bak -pe 's/(?<!\\\\)(?<!goto\\s)&(\\w+)\\s*\\(/$1(/g' "$file"; done`
-- [ ] T037 [P] [US1] Transform cpanel/ CGI - Iteration 2: `find cpanel/ \( -name '*.cgi' -o -name '*.pl' \) | while read file; do perl -i -pe 's/(?<!\\\\)(?<!goto\\s)&(\\w+)\\s*\\(/$1(/g' "$file"; done`
-- [ ] T038 [US2] Manual review utilities for preserved patterns: Check bin/*.pl, cpanel/*.cgi for `\&`, `goto &`
-- [ ] T039 [US3] Validate utilities syntax: `find bin/ cpanel/ \( -name '*.pl' -o -name '*.cgi' \) | xargs -I {} perl -cw -Ilib {} 2>&1 | tee /tmp/utilities-syntax-check.txt`
-- [ ] T040 [US3] Run test suite after utility transformation: `make test | tee /tmp/utilities-after-transformation.txt`
-- [ ] T041 [US3] Verify utilities test exit code is 0
-- [ ] T042 [US1] Remove .bak files from utilities: `find bin/ cpanel/ -name '*.bak' -delete`
+- [X] T034 [P] [US1] Transform bin/ utilities - Iteration 1: `find bin/ -name '*.pl' | while read file; do perl -i.bak -pe 's/(?<!\\\\)(?<!goto\\s)&(\\w+)\\s*\\(/$1(/g' "$file"; done`
+- [X] T035 [P] [US1] Transform bin/ utilities - Iteration 2: `find bin/ -name '*.pl' | while read file; do perl -i -pe 's/(?<!\\\\)(?<!goto\\s)&(\\w+)\\s*\\(/$1(/g' "$file"; done`
+- [X] T036 [P] [US1] Transform cpanel/ CGI - Iteration 1: `find cpanel/ \( -name '*.cgi' -o -name '*.pl' \) | while read file; do perl -i.bak -pe 's/(?<!\\\\)(?<!goto\\s)&(\\w+)\\s*\\(/$1(/g' "$file"; done`
+- [X] T037 [P] [US1] Transform cpanel/ CGI - Iteration 2: `find cpanel/ \( -name '*.cgi' -o -name '*.pl' \) | while read file; do perl -i -pe 's/(?<!\\\\)(?<!goto\\s)&(\\w+)\\s*\\(/$1(/g' "$file"; done`
+- [X] T038 [US2] Manual review utilities for preserved patterns: Check bin/*.pl, cpanel/*.cgi for `\&`, `goto &`
+- [X] T039 [US3] Validate utilities syntax: `find bin/ cpanel/ \( -name '*.pl' -o -name '*.cgi' \) | xargs -I {} perl -cw -Ilib {} 2>&1 | tee /tmp/utilities-syntax-check.txt`
+- [X] T040 [US3] Run test suite after utility transformation: `make test | tee /tmp/utilities-after-transformation.txt`
+- [X] T041 [US3] Verify utilities test exit code is 0
+- [X] T042 [US1] Remove .bak files from utilities: `find bin/ cpanel/ -name '*.bak' -delete`
 
 **Checkpoint**: All Perl files transformed - proceed to final validation
 
@@ -116,12 +116,12 @@
 
 ### User Story 3 - Verify Code Functionality
 
-- [ ] T043 [US3] Run final test suite: `make test > /tmp/final-test-results.txt 2>&1`
-- [ ] T044 [US3] Record final exit code: `echo $? > /tmp/final-exit-code.txt`
-- [ ] T045 [US3] Compare test exit codes: `diff /tmp/baseline-exit-code.txt /tmp/final-exit-code.txt` (SC-002: must match)
-- [ ] T046 [US3] Syntax-check all Perl files final: `find . -type f \( -name '*.pl' -o -name '*.pm' -o -name '*.t' \) ! -path './etc/*' ! -path './.git/*' ! -path './tpl/*' | xargs -I {} sh -c 'perl -cw -Ilib {} 2>&1 || echo "FAIL: {}"'` (SC-003: must all pass)
-- [ ] T047 [US1] Count remaining ampersands: `grep -r '&\w\+(' --include='*.pl' --include='*.pm' --include='*.t' . 2>/dev/null > /tmp/remaining-ampersands.txt`
-- [ ] T048 [US2] Verify only special cases remain: `cat /tmp/remaining-ampersands.txt | grep -v '\\&' | grep -v 'goto &' | grep -v '&nbsp;' | grep -v '&copy;'` (SC-001: should be empty)
+- [X] T043 [US3] Run final test suite: `make test > /tmp/final-test-results.txt 2>&1`
+- [X] T044 [US3] Record final exit code: `echo $? > /tmp/final-exit-code.txt`
+- [X] T045 [US3] Compare test exit codes: `diff /tmp/baseline-exit-code.txt /tmp/final-exit-code.txt` (SC-002: must match)
+- [X] T046 [US3] Syntax-check all Perl files final: `find . -type f \( -name '*.pl' -o -name '*.pm' -o -name '*.t' \) ! -path './etc/*' ! -path './.git/*' ! -path './tpl/*' | xargs -I {} sh -c 'perl -cw -Ilib {} 2>&1 || echo "FAIL: {}"'` (SC-003: must all pass)
+- [X] T047 [US1] Count remaining ampersands: `grep -r '&\w\+(' --include='*.pl' --include='*.pm' --include='*.t' . 2>/dev/null > /tmp/remaining-ampersands.txt`
+- [X] T048 [US2] Verify only special cases remain: `cat /tmp/remaining-ampersands.txt | grep -v '\\&' | grep -v 'goto &' | grep -v '&nbsp;' | grep -v '&copy;'` (SC-001: should be empty)
 
 **Checkpoint**: All success criteria validated
 
@@ -133,14 +133,14 @@
 
 ### User Story 1 & 2 - Review Sample Transformations
 
-- [ ] T049 [US1] Review sample test file: Manually inspect `t/ConfigServer-ServerStats.t` for correct transformations
-- [ ] T050 [US1] Review sample module: Manually inspect `lib/ConfigServer/URLGet.pm` for correct transformations
-- [ ] T051 [US1] Review sample script: Manually inspect `auto.pl` for correct transformations
-- [ ] T052 [US1] Review sample utility: Manually inspect `bin/csftest.pl` for correct transformations
-- [ ] T053 [US2] Verify signal handlers preserved: Check `lfd.pl` for `$SIG{INT} = \&cleanup` unchanged
-- [ ] T054 [US2] Verify goto constructs preserved: Check `t/ConfigServer-KillSSH.t` for `goto &CORE::flock` unchanged
-- [ ] T055 [US2] Verify string literals unchanged: Check for `&nbsp;`, `&copy;` in HTML output
-- [ ] T056 [US3] Compare test output details: Review `/tmp/baseline-test-results.txt` vs `/tmp/final-test-results.txt` for identical behavior (SC-004)
+- [X] T049 [US1] Review sample test file: Manually inspect `t/ConfigServer-ServerStats.t` for correct transformations
+- [X] T050 [US1] Review sample module: Manually inspect `lib/ConfigServer/URLGet.pm` for correct transformations
+- [X] T051 [US1] Review sample script: Manually inspect `auto.pl` for correct transformations
+- [X] T052 [US1] Review sample utility: Manually inspect `bin/csftest.pl` for correct transformations
+- [X] T053 [US2] Verify signal handlers preserved: Check `lfd.pl` for `$SIG{INT} = \&cleanup` unchanged
+- [X] T054 [US2] Verify goto constructs preserved: Check `t/ConfigServer-KillSSH.t` for `goto &CORE::flock` unchanged
+- [X] T055 [US2] Verify string literals unchanged: Check for `&nbsp;`, `&copy;` in HTML output
+- [X] T056 [US3] Compare test output details: Review `/tmp/baseline-test-results.txt` vs `/tmp/final-test-results.txt` for identical behavior (SC-004)
 
 **Checkpoint**: Manual review complete, quality verified
 

@@ -98,8 +98,8 @@ $ipv6reg  = $config->ipv6reg;
 $slurpreg = ConfigServer::Slurp->slurpreg;
 $cleanreg = ConfigServer::Slurp->cleanreg;
 
-unless ( $config{LF_DAEMON} ) { &cleanup( __LINE__, "*Error* LF_DAEMON not enabled in /etc/csf/csf.conf" ) }
-if     ( $config{TESTING} )   { &cleanup( __LINE__, "*Error* lfd will not run with TESTING enabled in /etc/csf/csf.conf" ) }
+unless ( $config{LF_DAEMON} ) { cleanup( __LINE__, "*Error* LF_DAEMON not enabled in /etc/csf/csf.conf" ) }
+if     ( $config{TESTING} )   { cleanup( __LINE__, "*Error* lfd will not run with TESTING enabled in /etc/csf/csf.conf" ) }
 
 if ( $config{UI} ) {
     require ConfigServer::DisplayUI;
@@ -197,8 +197,8 @@ $clock_ticks = sysconf(&POSIX::_SC_CLK_TCK) || 100;
 $tz          = strftime( "%z", localtime );
 
 my $pidfile_fh;
-sysopen( $pidfile_fh, $pidfile, O_RDWR | O_CREAT ) or &childcleanup( __LINE__, "*Error* unable to create lfd PID file [$pidfile] $!" );
-flock( $pidfile_fh, LOCK_EX | LOCK_NB )            or &childcleanup( __LINE__, "*Error* attempt to start lfd when it is already running" );
+sysopen( $pidfile_fh, $pidfile, O_RDWR | O_CREAT ) or childcleanup( __LINE__, "*Error* unable to create lfd PID file [$pidfile] $!" );
+flock( $pidfile_fh, LOCK_EX | LOCK_NB )            or childcleanup( __LINE__, "*Error* attempt to start lfd when it is already running" );
 autoflush $pidfile_fh 1;
 seek( $pidfile_fh, 0, 0 );
 truncate( $pidfile_fh, 0 );
@@ -211,7 +211,7 @@ $0 = "lfd - starting";
 $SIG{INT}     = \&cleanup;
 $SIG{TERM}    = \&cleanup;
 $SIG{HUP}     = \&cleanup;
-$SIG{__DIE__} = sub { &cleanup(@_); };
+$SIG{__DIE__} = sub { cleanup(@_); };
 $SIG{CHLD}    = 'IGNORE';
 $SIG{PIPE}    = 'IGNORE';
 
@@ -268,7 +268,7 @@ if ( -e "/var/lib/csf/csf.6.saved" )  { unlink "/var/lib/csf/csf.6.saved" }
 if ( -e "/var/lib/csf/csf.dnscache" ) { unlink "/var/lib/csf/csf.dnscache" }
 if ( -e "/var/lib/csf/csf.gignore" )  { unlink "/var/lib/csf/csf.gignore" }
 
-&getethdev;
+getethdev();
 ($version) = slurpee( "/etc/csf/version.txt", 'warn' => 0 ) or cleanup( __LINE__, "Unable to open version.txt" );
 chomp $version;
 logfile("daemon started on $hostname - csf v$version (cPanel)");
@@ -280,10 +280,10 @@ unless ( -e $config{SENDMAIL} ) {
 }
 
 if ( ConfigServer::Service::type() eq "systemd" ) {
-    my @reply = &syscommand( __LINE__, $config{SYSTEMCTL}, "is-active", "firewalld" );
+    my @reply = syscommand( __LINE__, $config{SYSTEMCTL}, "is-active", "firewalld" );
     chomp @reply;
     if ( $reply[0] eq "active" or $reply[0] eq "activating" ) {
-        &cleanup( __LINE__, "*Error* firewalld found to be running. You must stop and disable firewalld when using csf" );
+        cleanup( __LINE__, "*Error* firewalld found to be running. You must stop and disable firewalld when using csf" );
         exit 1;
     }
 }
@@ -307,7 +307,7 @@ if ( $config{RESTRICT_SYSLOG} == 1 ) {
 }
 elsif ( $config{RESTRICT_SYSLOG} == 3 ) {
     logfile("Restricting syslog/rsyslog socket acccess to group [$config{RESTRICT_SYSLOG_GROUP}]...");
-    &syslog_init;
+    syslog_init();
 }
 
 if ( $config{SYSLOG} or $config{SYSLOG_CHECK} ) {
@@ -440,29 +440,29 @@ if ( $config{IGNORE_ALLOW} and -e "/etc/csf/csf.allow" ) {
     }
 }
 
-if ( $config{LF_HTACCESS} or $config{LF_APACHE_404} or $config{LF_APACHE_403} or $config{LF_APACHE_401} or $config{LF_QOS} or $config{LF_SYMLINK} ) { &globlog("HTACCESS_LOG") }
-if ( $config{LF_MODSEC} or $config{LF_CXS} )                                                                                                        { &globlog("MODSEC_LOG") }
-if ( $config{LF_SUHOSIN} )                                                                                                                          { &globlog("SUHOSIN_LOG}") }
-if ( $config{LF_SMTPAUTH} or $config{LF_EXIMSYNTAX} )                                                                                               { &globlog("SMTPAUTH_LOG") }
-if ( $config{LF_POP3D} or $config{LT_POP3D} )                                                                                                       { &globlog("POP3D_LOG") }
-if ( $config{LF_IMAPD} or $config{LT_IMAPD} )                                                                                                       { &globlog("IMAPD_LOG") }
-if ( $config{LF_CPANEL} )                                                                                                                           { &globlog("CPANEL_LOG") }
-if ( $config{LF_SSHD} or $config{LF_SSH_EMAIL_ALERT} or $config{LF_CONSOLE_EMAIL_ALERT} )                                                           { &globlog("SSHD_LOG") }
-if ( $config{LF_FTPD} )                                                                                                                             { &globlog("FTPD_LOG") }
-if ( $config{LF_BIND} )                                                                                                                             { &globlog("BIND_LOG") }
-if ( $config{LF_CPANEL_ALERT} )                                                                                                                     { &globlog("CPANEL_ACCESSLOG") }
-if ( $config{SYSLOG_CHECK} and $sys_syslog )                                                                                                        { &globlog("SYSLOG_LOG") }
+if ( $config{LF_HTACCESS} or $config{LF_APACHE_404} or $config{LF_APACHE_403} or $config{LF_APACHE_401} or $config{LF_QOS} or $config{LF_SYMLINK} ) { globlog("HTACCESS_LOG") }
+if ( $config{LF_MODSEC} or $config{LF_CXS} )                                                                                                        { globlog("MODSEC_LOG") }
+if ( $config{LF_SUHOSIN} )                                                                                                                          { globlog("SUHOSIN_LOG}") }
+if ( $config{LF_SMTPAUTH} or $config{LF_EXIMSYNTAX} )                                                                                               { globlog("SMTPAUTH_LOG") }
+if ( $config{LF_POP3D} or $config{LT_POP3D} )                                                                                                       { globlog("POP3D_LOG") }
+if ( $config{LF_IMAPD} or $config{LT_IMAPD} )                                                                                                       { globlog("IMAPD_LOG") }
+if ( $config{LF_CPANEL} )                                                                                                                           { globlog("CPANEL_LOG") }
+if ( $config{LF_SSHD} or $config{LF_SSH_EMAIL_ALERT} or $config{LF_CONSOLE_EMAIL_ALERT} )                                                           { globlog("SSHD_LOG") }
+if ( $config{LF_FTPD} )                                                                                                                             { globlog("FTPD_LOG") }
+if ( $config{LF_BIND} )                                                                                                                             { globlog("BIND_LOG") }
+if ( $config{LF_CPANEL_ALERT} )                                                                                                                     { globlog("CPANEL_ACCESSLOG") }
+if ( $config{SYSLOG_CHECK} and $sys_syslog )                                                                                                        { globlog("SYSLOG_LOG") }
 
-if ( $config{PS_INTERVAL} or $config{ST_ENABLE} or $config{UID_INTERVAL} )                  { &globlog("IPTABLES_LOG") }
-if ( $config{LF_SU_EMAIL_ALERT} )                                                           { &globlog("SU_LOG") }
-if ( $config{LF_SUDO_EMAIL_ALERT} )                                                         { &globlog("SUDO_LOG") }
-if ( $config{LF_SCRIPT_ALERT} )                                                             { &globlog("SCRIPT_LOG") }
-if ( $config{RT_RELAY_ALERT} or $config{RT_AUTHRELAY_ALERT} or $config{RT_POPRELAY_ALERT} ) { &globlog("SMTPRELAY_LOG") }
+if ( $config{PS_INTERVAL} or $config{ST_ENABLE} or $config{UID_INTERVAL} )                  { globlog("IPTABLES_LOG") }
+if ( $config{LF_SU_EMAIL_ALERT} )                                                           { globlog("SU_LOG") }
+if ( $config{LF_SUDO_EMAIL_ALERT} )                                                         { globlog("SUDO_LOG") }
+if ( $config{LF_SCRIPT_ALERT} )                                                             { globlog("SCRIPT_LOG") }
+if ( $config{RT_RELAY_ALERT} or $config{RT_AUTHRELAY_ALERT} or $config{RT_POPRELAY_ALERT} ) { globlog("SMTPRELAY_LOG") }
 
 if ( $config{LT_IMAPD} ) { $loginproto{imapd} = $config{LT_IMAPD} }
 if ( $config{LT_POP3D} ) { $loginproto{pop3d} = $config{LT_POP3D} }
 
-for ( my $x = 1; $x < 10; $x++ ) { &globlog("CUSTOM${x}_LOG") }
+for ( my $x = 1; $x < 10; $x++ ) { globlog("CUSTOM${x}_LOG") }
 
 if ( -e "/usr/local/cpanel/version" and -e "/etc/cpanel/ea4/is_ea4" and -e "/etc/cpanel/ea4/paths.conf" ) {
     my @file = slurp("/etc/cpanel/ea4/paths.conf");
@@ -530,7 +530,7 @@ if ( $config{LOGSCANNER} ) {
         $line =~ s/$cleanreg//g;
         if   ( $line eq "" )               { next }
         if   ( $line =~ /^\s*\#|Include/ ) { next }
-        if   ( &testregex($line) )         { push @logignore, $line }
+        if   ( testregex($line) )         { push @logignore, $line }
         else                               { logfile("*Error* Invalid regex [$line] in csf.logignore") }
     }
     logfile("Log Scanner...");
@@ -553,13 +553,13 @@ if ( $config{WATCH_MODE} ) {
 
 if ( -e "/var/lib/csf/csf.restart" ) {
     unlink "/var/lib/csf/csf.restart";
-    &csfrestart;
+    csfrestart();
 }
 
 if ( $config{LF_CSF} ) {
     if ( -e "/var/lib/csf/cpanel.new" ) { unlink "/var/lib/csf/cpanel.new" }
     logfile("CSF Tracking...");
-    &csfcheck;
+    csfcheck();
     $csftimeout = 0;
 }
 
@@ -573,7 +573,7 @@ if ($cxsreputation) {
 
 if ( $config{PT_LOAD} ) {
     logfile("LOAD Tracking...");
-    &loadcheck;
+    loadcheck();
     $loadtimeout = 0;
 }
 
@@ -591,10 +591,10 @@ if ( $config{MESSENGER} ) {
     system( "chown", "$config{MESSENGER_USER}:$config{MESSENGER_USER}", "/var/log/lfd_messenger.log" );
 
     if ( !$config{MESSENGERV2} ) {
-        &messengerstop(2);
+        messengerstop(2);
     }
     if ( !$config{MESSENGERV3} ) {
-        &messengerstop(3);
+        messengerstop(3);
     }
     my ( undef, undef, $uid, $gid ) = getpwnam( $config{MESSENGER_USER} );
     if ( ( $config{MESSENGER_USER} ne "" ) and ( $config{MESSENGER_USER} ne "root" ) and ( $uid > 0 ) and ( $gid > 0 ) ) {
@@ -607,7 +607,7 @@ if ( $config{MESSENGER} ) {
                 logfile("*MESSENGERV3* - Cannot run service using a cPanel account:[$config{MESSENGER_USER}], MESSENGER service disabled");
                 $config{MESSENGER}   = 0;
                 $config{MESSENGERV3} = 0;
-                &messengerstop(3);
+                messengerstop(3);
             }
             else {
                 if ( $config{MESSENGER_HTTPS_IN} ne "" ) {
@@ -618,7 +618,7 @@ if ( $config{MESSENGER} ) {
                     foreach my $port ( split( /\,/, $config{MESSENGER_HTML_IN} ) ) { $messengerports{$port} = 1 }
                     logfile("Messenger HTML Service starting...");
                 }
-                &messengerv3;
+                messengerv3();
             }
         }
         elsif ( $config{MESSENGERV2} ) {
@@ -627,7 +627,7 @@ if ( $config{MESSENGER} ) {
                 logfile("*MESSENGERV2* - Cannot run service using a cPanel account:[$config{MESSENGER_USER}], MESSENGER service disabled");
                 $config{MESSENGER}   = 0;
                 $config{MESSENGERV2} = 0;
-                &messengerstop(2);
+                messengerstop(2);
             }
             else {
                 if ( $config{MESSENGER_HTTPS_IN} ne "" ) {
@@ -638,7 +638,7 @@ if ( $config{MESSENGER} ) {
                     foreach my $port ( split( /\,/, $config{MESSENGER_HTML_IN} ) ) { $messengerports{$port} = 1 }
                     logfile("Messenger HTML Service starting...");
                 }
-                &messengerv2;
+                messengerv2();
             }
         }
         else {
@@ -646,12 +646,12 @@ if ( $config{MESSENGER} ) {
             if ( $config{MESSENGER_HTTPS_IN} ne "" ) {
                 foreach my $port ( split( /\,/, $config{MESSENGER_HTTPS_IN} ) ) { $messengerports{$port} = 1 }
                 logfile("Messenger HTTPS Service starting...");
-                &messenger( $config{MESSENGER_HTTPS}, $config{MESSENGER_USER}, "HTTPS" );
+                messenger( $config{MESSENGER_HTTPS}, $config{MESSENGER_USER}, "HTTPS" );
             }
             if ( $config{MESSENGER_HTML_IN} ne "" ) {
                 foreach my $port ( split( /\,/, $config{MESSENGER_HTML_IN} ) ) { $messengerports{$port} = 1 }
                 logfile("Messenger HTML Service starting...");
-                &messenger( $config{MESSENGER_HTML}, $config{MESSENGER_USER}, "HTML" );
+                messenger( $config{MESSENGER_HTML}, $config{MESSENGER_USER}, "HTML" );
             }
         }
         if ( $config{MESSENGER_TEXT_IN} ne "" ) {
@@ -660,7 +660,7 @@ if ( $config{MESSENGER} ) {
             }
             foreach my $port ( split( /\,/, $config{MESSENGER_TEXT_IN} ) ) { $messengerports{$port} = 1 }
             logfile("Messenger TEXT Service starting...");
-            &messenger( $config{MESSENGER_TEXT}, $config{MESSENGER_USER}, "TEXT" );
+            messenger( $config{MESSENGER_TEXT}, $config{MESSENGER_USER}, "TEXT" );
         }
     }
     else {
@@ -669,8 +669,8 @@ if ( $config{MESSENGER} ) {
     }
 }
 else {
-    &messengerstop(2);
-    &messengerstop(3);
+    messengerstop(2);
+    messengerstop(3);
 }
 
 if ( $config{UI} ) {
@@ -688,7 +688,7 @@ if ( $config{UI} ) {
     }
     else {
         logfile("csf Integrated UI running up on port $config{UI_PORT}...");
-        &ui;
+        ui();
     }
 }
 
@@ -700,13 +700,13 @@ if ( $config{CLUSTER_RECVFROM} ) {
     }
     else {
         if ( length $config{CLUSTER_KEY} < 20 ) { logfile("Cluster Service - CLUSTER_KEY should really be longer than 20 characters") }
-        &lfdserver;
+        lfdserver();
     }
 }
 
 if ( $config{DYNDNS} ) {
     logfile("DynDNS Tracking...");
-    &dyndns;
+    dyndns();
     $dyndnstimeout = 0;
     if ( $config{DYNDNS} < 60 ) {
         logfile("DYNDNS refresh increased to 300 to prevent looping (csf.conf setting: $config{DYNDNS})");
@@ -719,7 +719,7 @@ if ( $config{LF_GLOBAL} ) {
     if ( $config{GLOBAL_ALLOW} )  { logfile("Global Allow Tracking...") }
     if ( $config{GLOBAL_DENY} )   { logfile("Global Deny Tracking...") }
     if ( $config{GLOBAL_DYNDNS} ) { logfile("Global DynDNS Tracking...") }
-    &global;
+    global();
     $globaltimeout = 0;
     if ( $config{LF_GLOBAL} < 60 ) {
         logfile("LF_GLOBAL refresh increased to 300 to prevent looping (csf.conf setting: $config{LF_GLOBAL})");
@@ -733,7 +733,7 @@ if ( $config{LF_GLOBAL} ) {
 
 if ( scalar( keys %blocklists ) > 0 ) {
     logfile("Blocklist Tracking...");
-    &blocklist;
+    blocklist();
     $blocklisttimeout = 0;
 }
 
@@ -742,7 +742,7 @@ if ( $config{CC_LOOKUPS} ) {
         logfile("*ERROR*: Country Code Lookups setting MM_LICENSE_KEY must be set in /etc/csf/csf.conf to continue updating the MaxMind databases");
     }
     logfile("Country Code Lookups...");
-    &countrycodelookups;
+    countrycodelookups();
     $ccltimeout = 0;
 }
 
@@ -751,7 +751,7 @@ if ( $config{CC_DENY} or $config{CC_ALLOW} or $config{CC_ALLOW_FILTER} or $confi
         logfile("*ERROR*: Country Code Filters setting MM_LICENSE_KEY must be set in /etc/csf/csf.conf to continue updating the MaxMind databases");
     }
     logfile("Country Code Filters...");
-    &countrycode;
+    countrycode();
     $cctimeout = 0;
 }
 
@@ -767,7 +767,7 @@ if ( $config{CC_IGNORE} ) {
 
 if ( $config{LF_INTEGRITY} ) {
     logfile("System Integrity Tracking...");
-    &integrity;
+    integrity();
     $integritytimeout = 0;
     if ( $config{LF_INTEGRITY} < 120 ) {
         logfile("LF_INTEGRITY refresh increased to 300 to prevent looping (csf.conf setting: $config{LF_INTEGRITY})");
@@ -793,7 +793,7 @@ if ( $config{LF_EXPLOIT} ) {
         }
     }
     logfile("Exploit Tracking...");
-    &exploit;
+    exploit();
     $exploittimeout = 0;
     if ( $config{LF_EXPLOIT} < 60 ) {
         logfile("LF_EXPLOIT refresh increased to 60 to prevent looping (csf.conf setting: $config{LF_EXPLOIT})");
@@ -819,7 +819,7 @@ if ( $config{LF_DIRWATCH} ) {
             if ( $line eq "" ) { next }
             if ( $line =~ /^\s*\#|Include/ ) { next }
             if ( $line =~ /\*|\\/ ) {
-                if ( &testregex($line) ) { push @matchfile, $line }
+                if ( testregex($line) ) { push @matchfile, $line }
                 else                     { logfile("*Error* Invalid regex [$line] in csf.fignore") }
             }
             elsif ( $line =~ /^user:(.*)/ ) {
@@ -857,7 +857,7 @@ if ( $config{LF_DIRWATCH_FILE} ) {
                 logfile("Directory File Watching [$line] not found - ignoring");
             }
         }
-        &dirwatchfile;
+        dirwatchfile();
         $dirwatchfiletimeout = 0;
     }
 }
@@ -883,7 +883,7 @@ if ( $config{LF_SCRIPT_ALERT} ) {
 
 if ( $config{LF_QUEUE_ALERT} ) {
     logfile("Email Queue Tracking...");
-    &queuecheck;
+    queuecheck();
     $queuetimeout = 0;
     if ( $config{LF_QUEUE_INTERVAL} < 30 ) {
         logfile("LF_QUEUE_INTERVAL refresh increased to 300 to prevent looping (csf.conf setting: $config{LF_QUEUE_INTERVAL})");
@@ -893,7 +893,7 @@ if ( $config{LF_QUEUE_ALERT} ) {
 
 if ( $config{LF_MODSECIPDB_ALERT} ) {
     logfile("ModSecurity IP D/B Tracking...");
-    &modsecipdbcheck;
+    modsecipdbcheck();
     $modsecipdbchecktimeout = 0;
 }
 
@@ -963,7 +963,7 @@ if ( $config{ST_SYSTEM} ) {
     close($SYSSTAT);
     close($SYSSTATNEW);
     rename "/var/lib/csf/stats/system.new", "/var/lib/csf/stats/system";
-    &systemstats;
+    systemstats();
 }
 if ( $config{PS_INTERVAL} ) {
     logfile("Port Scan Tracking...");
@@ -1002,7 +1002,7 @@ if ( $config{CT_LIMIT} ) {
     else {
         logfile("Connection Tracking...");
     }
-    &connectiontracking;
+    connectiontracking();
     $cttimeout = 0;
     if ( $config{CT_INTERVAL} < 10 ) {
         logfile("CT_INTERVAL refresh increased to 30 to prevent looping (csf.conf setting: $config{CT_INTERVAL})");
@@ -1033,7 +1033,7 @@ if ( $config{PT_LIMIT} ) {
                 $skip{$item}{$rule} = 1;
             }
             elsif ( $item =~ /^(pcmd|pexe|puser)$/ ) {
-                if ( &testregex($rule) ) { $pskip{$item}{$rule} = 1 }
+                if ( testregex($rule) ) { $pskip{$item}{$rule} = 1 }
                 else                     { logfile("*Error* Invalid regex [$line] in csf.pignore") }
             }
         }
@@ -1041,7 +1041,7 @@ if ( $config{PT_LIMIT} ) {
     if ( -e "/var/lib/csf/csf.temppids" )  { unlink("/var/lib/csf/csf.temppids") }
     if ( -e "/var/lib/csf/csf.tempusers" ) { unlink("/var/lib/csf/csf.tempusers") }
     logfile("Process Tracking...");
-    &processtracking;
+    processtracking();
     $pttimeout = 0;
     if ( $config{PT_INTERVAL} < 10 ) {
         logfile("PT_INTERVAL refresh increased to 60 to prevent looping (csf.conf setting: $config{PT_INTERVAL})");
@@ -1171,11 +1171,11 @@ while (1) {
     my @piddata = <$pidfile_fh>;
     chomp @piddata;
     if ( ( $pid ne $piddata[0] ) or ( $pidino ne ( stat($pidfile) )[1] ) ) {
-        &cleanup( __LINE__, "*Error* pid mismatch or missing" );
+        cleanup( __LINE__, "*Error* pid mismatch or missing" );
     }
 
     if ( -e "/etc/csf/csf.error" ) {
-        &cleanup( __LINE__, "*Error* You have an unresolved error when starting csf. You need to restart csf successfully before restarting lfd (see /etc/csf/csf.error). *lfd stopped*" );
+        cleanup( __LINE__, "*Error* You have an unresolved error when starting csf. You need to restart csf successfully before restarting lfd (see /etc/csf/csf.error). *lfd stopped*" );
     }
     my $perms = sprintf "%04o", ( stat("/etc/csf") )[2] & oct("07777");
     if ( $perms != "0600" ) {
@@ -1196,7 +1196,7 @@ while (1) {
     $locktimeout += $duration;
     if ( $locktimeout >= 60 ) {
         $locktimeout = 0;
-        &lockhang;
+        lockhang();
     }
 
     if ( scalar( keys %forks ) > 200 ) {
@@ -1213,27 +1213,27 @@ while (1) {
         if ( $config{DEBUG} >= 2 ) { logfile("debug: Forks:[$forkcnt]") }
         if ( $forkcnt > 200 ) {
             logfile("*Error* Excessive number of children ($forkcnt), restarting lfd...");
-            &lfdrestart;
+            lfdrestart();
             exit;
         }
     }
 
     if ( -e "/var/lib/csf/lfd.restart" ) {
         unlink "/var/lib/csf/lfd.restart";
-        &lfdrestart;
+        lfdrestart();
         exit;
     }
 
     if ( -e "/var/lib/csf/csf.restart" ) {
         unlink "/var/lib/csf/csf.restart";
-        &csfrestart;
+        csfrestart();
     }
 
     if ( $config{LF_CSF} ) {
         $csftimeout += $duration;
         if ( $csftimeout >= 300 ) {
             $csftimeout = 0;
-            &csfcheck;
+            csfcheck();
         }
     }
 
@@ -1252,7 +1252,7 @@ while (1) {
                 }
             }
             else {
-                &syslogcheck;
+                syslogcheck();
                 $syslogcheckcode = "";
             }
         }
@@ -1262,7 +1262,7 @@ while (1) {
         $systemstatstimeout += $duration;
         if ( $systemstatstimeout >= 60 ) {
             $systemstatstimeout = 0;
-            &systemstats;
+            systemstats();
         }
     }
 
@@ -1343,7 +1343,7 @@ while (1) {
                 $value = $1;
             }
             else {
-                &cleanup( __LINE__, "*Error* Invalid configuration line in csf.tempconf" );
+                cleanup( __LINE__, "*Error* Invalid configuration line in csf.tempconf" );
             }
             $config{$name} = $value;
         }
@@ -1421,10 +1421,10 @@ while (1) {
     foreach my $lgfile ( keys %logfiles ) {
         if ( $lgfile eq "" ) { next }
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", $lgfile, $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", $lgfile, $timer ) }
         my $totlines = 0;
         my @data;
-        while ( my $line = &getlogfile( $lgfile, $count, $totlines ) ) {
+        while ( my $line = getlogfile( $lgfile, $count, $totlines ) ) {
             if ( $line eq "reopen" ) {
                 undef @data;
                 last;
@@ -1440,11 +1440,11 @@ while (1) {
                 my $hits = $1;
                 if ( $hits > 100 ) { $hits = 100 }
                 for ( my $x = 0; $x < $hits; $x++ ) {
-                    &dochecks( $lastline, $lgfile );
+                    dochecks( $lastline, $lgfile );
                 }
             }
             else {
-                &dochecks( $line, $lgfile );
+                dochecks( $line, $lgfile );
                 $lastline = $line;
             }
         }
@@ -1452,7 +1452,7 @@ while (1) {
         $count++;
         undef %psips;
         undef %blockedips;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", $lgfile, $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", $lgfile, $timer ) }
     }
 
     $0 = "lfd - processing";
@@ -1460,7 +1460,7 @@ while (1) {
         $cttimeout += $duration;
         if ( $cttimeout >= $config{CT_INTERVAL} ) {
             $cttimeout = 0;
-            &connectiontracking;
+            connectiontracking();
         }
     }
 
@@ -1468,7 +1468,7 @@ while (1) {
         $dyndnstimeout += $duration;
         if ( $dyndnstimeout >= $config{DYNDNS} ) {
             $dyndnstimeout = 0;
-            &dyndns;
+            dyndns();
         }
     }
 
@@ -1476,7 +1476,7 @@ while (1) {
         $gdyndnstimeout += $duration;
         if ( $gdyndnstimeout >= $config{GLOBAL_DYNDNS_INTERVAL} ) {
             $gdyndnstimeout = 0;
-            &globaldyndns;
+            globaldyndns();
         }
     }
 
@@ -1484,7 +1484,7 @@ while (1) {
         $globaltimeout += $duration;
         if ( $globaltimeout >= $config{LF_GLOBAL} ) {
             $globaltimeout = 0;
-            &global;
+            global();
         }
     }
 
@@ -1492,7 +1492,7 @@ while (1) {
         $blocklisttimeout += $duration;
         if ( $blocklisttimeout >= 300 ) {
             $blocklisttimeout = 0;
-            &blocklist;
+            blocklist();
         }
     }
 
@@ -1500,7 +1500,7 @@ while (1) {
         $cctimeout += $duration;
         if ( $cctimeout >= 3600 ) {
             $cctimeout = 0;
-            &countrycode;
+            countrycode();
         }
     }
 
@@ -1508,7 +1508,7 @@ while (1) {
         $ccltimeout += $duration;
         if ( $ccltimeout >= 3600 ) {
             $ccltimeout = 0;
-            &countrycodelookups;
+            countrycodelookups();
         }
     }
 
@@ -1526,15 +1526,15 @@ while (1) {
         }
         if ( -e "/var/lib/csf/csf.logrun" ) {
             unlink "/var/lib/csf/csf.logrun";
-            &logscanner($hour);
+            logscanner($hour);
         }
         elsif ( $config{LOGSCANNER_INTERVAL} eq "hourly" and $loginterval ne $hour ) {
             $loginterval = $hour;
-            &logscanner($hour);
+            logscanner($hour);
         }
         elsif ( $config{LOGSCANNER_INTERVAL} eq "daily" and $loginterval ne $mday ) {
             $loginterval = $mday;
-            &logscanner($hour);
+            logscanner($hour);
         }
 
         if ( $lastrun ne $loginterval ) {
@@ -1550,7 +1550,7 @@ while (1) {
         $integritytimeout += $duration;
         if ( $integritytimeout >= $config{LF_INTEGRITY} ) {
             $integritytimeout = 0;
-            &integrity;
+            integrity();
         }
     }
 
@@ -1558,7 +1558,7 @@ while (1) {
         $queuetimeout += $duration;
         if ( $queuetimeout >= $config{LF_QUEUE_INTERVAL} ) {
             $queuetimeout = 0;
-            &queuecheck;
+            queuecheck();
         }
     }
 
@@ -1566,7 +1566,7 @@ while (1) {
         $modsecipdbchecktimeout += $duration;
         if ( $modsecipdbchecktimeout >= 3600 ) {
             $modsecipdbchecktimeout = 0;
-            &modsecipdbcheck;
+            modsecipdbcheck();
         }
     }
 
@@ -1574,7 +1574,7 @@ while (1) {
         $exploittimeout += $duration;
         if ( $exploittimeout >= $config{LF_EXPLOIT} ) {
             $exploittimeout = 0;
-            &exploit;
+            exploit();
         }
     }
 
@@ -1583,7 +1583,7 @@ while (1) {
         if ( not -e "/var/lib/csf/csf.dwdisable" ) {
             if ( $dirwatchtimeout >= $config{LF_DIRWATCH} ) {
                 $dirwatchtimeout = 0;
-                &dirwatch;
+                dirwatch();
             }
         }
     }
@@ -1591,7 +1591,7 @@ while (1) {
     if ( $config{LF_DIRWATCH_FILE} ) {
         $dirwatchfiletimeout += $duration;
         if ( $dirwatchfiletimeout >= $config{LF_DIRWATCH_FILE} ) {
-            &dirwatchfile;
+            dirwatchfile();
             $dirwatchfiletimeout = 0;
         }
     }
@@ -1600,7 +1600,7 @@ while (1) {
         $loadtimeout += $duration;
         if ( $loadtimeout >= $config{PT_LOAD} ) {
             $loadtimeout = 0;
-            &loadcheck;
+            loadcheck();
         }
     }
 
@@ -1608,7 +1608,7 @@ while (1) {
         $pttimeout += $duration;
         if ( $pttimeout >= $config{PT_INTERVAL} ) {
             $pttimeout = 0;
-            &processtracking;
+            processtracking();
         }
     }
 
@@ -1621,22 +1621,22 @@ while (1) {
         foreach my $key ( keys %messengerips ) {
             if ( $messengerips{$key} > 1 and $config{"MESSENGER_${key}_IN"} ne "" ) {
                 unless ( kill( 0, $messengerips{$key} ) ) {
-                    &messenger( $config{"MESSENGER_${key}"}, $config{MESSENGER_USER}, $key );
+                    messenger( $config{"MESSENGER_${key}"}, $config{MESSENGER_USER}, $key );
                     logfile("Messenger $key Service died, restarted");
                 }
             }
         }
-        &messengerrecaptcha;
+        messengerrecaptcha();
     }
     if ( $config{UI} ) {
         if ( $uiip > 1 and !( kill( 0, $uiip ) ) ) {
-            &ui;
+            ui();
             logfile("Integrated UI Service died, restarted");
         }
     }
     if ( $config{CLUSTER_RECVFROM} ) {
         if ( $clusterip > 1 and !( kill( 0, $clusterip ) ) ) {
-            &lfdserver;
+            lfdserver();
             logfile("Cluster Service died, restarted");
         }
     }
@@ -1667,12 +1667,12 @@ while (1) {
                 }
                 endpwent();
             }
-            &accounttracking;
+            accounttracking();
             %accounttracking = %newaccounttracking;
         }
     }
 
-    &ipunblock;
+    ipunblock();
 
     $0 = "lfd - sleeping";
     sleep( $config{LF_PARSE} );
@@ -1704,7 +1704,7 @@ sub dochecks {
     }
     $ip = $gip;
     if ( ($ip) and ( $ip !~ /^127\./ ) and ( $ip ne "::1" ) ) {
-        if ( &ignoreip($ip) ) {
+        if ( ignoreip($ip) ) {
             logfile("$reason $ip - ignored");
         }
         else {
@@ -1794,7 +1794,7 @@ sub dochecks {
                     $db{$ip}{text} = "";
                     for ( -$hits .. -1 ) { $db{$ip}{text} .= "$text[$_]\n" }
                     $0 = "lfd - blocking $ip";
-                    &block( $ip, $hits, $app, $config{"$trigger\_PERM"}, $trigger, $reason );
+                    block( $ip, $hits, $app, $config{"$trigger\_PERM"}, $trigger, $reason );
                     if ( $config{LF_SELECT} and !$config{LF_TRIGGER} ) {
                         $db{$ip}{appscount}{$app} = 0;
                         $db{$ip}{appstime}{$app}  = "";
@@ -1827,7 +1827,7 @@ sub dochecks {
                     if ( $config{DEBUG} >= 1 ) { logfile( "debug: $reason " . @uniqueips . " ip(s) to account [$account] " . @accountips . " in the last $config{LF_INTERVAL} secs" ) }
                     if ( ( @accountips >= $config{$trigger} ) and ( @uniqueips >= $config{LF_DISTATTACK_UNIQ} ) ) {
                         delete $adb{$app}{$account};
-                        &blockaccount( \@uniqueips, $account, $#accountips + 1, $app, $text, $config{"$trigger\_PERM"}, $trigger );
+                        blockaccount( \@uniqueips, $account, $#accountips + 1, $app, $text, $config{"$trigger\_PERM"}, $trigger );
                     }
                 }
             }
@@ -1841,7 +1841,7 @@ sub dochecks {
             $account = "";
         }
         if ( $ip and $account and ( $ip !~ /^127\./ ) and ( $ip ne "::1" ) ) {
-            if ( &ignoreip($ip) ) {
+            if ( ignoreip($ip) ) {
                 if ( $config{DEBUG} >= 1 ) { logfile("debug: Distributed FTP $ip - ignored") }
             }
             else {
@@ -1863,7 +1863,7 @@ sub dochecks {
                 if ( $config{DEBUG} >= 1 ) { logfile( "debug: FTP logins from " . @uniqueips . " ip(s) to account [$account] " . @accountips . " in the last $config{LF_INTERVAL} secs" ) }
                 if ( ( @accountips >= $config{LF_DISTFTP} ) and ( @uniqueips >= $config{LF_DISTFTP_UNIQ} ) ) {
                     delete $adf{$account};
-                    &blockdistftp( \@uniqueips, $account, $#accountips + 1, $text, $config{LF_DISTFTP_PERM} );
+                    blockdistftp( \@uniqueips, $account, $#accountips + 1, $text, $config{LF_DISTFTP_PERM} );
                 }
             }
         }
@@ -1876,7 +1876,7 @@ sub dochecks {
             $account = "";
         }
         if ( $ip and $account and ( $ip !~ /^127\./ ) and ( $ip ne "::1" ) ) {
-            if ( &ignoreip($ip) ) {
+            if ( ignoreip($ip) ) {
                 if ( $config{DEBUG} >= 1 ) { logfile("debug: Distributed SMTP $ip - ignored") }
             }
             else {
@@ -1898,7 +1898,7 @@ sub dochecks {
                 if ( $config{DEBUG} >= 1 ) { logfile( "debug: SMTP logins from " . @uniqueips . " ip(s) to account [$account] " . @accountips . " in the last $config{LF_INTERVAL} secs" ) }
                 if ( ( @accountips >= $config{LF_DISTSMTP} ) and ( @uniqueips >= $config{LF_DISTSMTP_UNIQ} ) ) {
                     delete $ads{$account};
-                    &blockdistsmtp( \@uniqueips, $account, $#accountips + 1, $text, $config{LF_DISTSMTP_PERM} );
+                    blockdistsmtp( \@uniqueips, $account, $#accountips + 1, $text, $config{LF_DISTSMTP_PERM} );
                 }
             }
         }
@@ -1906,11 +1906,11 @@ sub dochecks {
 
     if ( $config{LF_APACHE_404} and ( $globlogs{HTACCESS_LOG}{$lgfile} ) ) {
         my ($ip) = ConfigServer::RegexMain::loginline404($line);
-        if ( $ip and !&ignoreip($ip) ) {
+        if ( $ip and !ignoreip($ip) ) {
             $apache404{$ip}{count}++;
             $apache404{$ip}{text} .= "$line\n";
             if ( $apache404{$ip}{count} > $config{LF_APACHE_404} ) {
-                &disable404( $ip, $apache404{$ip}{text} );
+                disable404( $ip, $apache404{$ip}{text} );
                 delete $apache404{$ip};
             }
         }
@@ -1918,11 +1918,11 @@ sub dochecks {
 
     if ( $config{LF_APACHE_403} and ( $globlogs{HTACCESS_LOG}{$lgfile} ) ) {
         my ($ip) = ConfigServer::RegexMain::loginline403($line);
-        if ( $ip and !&ignoreip($ip) ) {
+        if ( $ip and !ignoreip($ip) ) {
             $apache403{$ip}{count}++;
             $apache403{$ip}{text} .= "$line\n";
             if ( $apache403{$ip}{count} > $config{LF_APACHE_403} ) {
-                &disable403( $ip, $apache403{$ip}{text} );
+                disable403( $ip, $apache403{$ip}{text} );
                 delete $apache403{$ip};
             }
         }
@@ -1930,11 +1930,11 @@ sub dochecks {
 
     if ( $config{LF_APACHE_401} and ( $globlogs{HTACCESS_LOG}{$lgfile} ) ) {
         my ($ip) = ConfigServer::RegexMain::loginline401($line);
-        if ( $ip and !&ignoreip($ip) ) {
+        if ( $ip and !ignoreip($ip) ) {
             $apache401{$ip}{count}++;
             $apache401{$ip}{text} .= "$line\n";
             if ( $apache401{$ip}{count} > $config{LF_APACHE_401} ) {
-                &disable401( $ip, $apache401{$ip}{text} );
+                disable401( $ip, $apache401{$ip}{text} );
                 delete $apache401{$ip};
             }
         }
@@ -1946,12 +1946,12 @@ sub dochecks {
             if ( $account and $config{DEBUG} >= 1 ) { logfile("debug: (processloginline) Account name [$account] is invalid") }
             $account = "";
         }
-        if ( $account and $loginproto{$app} and !&ignoreip( $ip, 1 ) ) {
+        if ( $account and $loginproto{$app} and !ignoreip( $ip, 1 ) ) {
             $logins{$app}{$account}{$ip}++;
             if ( $account and $config{DEBUG} >= 1 ) { logfile("debug: (processloginline) Account name [$account] [$ip] [$logins{$app}{$account}{$ip}]") }
             if ( $logins{$app}{$account}{$ip} > $loginproto{$app} ) {
                 $0 = "lfd - disabling $app logins for $account";
-                &logindisable( $app, $ip, $logins{$app}{$account}{$ip}, $account );
+                logindisable( $app, $ip, $logins{$app}{$account}{$ip}, $account );
                 delete $logins{$app}{$account}{$ip};
                 $0 = "lfd - scanning $lgfile";
             }
@@ -1964,30 +1964,30 @@ sub dochecks {
             if ( $account and $config{DEBUG} >= 1 ) { logfile("debug: (processsshline) Account name [$account] is invalid") }
             $account = "";
         }
-        if ( $account and $ip and !&ignoreip($ip) ) {
-            &sshalert( $account, $ip, $method, $line );
+        if ( $account and $ip and !ignoreip($ip) ) {
+            sshalert( $account, $ip, $method, $line );
         }
-        elsif ( &ignoreip($ip) ) { logfile("*SSH login* from $ip into the $account account using $method authentication - ignored") }
+        elsif ( ignoreip($ip) ) { logfile("*SSH login* from $ip into the $account account using $method authentication - ignored") }
     }
 
     if ( $config{LF_SU_EMAIL_ALERT} and ( ( $lgfile eq "/var/log/messages" ) or ( $lgfile eq "/var/log/secure" ) or ( $lgfile eq "/var/log/auth.log" ) or ( $globlogs{SU_LOG}{$lgfile} ) ) ) {
         my ( $to, $from, $status ) = ConfigServer::RegexMain::processsuline($line);
         if ( ( $to and $from ) and ( $from ne "root" ) and ( $from ne 'root(uid=0)' ) and ( $from ne '(uid=0)' ) ) {
-            &sualert( $to, $from, $status, $line );
+            sualert( $to, $from, $status, $line );
         }
     }
 
     if ( $config{LF_SUDO_EMAIL_ALERT} and ( ( $lgfile eq "/var/log/messages" ) or ( $lgfile eq "/var/log/secure" ) or ( $lgfile eq "/var/log/auth.log" ) or ( $globlogs{SUDO_LOG}{$lgfile} ) ) ) {
         my ( $to, $from, $status ) = ConfigServer::RegexMain::processsudoline($line);
         if ( ( $to and $from ) and ( $from ne "root" ) and ( $from ne 'root(uid=0)' ) and ( $from ne '(uid=0)' ) ) {
-            &sudoalert( $to, $from, $status, $line );
+            sudoalert( $to, $from, $status, $line );
         }
     }
 
     if ( $config{LF_CONSOLE_EMAIL_ALERT} and ( ( $lgfile eq "/var/log/messages" ) or ( $lgfile eq "/var/log/secure" ) or ( $lgfile eq "/var/log/auth.log" ) or ( $globlogs{SU_LOG}{$lgfile} ) ) ) {
         my ($status) = ConfigServer::RegexMain::processconsoleline($line);
         if ($status) {
-            &consolealert($line);
+            consolealert($line);
         }
     }
 
@@ -1997,13 +1997,13 @@ sub dochecks {
             if ( $user and $config{DEBUG} >= 1 ) { logfile("debug: (processcpanelline) Account name [$user] is invalid") }
             $user = "";
         }
-        if ( $ip and !&ignoreip($ip) and $user and ( $cpanelalertusers{$user} or $cpanelalertusers{all} ) ) {
+        if ( $ip and !ignoreip($ip) and $user and ( $cpanelalertusers{$user} or $cpanelalertusers{all} ) ) {
             if ( $cpanelalert{$ip}{$user} and ( time - $cpanelalert{$ip}{$user} < 3600 ) ) {
                 $cpanelalert{$ip}{$user} = time;
             }
             else {
                 $cpanelalert{$ip}{$user} = time;
-                &cpanelalert( $ip, $user, $line );
+                cpanelalert( $ip, $user, $line );
             }
         }
     }
@@ -2016,7 +2016,7 @@ sub dochecks {
                 $scripts{$path}{mails} .= "$line\n";
             }
             if ( $scripts{$path}{cnt} > $config{LF_SCRIPT_LIMIT} ) {
-                &scriptalert( $path, $scripts{$path}{cnt}, $scripts{$path}{mails} );
+                scriptalert( $path, $scripts{$path}{cnt}, $scripts{$path}{mails} );
                 delete $scripts{$path};
             }
         }
@@ -2024,7 +2024,7 @@ sub dochecks {
 
     if ( $config{PS_INTERVAL} and ( $globlogs{IPTABLES_LOG}{$lgfile} ) ) {
         my ( $ip, $port ) = ConfigServer::RegexMain::pslinecheck($line);
-        if ( $port and $ip and !&ignoreip($ip) ) {
+        if ( $port and $ip and !ignoreip($ip) ) {
             my $hit = 0;
             foreach my $ports ( split( /\,/, $config{PS_PORTS} ) ) {
                 if ( $ports =~ /\:/ ) {
@@ -2048,7 +2048,7 @@ sub dochecks {
                             delete $portscans{$ip};
                         }
                         else {
-                            &portscans( $ip, $portscans{$ip}{count}, $portscans{$ip}{blocks} );
+                            portscans( $ip, $portscans{$ip}{count}, $portscans{$ip}{blocks} );
                             $psips{$ip} = 1;
                             delete $portscans{$ip};
                         }
@@ -2056,7 +2056,7 @@ sub dochecks {
                 }
             }
         }
-        elsif ( ( $config{DEBUG} >= 1 ) and $port and $ip and &ignoreip($ip) ) {
+        elsif ( ( $config{DEBUG} >= 1 ) and $port and $ip and ignoreip($ip) ) {
             logfile("debug: PS count for $ip - ignored");
         }
     }
@@ -2077,7 +2077,7 @@ sub dochecks {
                 $uidscans{$uid}{count}++;
                 $uidscans{$uid}{blocks} .= "$line\n";
                 if ( $uidscans{$uid}{count} > $config{UID_LIMIT} ) {
-                    &uidscans( $uid, $uidscans{$uid}{count}, $uidscans{$uid}{blocks} );
+                    uidscans( $uid, $uidscans{$uid}{count}, $uidscans{$uid}{blocks} );
                     delete $uidscans{$uid};
                 }
             }
@@ -2089,7 +2089,7 @@ sub dochecks {
 
     if ( $config{ST_ENABLE} and ( $globlogs{IPTABLES_LOG}{$lgfile} ) ) {
         if ( ConfigServer::RegexMain::statscheck($line) ) {
-            &stats( $line, "iptables" );
+            stats( $line, "iptables" );
         }
     }
 
@@ -2103,8 +2103,8 @@ sub dochecks {
 
     if ( $config{PORTKNOCKING} and $config{PORTKNOCKING_ALERT} and ( $globlogs{IPTABLES_LOG}{$lgfile} ) ) {
         my ( $ip, $port ) = ConfigServer::RegexMain::portknockingcheck($line);
-        if ( $port and $ip and !&ignoreip($ip) ) {
-            &portknocking( $ip, $port );
+        if ( $port and $ip and !ignoreip($ip) ) {
+            portknocking( $ip, $port );
         }
     }
 
@@ -2200,8 +2200,8 @@ sub dochecks {
             }
 
             if ( ( $relays{$ip}{cnt} > $config{"RT\_$check\_LIMIT"} ) and ( $config{"RT\_$check\_ALERT"} ) ) {
-                if ( ( $check eq "LOCALHOSTRELAY" ) or ( !&ignoreip($ip) ) ) {
-                    &relayalert( $ip, $relays{$ip}{cnt}, $relays{$ip}{check}, $relays{$ip}{mails} );
+                if ( ( $check eq "LOCALHOSTRELAY" ) or ( !ignoreip($ip) ) ) {
+                    relayalert( $ip, $relays{$ip}{cnt}, $relays{$ip}{check}, $relays{$ip}{mails} );
                     delete $relays{$ip};
                 }
             }
@@ -2226,20 +2226,20 @@ sub getlogfile {
     my $count;
 
     if ( !defined( $lffd[$lfn] ) ) {
-        if ( &openlogfile( $logfile, $lfn ) ) { return undef }
+        if ( openlogfile( $logfile, $lfn ) ) { return undef }
     }
 
     ( undef, $ino, undef, undef, undef, undef, undef, $size, undef ) = stat($logfile);
 
     if ( $ino != $lfino[$lfn] ) {
         logfile("$logfile rotated. Reopening log file");
-        if ( &openlogfile( $logfile, $lfn ) ) { return undef }
+        if ( openlogfile( $logfile, $lfn ) ) { return undef }
         return "reopen";
     }
 
     if ( $size < $lfsize[$lfn] ) {
         logfile("$logfile has been reset. Reopening log file");
-        if ( &openlogfile( $logfile, $lfn ) ) { return undef }
+        if ( openlogfile( $logfile, $lfn ) ) { return undef }
         return "reopen";
     }
 
@@ -2258,7 +2258,7 @@ sub getlogfile {
             }
             ConfigServer::Sendmail::relay( "", "", @message );
         }
-        if ( &openlogfile( $logfile, $lfn ) ) { return undef }
+        if ( openlogfile( $logfile, $lfn ) ) { return undef }
         return "reopen";
     }
 
@@ -2323,12 +2323,12 @@ sub globlog {
 sub lockhang {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "lockhang", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "lockhang", $timer ) }
         $0 = "lfd - (child) checking for lock hang";
 
         eval {
@@ -2358,7 +2358,7 @@ sub lockhang {
             }
         }
 
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "lockhang", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "lockhang", $timer ) }
         $0 = "lfd - child closing";
         exit;
     }
@@ -2386,7 +2386,7 @@ sub syslog_init {
     }
 
     $sysloggid = getgrnam( $config{RESTRICT_SYSLOG_GROUP} );
-    unless ($sysloggid) { &syscommand( __LINE__, "/usr/sbin/groupadd", "-r", $config{RESTRICT_SYSLOG_GROUP} ) }
+    unless ($sysloggid) { syscommand( __LINE__, "/usr/sbin/groupadd", "-r", $config{RESTRICT_SYSLOG_GROUP} ) }
     $sysloggid = getgrnam( $config{RESTRICT_SYSLOG_GROUP} );
     unless ($sysloggid) {
         logfile("RESTRICT_SYSLOG: *Error* Failed to create group: [$config{RESTRICT_SYSLOG_GROUP}], RESTRICT_SYSLOG disabled");
@@ -2398,7 +2398,7 @@ sub syslog_init {
     foreach my $name ( split( /\s+/, $members ) ) { $syslogusers{$name} = 0 }
     foreach my $name ( keys %syslogusers ) {
         if ( $syslogusers{$name} and getpwnam($name) ne "" ) {
-            &syscommand( __LINE__, "/usr/sbin/usermod", "-a", "-G", $config{RESTRICT_SYSLOG_GROUP}, $name );
+            syscommand( __LINE__, "/usr/sbin/usermod", "-a", "-G", $config{RESTRICT_SYSLOG_GROUP}, $name );
             if ( $config{DEBUG} >= 1 ) { logfile("debug: RESTRICT_SYSLOG: User $name added to group $config{RESTRICT_SYSLOG_GROUP}") }
         }
     }
@@ -2476,7 +2476,7 @@ sub syslog_perms {
             my $count = 0;
             logfile("RESTRICT_SYSLOG: Unix socket permissions reapplied. Reopening log files...");
             foreach my $lgfile ( keys %logfiles ) {
-                &openlogfile( $lgfile, $count );
+                openlogfile( $lgfile, $count );
                 $count++;
             }
             if ( $config{DEBUG} >= 1 ) { logfile("debug: RESTRICT_SYSLOG: Fixed socket ownership/permissions") }
@@ -2512,12 +2512,12 @@ sub block {
 
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "block", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "block", $timer ) }
         my %logapps;
         my $apptext;
         foreach my $app ( split( / /, $apps ) ) { $logapps{$app} = 1 }
@@ -2538,20 +2538,20 @@ sub block {
         if ( $config{CF_ENABLE} and $cfblocks{$active} ) {
             $perm = 0;
             $temp = $config{CF_TEMP};
-            &cloudflare( "deny", $ip, $config{CF_BLOCK}, $domains );
+            cloudflare( "deny", $ip, $config{CF_BLOCK}, $domains );
             $cfid = " (CF_ENABLE)";
         }
         if ( $config{PT_SSHDKILL} and $logapps{sshd} ) { ConfigServer::KillSSH::find( $ip, $ports{sshd} ) }
 
         my $blocked = 0;
         if ( $config{LF_SELECT} and !$config{LF_TRIGGER} ) {
-            if ( &ipblock( $perm, "($apptext) $failtext $tip: $ipcount in the last $config{LF_INTERVAL} secs$cfid", $ip, $ports{$app}, "in", $temp, 0, $text, $active ) ) {
+            if ( ipblock( $perm, "($apptext) $failtext $tip: $ipcount in the last $config{LF_INTERVAL} secs$cfid", $ip, $ports{$app}, "in", $temp, 0, $text, $active ) ) {
                 if ( $config{DEBUG} >= 1 ) { logfile("debug: $ip already blocked") }
             }
             else { $blocked = 1 }
         }
         else {
-            if ( &ipblock( $perm, "($apptext) $failtext $tip: $ipcount in the last $config{LF_INTERVAL} secs$cfid", $ip, "", "inout", $temp, 0, $text, $active ) ) {
+            if ( ipblock( $perm, "($apptext) $failtext $tip: $ipcount in the last $config{LF_INTERVAL} secs$cfid", $ip, "", "inout", $temp, 0, $text, $active ) ) {
                 if ( $config{DEBUG} >= 1 ) { logfile("debug: $ip already blocked") }
             }
             else { $blocked = 1 }
@@ -2565,7 +2565,7 @@ sub block {
                 my $block = "Temporary Block for $temp seconds [$active]";
                 if ($perm) { $block = "Permanent Block [$active]" }
 
-                my $allowip = &allowip($ip);
+                my $allowip = allowip($ip);
                 if ( $allowip == 1 ) { $block .= " (IP match in csf.allow, block may not work)" }
                 if ( $allowip == 2 ) { $block .= " (IP match in GLOBAL_ALLOW, block may not work)" }
 
@@ -2634,7 +2634,7 @@ sub block {
             }
         }
 
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "block", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "block", $timer ) }
         $0 = "lfd - child closing";
         exit;
     }
@@ -2661,12 +2661,12 @@ sub blockaccount {
 
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "blockaccount", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "blockaccount", $timer ) }
         my $perm = 1;
         if ( $temp > 1 ) { $perm = 0 }
 
@@ -2678,12 +2678,12 @@ sub blockaccount {
 
             my $tip = iplookup($ip);
             if ( $config{LF_SELECT} and !$config{LF_TRIGGER} ) {
-                if ( &ipblock( $perm, "$tip, $ipcount distributed $app attacks on account [$account] in the last $config{LF_INTERVAL} secs", $ip, $ports{$app}, "in", $temp, 0, $text, "LF_DISTATTACK" ) ) {
+                if ( ipblock( $perm, "$tip, $ipcount distributed $app attacks on account [$account] in the last $config{LF_INTERVAL} secs", $ip, $ports{$app}, "in", $temp, 0, $text, "LF_DISTATTACK" ) ) {
                     if ( $config{DEBUG} >= 1 ) { logfile("debug: $ip already blocked") }
                 }
             }
             else {
-                if ( &ipblock( $perm, "$tip, $ipcount distributed $app attacks on account [$account] in the last $config{LF_INTERVAL} secs", $ip, "", "inout", $temp, 0, $text, "LF_DISTATTACK" ) ) {
+                if ( ipblock( $perm, "$tip, $ipcount distributed $app attacks on account [$account] in the last $config{LF_INTERVAL} secs", $ip, "", "inout", $temp, 0, $text, "LF_DISTATTACK" ) ) {
                     if ( $config{DEBUG} >= 1 ) { logfile("debug: $ip already blocked") }
                 }
             }
@@ -2710,7 +2710,7 @@ sub blockaccount {
             ConfigServer::Sendmail::relay( "", "", @message );
         }
 
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "blockaccount", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "blockaccount", $timer ) }
         $0 = "lfd - child closing";
         exit;
     }
@@ -2730,12 +2730,12 @@ sub blockdistftp {
 
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "blockdistftp", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "blockdistftp", $timer ) }
         my $perm = 1;
         if ( $temp > 1 ) { $perm = 0 }
 
@@ -2743,7 +2743,7 @@ sub blockdistftp {
         foreach my $ip (@ips) {
             $0 = "lfd - (child) blocking $ip";
             my $tip = iplookup($ip);
-            if ( &ipblock( $perm, "$tip, $ipcount distributed FTP Logins on account [$account] in the last $config{LF_DIST_INTERVAL} secs", $ip, "", "inout", $temp, 0, $text, "LF_DISTFTP" ) ) {
+            if ( ipblock( $perm, "$tip, $ipcount distributed FTP Logins on account [$account] in the last $config{LF_DIST_INTERVAL} secs", $ip, "", "inout", $temp, 0, $text, "LF_DISTFTP" ) ) {
                 if ( $config{DEBUG} >= 1 ) { logfile("debug: $ip already blocked") }
             }
             $text .= "$tip\n";
@@ -2771,7 +2771,7 @@ sub blockdistftp {
             system( $config{LF_DIST_ACTION}, "LF_DISTFTP", $account, $text );
         }
 
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "blockdistftp", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "blockdistftp", $timer ) }
         $0 = "lfd - child closing";
         exit;
     }
@@ -2791,12 +2791,12 @@ sub blockdistsmtp {
 
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "blockdistsmtp", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "blockdistsmtp", $timer ) }
         my $perm = 1;
         if ( $temp > 1 ) { $perm = 0 }
 
@@ -2804,7 +2804,7 @@ sub blockdistsmtp {
         foreach my $ip (@ips) {
             $0 = "lfd - (child) blocking $ip";
             my $tip = iplookup($ip);
-            if ( &ipblock( $perm, "$tip, $ipcount distributed SMTP Logins on account [$account] in the last $config{LF_DIST_INTERVAL} secs", $ip, "", "inout", $temp, 0, $text, "LF_DISTSMTP" ) ) {
+            if ( ipblock( $perm, "$tip, $ipcount distributed SMTP Logins on account [$account] in the last $config{LF_DIST_INTERVAL} secs", $ip, "", "inout", $temp, 0, $text, "LF_DISTSMTP" ) ) {
                 if ( $config{DEBUG} >= 1 ) { logfile("debug: $ip already blocked") }
             }
             $text .= "$tip\n";
@@ -2832,7 +2832,7 @@ sub blockdistsmtp {
             system( $config{LF_DIST_ACTION}, "LF_DISTSMTP", $account, $text );
         }
 
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "blockdistsmtp", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "blockdistsmtp", $timer ) }
         $0 = "lfd - child closing";
         exit;
     }
@@ -2848,17 +2848,17 @@ sub disable404 {
 
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "disable404", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "disable404", $timer ) }
 
         my $tip  = iplookup($ip);
         my $perm = 1;
         if ( $config{LF_APACHE_404_PERM} > 1 ) { $perm = 0 }
-        if ( &ipblock( $perm, "$tip, more than $config{LF_APACHE_404} Apache 404 hits in the last $config{LF_INTERVAL} secs", $ip, $ports{mod_security}, "in", $config{LF_APACHE_404_PERM}, 0, "", "LF_APACHE_404" ) ) {
+        if ( ipblock( $perm, "$tip, more than $config{LF_APACHE_404} Apache 404 hits in the last $config{LF_INTERVAL} secs", $ip, $ports{mod_security}, "in", $config{LF_APACHE_404_PERM}, 0, "", "LF_APACHE_404" ) ) {
             if ( $config{DEBUG} >= 1 ) { logfile("debug: $ip already blocked") }
         }
         else {
@@ -2881,7 +2881,7 @@ sub disable404 {
             }
         }
 
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "disable404", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "disable404", $timer ) }
         $0 = "lfd - child closing";
         exit;
     }
@@ -2897,17 +2897,17 @@ sub disable403 {
 
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "disable403", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "disable403", $timer ) }
 
         my $tip  = iplookup($ip);
         my $perm = 1;
         if ( $config{LF_APACHE_403_PERM} > 1 ) { $perm = 0 }
-        if ( &ipblock( $perm, "$tip, more than $config{LF_APACHE_403} Apache 403 hits in the last $config{LF_INTERVAL} secs", $ip, $ports{mod_security}, "in", $config{LF_APACHE_403_PERM}, 0, "", "LF_APACHE_403" ) ) {
+        if ( ipblock( $perm, "$tip, more than $config{LF_APACHE_403} Apache 403 hits in the last $config{LF_INTERVAL} secs", $ip, $ports{mod_security}, "in", $config{LF_APACHE_403_PERM}, 0, "", "LF_APACHE_403" ) ) {
             if ( $config{DEBUG} >= 1 ) { logfile("debug: $ip already blocked") }
         }
         else {
@@ -2930,7 +2930,7 @@ sub disable403 {
             }
         }
 
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "disable403", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "disable403", $timer ) }
         $0 = "lfd - child closing";
         exit;
     }
@@ -2946,17 +2946,17 @@ sub disable401 {
 
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "disable401", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "disable401", $timer ) }
 
         my $tip  = iplookup($ip);
         my $perm = 1;
         if ( $config{LF_APACHE_401_PERM} > 1 ) { $perm = 0 }
-        if ( &ipblock( $perm, "$tip, more than $config{LF_APACHE_401} Apache 401 hits in the last $config{LF_INTERVAL} secs", $ip, $ports{mod_security}, "in", $config{LF_APACHE_401_PERM}, 0, "", "LF_APACHE_401" ) ) {
+        if ( ipblock( $perm, "$tip, more than $config{LF_APACHE_401} Apache 401 hits in the last $config{LF_INTERVAL} secs", $ip, $ports{mod_security}, "in", $config{LF_APACHE_401_PERM}, 0, "", "LF_APACHE_401" ) ) {
             if ( $config{DEBUG} >= 1 ) { logfile("debug: $ip already blocked") }
         }
         else {
@@ -2979,7 +2979,7 @@ sub disable401 {
             }
         }
 
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "disable401", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "disable401", $timer ) }
         $0 = "lfd - child closing";
         exit;
     }
@@ -3002,17 +3002,17 @@ sub logindisable {
 
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "logindisable", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "logindisable", $timer ) }
         my $flush = ( 3600 - $logintimeout{$app} );
 
         my $tip = iplookup($ip);
         if ( $config{LT_SKIPPERMBLOCK} ) { $config{LF_PERMBLOCK} = 0 }
-        if ( &ipblock( 0, "$app - $logins logins in $logintimeout{$app} secs from $tip for $account exceeds $loginproto{$app}/hour", $ip, "$port,$sport", "in", $flush, 0, "", $trigger ) ) {
+        if ( ipblock( 0, "$app - $logins logins in $logintimeout{$app} secs from $tip for $account exceeds $loginproto{$app}/hour", $ip, "$port,$sport", "in", $flush, 0, "", $trigger ) ) {
             if ( $config{DEBUG} >= 1 ) { logfile("debug: $ip already blocked") }
         }
         else {
@@ -3037,7 +3037,7 @@ sub logindisable {
             }
         }
 
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "logindisable", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "logindisable", $timer ) }
         $0 = "lfd - child closing";
         exit;
     }
@@ -3054,15 +3054,15 @@ sub portscans {
 
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "portscans", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "portscans", $timer ) }
 
         my $tip = iplookup($ip);
-        if ( &ipblock( $config{PS_PERMANENT}, "*Port Scan* detected from $tip. $count hits in the last $pstimeout seconds", $ip, "", "in", $config{PS_BLOCK_TIME}, 0, $blocks, "PS_LIMIT" ) ) {
+        if ( ipblock( $config{PS_PERMANENT}, "*Port Scan* detected from $tip. $count hits in the last $pstimeout seconds", $ip, "", "in", $config{PS_BLOCK_TIME}, 0, $blocks, "PS_LIMIT" ) ) {
             if ( $config{DEBUG} >= 1 ) { logfile("debug: $ip already blocked") }
         }
         else {
@@ -3073,7 +3073,7 @@ sub portscans {
                 my $block = "Temporary Block for $config{PS_BLOCK_TIME} seconds [PS_LIMIT]";
                 if ( $config{PS_PERMANENT} ) { $block = "Permanent Block [PS_LIMIT]" }
 
-                my $allowip = &allowip($ip);
+                my $allowip = allowip($ip);
                 if ( $allowip == 1 ) { $block .= " (IP match in csf.allow, block may not work)" }
                 if ( $allowip == 2 ) { $block .= " (IP match in GLOBAL_ALLOW, block may not work)" }
 
@@ -3140,7 +3140,7 @@ sub portscans {
             }
         }
 
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "portscans", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "portscans", $timer ) }
         $0 = "lfd - child closing";
         exit;
     }
@@ -3157,12 +3157,12 @@ sub uidscans {
 
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "uidscans", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "uidscans", $timer ) }
 
         $0 = "lfd - (child) sending alert email for UID $uid";
 
@@ -3181,7 +3181,7 @@ sub uidscans {
         ConfigServer::Sendmail::relay( "", "", @message );
         if ( $config{DEBUG} >= 1 ) { logfile("debug: alert email sent for UID $uid ($user)") }
 
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "uidscans", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "uidscans", $timer ) }
         $0 = "lfd - child closing";
         exit;
     }
@@ -3193,14 +3193,14 @@ sub uidscans {
 # start csfrestart
 sub csfrestart {
     my $timer = time;
-    if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "csfrestart", $timer ) }
+    if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "csfrestart", $timer ) }
     $0 = "lfd - (re)starting csf...";
 
     logfile("csf (re)start requested - running *csf startup*...");
-    &syscommand( __LINE__, "/usr/sbin/csf", "-sf" );
+    syscommand( __LINE__, "/usr/sbin/csf", "-sf" );
     logfile("csf (re)start completed");
 
-    if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "csfrestart", $timer ) }
+    if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "csfrestart", $timer ) }
     $0 = "lfd - processing";
     return;
 }
@@ -3231,9 +3231,9 @@ sub lfdrestart {
 # start csfcheck
 sub csfcheck {
     my $timer = time;
-    if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "csfcheck", $timer ) }
+    if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "csfcheck", $timer ) }
 
-    my @ipdata = &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -L LOCALINPUT -n" );
+    my @ipdata = syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -L LOCALINPUT -n" );
     chomp @ipdata;
     if ( $ipdata[0] =~ /# Warning: iptables-legacy tables present/ ) { shift @ipdata }
 
@@ -3244,7 +3244,7 @@ sub csfcheck {
         if ( $ipdata[0] !~ /^Chain LOCALINPUT/ ) {
             $0 = "lfd - starting csf...";
             logfile("iptables appears to have been flushed - running *csf startup*...");
-            &syscommand( __LINE__, "/usr/sbin/csf", "-sf" );
+            syscommand( __LINE__, "/usr/sbin/csf", "-sf" );
             logfile("csf startup completed");
             $0 = "lfd - processing";
         }
@@ -3279,18 +3279,18 @@ sub csfcheck {
                 if ( $current ne $cpconfig{version} ) {
                     $SIG{CHLD} = 'IGNORE';
                     unless ( defined( $childpid = fork ) ) {
-                        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+                        cleanup( __LINE__, "*Error* cannot fork: $!" );
                     }
                     $forks{$childpid} = 1;
                     unless ($childpid) {
                         local $SIG{CHLD} = 'DEFAULT';
                         my $timer = time;
-                        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "cpanelcheck", $timer ) }
+                        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "cpanelcheck", $timer ) }
                         $0 = "lfd - (child) cPanel upgraded...";
 
                         my $lockstr = "LF_CSF";
-                        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or &childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
-                        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or &childcleanup("*Lock Error* [$lockstr] still active - section skipped");
+                        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
+                        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or childcleanup("*Lock Error* [$lockstr] still active - section skipped");
                         print $THISLOCK time;
 
                         logfile("cPanel upgrade detected, restarting ConfigServer services...");
@@ -3310,8 +3310,8 @@ sub csfcheck {
                                 local $SIG{__DIE__} = undef;
                                 local $SIG{'ALRM'}  = sub { die };
                                 alarm(30);
-                                &syscommand( __LINE__, "/sbin/service", "pure-uploadscript", "restart" );
-                                &syscommand( __LINE__, "/scripts/restartsrv_ftpserver" );
+                                syscommand( __LINE__, "/sbin/service", "pure-uploadscript", "restart" );
+                                syscommand( __LINE__, "/scripts/restartsrv_ftpserver" );
                                 alarm(0);
                             };
                             alarm(0);
@@ -3323,7 +3323,7 @@ sub csfcheck {
                                 local $SIG{__DIE__} = undef;
                                 local $SIG{'ALRM'}  = sub { die };
                                 alarm(30);
-                                &syscommand( __LINE__, "/sbin/service", "osmd", "restart" );
+                                syscommand( __LINE__, "/sbin/service", "osmd", "restart" );
                                 alarm(0);
                             };
                             alarm(0);
@@ -3335,7 +3335,7 @@ sub csfcheck {
                                 local $SIG{__DIE__} = undef;
                                 local $SIG{'ALRM'}  = sub { die };
                                 alarm(30);
-                                &syscommand( __LINE__, "/sbin/service", "MailScanner", "restart" );
+                                syscommand( __LINE__, "/sbin/service", "MailScanner", "restart" );
                                 alarm(0);
                             };
                             alarm(0);
@@ -3346,7 +3346,7 @@ sub csfcheck {
                         close($LFDOUT);
 
                         close($THISLOCK);
-                        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "cpanelcheck", $timer ) }
+                        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "cpanelcheck", $timer ) }
                         $0 = "lfd - child closing";
                         exit;
                     }
@@ -3355,7 +3355,7 @@ sub csfcheck {
         }
     }
 
-    if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "csfcheck", $timer ) }
+    if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "csfcheck", $timer ) }
     return;
 }
 
@@ -3378,17 +3378,17 @@ sub loadcheck {
     }
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "loadcheck", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "loadcheck", $timer ) }
         $0 = "lfd - (child) checking load...";
 
         my $lockstr = "PT_LOAD";
-        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or &childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
-        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or &childcleanup("*Lock Error* [$lockstr] still active - section skipped");
+        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
+        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or childcleanup("*Lock Error* [$lockstr] still active - section skipped");
         print $THISLOCK time;
 
         open( my $IN, "<", "/proc/loadavg" );
@@ -3405,7 +3405,7 @@ sub loadcheck {
 
         if ( $reportload >= $config{PT_LOAD_LEVEL} ) {
             logfile("*LOAD* $config{PT_LOAD_AVG} minute load average is $reportload, threshold is $config{PT_LOAD_LEVEL} - email sent");
-            sysopen( my $LOAD, "/var/lib/csf/csf.load", O_WRONLY | O_CREAT ) or &childcleanup( __LINE__, "*Error* Cannot write to file: $!" );
+            sysopen( my $LOAD, "/var/lib/csf/csf.load", O_WRONLY | O_CREAT ) or childcleanup( __LINE__, "*Error* Cannot write to file: $!" );
             flock( $LOAD, LOCK_EX );
             seek( $LOAD, 0, 0 );
             truncate( $LOAD, 0 );
@@ -3415,7 +3415,7 @@ sub loadcheck {
             if ( $config{PT_LOAD_ACTION} and -e "$config{PT_LOAD_ACTION}" and -x "$config{PT_LOAD_ACTION}" ) {
                 $SIG{CHLD} = 'IGNORE';
                 unless ( defined( $ptchildpid = fork ) ) {
-                    &cleanup( __LINE__, "*Error* cannot fork: $!" );
+                    cleanup( __LINE__, "*Error* cannot fork: $!" );
                 }
                 unless ($ptchildpid) {
                     system( $config{PT_LOAD_ACTION} );
@@ -3428,7 +3428,7 @@ sub loadcheck {
                 local $SIG{__DIE__} = undef;
                 local $SIG{'ALRM'}  = sub { die };
                 alarm(15);
-                @proclist = &syscommand( __LINE__, $config{PS}, "axuf" );
+                @proclist = syscommand( __LINE__, $config{PS}, "axuf" );
                 alarm(0);
             };
             alarm(0);
@@ -3439,7 +3439,7 @@ sub loadcheck {
                 local $SIG{__DIE__} = undef;
                 local $SIG{'ALRM'}  = sub { die };
                 alarm(10);
-                @vmstat = &syscommand( __LINE__, $config{VMSTAT} );
+                @vmstat = syscommand( __LINE__, $config{VMSTAT} );
                 alarm(0);
             };
             alarm(0);
@@ -3450,7 +3450,7 @@ sub loadcheck {
                 local $SIG{__DIE__} = undef;
                 local $SIG{'ALRM'}  = sub { die };
                 alarm(10);
-                @netstat = &syscommand( __LINE__, $config{NETSTAT}, "-autpn" );
+                @netstat = syscommand( __LINE__, $config{NETSTAT}, "-autpn" );
                 alarm(0);
             };
             alarm(0);
@@ -3481,7 +3481,7 @@ sub loadcheck {
         }
 
         close($THISLOCK);
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "loadcheck", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "loadcheck", $timer ) }
         $0 = "lfd - child closing";
         exit;
     }
@@ -3540,17 +3540,17 @@ sub queuecheck {
     }
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "queuecheck", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "queuecheck", $timer ) }
         $0 = "lfd - (child) checking mail queue...";
 
         my $lockstr = "LF_QUEUE_INTERVAL";
-        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or &childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
-        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or &childcleanup("*Lock Error* [$lockstr] still active - section skipped");
+        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
+        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or childcleanup("*Lock Error* [$lockstr] still active - section skipped");
         print $THISLOCK time;
 
         my $queue;
@@ -3560,7 +3560,7 @@ sub queuecheck {
             local $SIG{__DIE__} = undef;
             local $SIG{'ALRM'}  = sub { die };
             alarm(30);
-            $queue = ( &syscommand( __LINE__, "/usr/sbin/exim", "-bpc" ) )[0];
+            $queue = ( syscommand( __LINE__, "/usr/sbin/exim", "-bpc" ) )[0];
             alarm(0);
         };
         alarm(0);
@@ -3573,7 +3573,7 @@ sub queuecheck {
                 local $SIG{__DIE__} = undef;
                 local $SIG{'ALRM'}  = sub { die };
                 alarm(30);
-                $queue = ( &syscommand( __LINE__, "/usr/sbin/exim", "-C", "/etc/exim_outgoing.conf", "-bpc" ) )[0];
+                $queue = ( syscommand( __LINE__, "/usr/sbin/exim", "-C", "/etc/exim_outgoing.conf", "-bpc" ) )[0];
                 alarm(0);
             };
             alarm(0);
@@ -3587,7 +3587,7 @@ sub queuecheck {
             if ($timeout) { $report = $timeout }
             logfile("*Email Queue* $report");
 
-            sysopen( my $QUEUE, "/var/lib/csf/csf.queue", O_WRONLY | O_CREAT ) or &childcleanup( __LINE__, "*Error* Cannot write to file: $!" );
+            sysopen( my $QUEUE, "/var/lib/csf/csf.queue", O_WRONLY | O_CREAT ) or childcleanup( __LINE__, "*Error* Cannot write to file: $!" );
             flock( $QUEUE, LOCK_EX );
             seek( $QUEUE, 0, 0 );
             truncate( $QUEUE, 0 );
@@ -3604,7 +3604,7 @@ sub queuecheck {
         }
 
         close($THISLOCK);
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "queuecheck", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "queuecheck", $timer ) }
         $0 = "lfd - child closing";
         exit;
     }
@@ -3630,17 +3630,17 @@ sub modsecipdbcheck {
     }
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "modsecipdbcheck", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "modsecipdbcheck", $timer ) }
         $0 = "lfd - (child) checking modsec ip db...";
 
         my $lockstr = "LF_MODSECIPDB_ALERT";
-        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or &childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
-        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or &childcleanup("*Lock Error* [$lockstr] still active - section skipped");
+        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
+        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or childcleanup("*Lock Error* [$lockstr] still active - section skipped");
         print $THISLOCK time;
 
         my $size = ( stat $config{LF_MODSECIPDB_FILE} )[7] / ( 1024 * 1024 * 1024 );
@@ -3649,7 +3649,7 @@ sub modsecipdbcheck {
             $size = sprintf( "%.2f", $size );
             my $report = "ModSecurity persistent IP database ($config{LF_MODSECIPDB_FILE}) size is ${size}GB";
 
-            sysopen( my $QUEUE, "/var/lib/csf/csf.modsecipdbcheck", O_WRONLY | O_CREAT ) or &childcleanup( __LINE__, "*Error* Cannot write to file: $!" );
+            sysopen( my $QUEUE, "/var/lib/csf/csf.modsecipdbcheck", O_WRONLY | O_CREAT ) or childcleanup( __LINE__, "*Error* Cannot write to file: $!" );
             flock( $QUEUE, LOCK_EX );
             seek( $QUEUE, 0, 0 );
             truncate( $QUEUE, 0 );
@@ -3666,7 +3666,7 @@ sub modsecipdbcheck {
         }
 
         close($THISLOCK);
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "modsecipdbcheck", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "modsecipdbcheck", $timer ) }
         $0 = "lfd - child closing";
         exit;
     }
@@ -3680,17 +3680,17 @@ sub connectiontracking {
 
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "connectiontracking", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "connectiontracking", $timer ) }
         $0 = "lfd - (child) connection tracking...";
 
         my $lockstr = "CT_INTERVAL";
-        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or &childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
-        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or &childcleanup("*Lock Error* [$lockstr] still active - section skipped");
+        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
+        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or childcleanup("*Lock Error* [$lockstr] still active - section skipped");
         print $THISLOCK time;
 
         my @connections;
@@ -3742,13 +3742,13 @@ sub connectiontracking {
                 my ( $sip, $sport ) = split( /:/, $rec[2] );
                 $sport = hex($sport);
 
-                $dip = &hex2ip($dip);
+                $dip = hex2ip($dip);
                 if ( $dip =~ /^0:0:0:0:0:ffff:(.*)$/ ) {
                     my $embed = ipv4in6($dip);
                     if ( $embed =~ /^$ipv4reg$/ ) { $dip = $embed }
                 }
 
-                $sip = &hex2ip($sip);
+                $sip = hex2ip($sip);
                 if ( $sip =~ /^0:0:0:0:0:ffff:(.*)$/ ) {
                     my $embed = ipv4in6($sip);
                     if ( $embed =~ /^$ipv4reg$/ ) { $sip = $embed }
@@ -3788,9 +3788,9 @@ sub connectiontracking {
         }
 
         foreach my $ip ( keys %ipcnt ) {
-            if ( ( $ipcnt{$ip} > $config{CT_LIMIT} ) and !&ignoreip($ip) ) {
+            if ( ( $ipcnt{$ip} > $config{CT_LIMIT} ) and !ignoreip($ip) ) {
                 my $tip = iplookup($ip);
-                if ( &ipblock( $config{CT_PERMANENT}, "(CT) IP $tip found to have $ipcnt{$ip} connections", $ip, "", "inout", $config{CT_BLOCK_TIME}, 0, $iptext{$ip}, "CT_LIMIT" ) ) {
+                if ( ipblock( $config{CT_PERMANENT}, "(CT) IP $tip found to have $ipcnt{$ip} connections", $ip, "", "inout", $config{CT_BLOCK_TIME}, 0, $iptext{$ip}, "CT_LIMIT" ) ) {
                     if ( $config{DEBUG} >= 1 ) { logfile("debug: CT $ip already blocked") }
                 }
                 else {
@@ -3801,7 +3801,7 @@ sub connectiontracking {
                         my $block = "Temporary Block for $config{CT_BLOCK_TIME} seconds [CT_LIMIT]";
                         if ( $config{CT_PERMANENT} ) { $block = "Permanent Block [CT_LIMIT]" }
 
-                        my $allowip = &allowip($ip);
+                        my $allowip = allowip($ip);
                         if ( $allowip == 1 ) { $block .= " (IP match in csf.allow, block may not work)" }
                         if ( $allowip == 2 ) { $block .= " (IP match in GLOBAL_ALLOW, block may not work)" }
 
@@ -3874,9 +3874,9 @@ sub connectiontracking {
         foreach my $subnet ( keys %subcnt ) {
             if ( $config{DEBUG} >= 2 ) { logfile("debug: CT $subnet processing $subcnt{$subnet} entries") }
             my $fullsubnet = $subnet . ".0/24";
-            if ( ( $subcnt{$subnet} > $config{CT_SUBNET_LIMIT} ) and !&ignoreip($fullsubnet) ) {
+            if ( ( $subcnt{$subnet} > $config{CT_SUBNET_LIMIT} ) and !ignoreip($fullsubnet) ) {
                 my $tip = iplookup($fullsubnet);
-                if ( &ipblock( $config{CT_PERMANENT}, "(CT) subnet $tip found to have $subcnt{$subnet} connections", $fullsubnet, "", "inout", $config{CT_BLOCK_TIME}, 0, $subtext{$subnet}, "CT_SUBNET_LIMIT" ) ) {
+                if ( ipblock( $config{CT_PERMANENT}, "(CT) subnet $tip found to have $subcnt{$subnet} connections", $fullsubnet, "", "inout", $config{CT_BLOCK_TIME}, 0, $subtext{$subnet}, "CT_SUBNET_LIMIT" ) ) {
                     if ( $config{DEBUG} >= 1 ) { logfile("debug: CT $subnet already blocked") }
                 }
                 else {
@@ -3887,7 +3887,7 @@ sub connectiontracking {
                         my $block = "Temporary Block for $config{CT_BLOCK_TIME} seconds [CT_LIMIT]";
                         if ( $config{CT_PERMANENT} ) { $block = "Permanent Block [CT_LIMIT]" }
 
-                        my $allowip = &allowip($fullsubnet);
+                        my $allowip = allowip($fullsubnet);
                         if ( $allowip == 1 ) { $block .= " (subnet match in csf.allow, block may not work)" }
                         if ( $allowip == 2 ) { $block .= " (subnet match in GLOBAL_ALLOW, block may not work)" }
 
@@ -3909,7 +3909,7 @@ sub connectiontracking {
 
         if ($tfail) {
             $config{CT_INTERVAL} = $config{CT_INTERVAL} * 1.5;
-            sysopen( my $TEMPCONF, "/var/lib/csf/csf.tempconf", O_WRONLY | O_APPEND | O_CREAT ) or &childcleanup( __LINE__, "*Error* Cannot append out file: $!" );
+            sysopen( my $TEMPCONF, "/var/lib/csf/csf.tempconf", O_WRONLY | O_APPEND | O_CREAT ) or childcleanup( __LINE__, "*Error* Cannot append out file: $!" );
             flock( $TEMPCONF, LOCK_EX );
             print $TEMPCONF "CT_INTERVAL = \"$config{CT_INTERVAL}\"\n";
             close($TEMPCONF);
@@ -3917,7 +3917,7 @@ sub connectiontracking {
         }
 
         close($THISLOCK);
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "connectiontracking", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "connectiontracking", $timer ) }
         $0 = "lfd - (child) closing";
         exit;
     }
@@ -3930,17 +3930,17 @@ sub connectiontracking {
 sub accounttracking {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "accounttracking", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "accounttracking", $timer ) }
         $0 = "lfd - (child) account tracking...";
 
         my $lockstr = "AT_INTERVAL";
-        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or &childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
-        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or &childcleanup("*Lock Error* [$lockstr] still active - section skipped");
+        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
+        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or childcleanup("*Lock Error* [$lockstr] still active - section skipped");
         print $THISLOCK time;
 
         my $report = "";
@@ -3988,7 +3988,7 @@ sub accounttracking {
         }
 
         close($THISLOCK);
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "accounttracking", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "accounttracking", $timer ) }
         $0 = "lfd - (child) closing";
         exit;
     }
@@ -4001,17 +4001,17 @@ sub accounttracking {
 sub syslogcheck {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "syslogcheck", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "syslogcheck", $timer ) }
         $0 = "lfd - (child) SYSLOG check...";
 
         my $lockstr = "SYSLOG_CHECK";
-        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or &childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
-        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or &childcleanup("*Lock Error* [$lockstr] still active - section skipped");
+        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
+        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or childcleanup("*Lock Error* [$lockstr] still active - section skipped");
         print $THISLOCK time;
 
         logfile("*SYSLOG CHECK* Failed to detect check line [$syslogcheckcode] sent to SYSLOG");
@@ -4026,7 +4026,7 @@ sub syslogcheck {
         ConfigServer::Sendmail::relay( "", "", @message );
 
         close($THISLOCK);
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "syslogcheck", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "syslogcheck", $timer ) }
         $0 = "lfd - (child) closing";
         exit;
     }
@@ -4039,17 +4039,17 @@ sub syslogcheck {
 sub processtracking {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "processtracking", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "processtracking", $timer ) }
         $0 = "lfd - (child) process tracking...";
 
         my $lockstr = "PT_INTERVAL";
-        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or &childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
-        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or &childcleanup("*Lock Error* [$lockstr] still active - section skipped");
+        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
+        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or childcleanup("*Lock Error* [$lockstr] still active - section skipped");
         print $THISLOCK time;
 
         my %users;
@@ -4078,13 +4078,13 @@ sub processtracking {
 
                 if ( $dip == 0 or $sip == 0 ) { next }
 
-                $dip = &hex2ip($dip);
+                $dip = hex2ip($dip);
                 if ( $dip =~ /^0:0:0:0:0:ffff:(.*)$/ ) {
                     my $embed = ipv4in6($dip);
                     if ( $embed =~ /^$ipv4reg$/ ) { $dip = $embed }
                 }
 
-                $sip = &hex2ip($sip);
+                $sip = hex2ip($sip);
                 if ( $sip =~ /^0:0:0:0:0:ffff:(.*)$/ ) {
                     my $embed = ipv4in6($sip);
                     if ( $embed =~ /^$ipv4reg$/ ) { $sip = $embed }
@@ -4359,7 +4359,7 @@ sub processtracking {
 
                         logfile("*Suspicious Process* PID:$pid PPID:$ppid User:$user Uptime:$uptime secs EXE:$exe CMD:$cmdline");
 
-                        sysopen( my $TEMPPIDS, "/var/lib/csf/csf.temppids", O_WRONLY | O_APPEND | O_CREAT ) or &childcleanup( __LINE__, "*Error* Cannot append out file: $!" );
+                        sysopen( my $TEMPPIDS, "/var/lib/csf/csf.temppids", O_WRONLY | O_APPEND | O_CREAT ) or childcleanup( __LINE__, "*Error* Cannot append out file: $!" );
                         flock( $TEMPPIDS, LOCK_EX );
                         print $TEMPPIDS time . ":$pid\n";
                         if ( $deleted and $ppid and ( $ppid != $pid ) ) {
@@ -4400,7 +4400,7 @@ sub processtracking {
                         if ( $deleted and $config{PT_DELETED_ACTION} and -e "$config{PT_DELETED_ACTION}" and -x "$config{PT_DELETED_ACTION}" ) {
                             $SIG{CHLD} = 'IGNORE';
                             unless ( defined( $ptchildpid = fork ) ) {
-                                &childcleanup( __LINE__, "*Error* cannot fork: $!" );
+                                childcleanup( __LINE__, "*Error* cannot fork: $!" );
                             }
                             unless ($ptchildpid) {
                                 system( $config{PT_DELETED_ACTION}, $exe, $pid, $user, $ppid );
@@ -4426,7 +4426,7 @@ sub processtracking {
                         $kill = "Killed";
                     }
                     else {
-                        sysopen( my $TEMPUSERS, "/var/lib/csf/csf.tempusers", O_WRONLY | O_APPEND | O_CREAT ) or &childcleanup( __LINE__, "*Error* Cannot append out file: $!" );
+                        sysopen( my $TEMPUSERS, "/var/lib/csf/csf.tempusers", O_WRONLY | O_APPEND | O_CREAT ) or childcleanup( __LINE__, "*Error* Cannot append out file: $!" );
                         flock( $TEMPUSERS, LOCK_EX );
                         print $TEMPUSERS time . ":$user\n";
                         close($TEMPUSERS);
@@ -4449,7 +4449,7 @@ sub processtracking {
                     if ( $config{PT_USER_ACTION} and -e "$config{PT_USER_ACTION}" and -x "$config{PT_USER_ACTION}" ) {
                         $SIG{CHLD} = 'IGNORE';
                         unless ( defined( $ptchildpid = fork ) ) {
-                            &childcleanup( __LINE__, "*Error* cannot fork: $!" );
+                            childcleanup( __LINE__, "*Error* cannot fork: $!" );
                         }
                         unless ($ptchildpid) {
                             system( $config{PT_USER_ACTION}, $totproc{$user}{pids} );
@@ -4492,7 +4492,7 @@ sub processtracking {
                         $kill = "Yes";
                     }
                     else {
-                        sysopen( my $TEMPPIDS, "/var/lib/csf/csf.temppids", O_WRONLY | O_APPEND | O_CREAT ) or &childcleanup( __LINE__, "*Error* Cannot append out file: $!" );
+                        sysopen( my $TEMPPIDS, "/var/lib/csf/csf.temppids", O_WRONLY | O_APPEND | O_CREAT ) or childcleanup( __LINE__, "*Error* Cannot append out file: $!" );
                         flock( $TEMPPIDS, LOCK_EX );
                         print $TEMPPIDS time . ":$pid\n";
                         close($TEMPPIDS);
@@ -4517,7 +4517,7 @@ sub processtracking {
                     if ( $config{PT_USER_ACTION} and -e "$config{PT_USER_ACTION}" and -x "$config{PT_USER_ACTION}" ) {
                         $SIG{CHLD} = 'IGNORE';
                         unless ( defined( $ptchildpid = fork ) ) {
-                            &childcleanup( __LINE__, "*Error* cannot fork: $!" );
+                            childcleanup( __LINE__, "*Error* cannot fork: $!" );
                         }
                         unless ($ptchildpid) {
                             system( $config{PT_USER_ACTION}, $pid );
@@ -4529,7 +4529,7 @@ sub processtracking {
         }
 
         close($THISLOCK);
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "processtracking", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "processtracking", $timer ) }
         $0 = "lfd - (child) closing";
         exit;
     }
@@ -4547,12 +4547,12 @@ sub sshalert {
 
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "sshalert", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "sshalert", $timer ) }
         logfile("*SSH login* from $ip into the $account account using $method authentication");
 
         $0 = "lfd - (child) sending SSH login alert email for $ip";
@@ -4569,7 +4569,7 @@ sub sshalert {
         }
         ConfigServer::Sendmail::relay( "", "", @message );
 
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "sshalert", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "sshalert", $timer ) }
         $0 = "lfd - child closing";
         exit;
     }
@@ -4587,12 +4587,12 @@ sub sualert {
 
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "sualert", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "sualert", $timer ) }
         logfile("*SU login* from account $sufrom to account $suto: $status");
 
         $0 = "lfd - (child) sending SU login alert email from $sufrom to $suto";
@@ -4608,7 +4608,7 @@ sub sualert {
         }
         ConfigServer::Sendmail::relay( "", "", @message );
 
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "sualert", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "sualert", $timer ) }
         $0 = "lfd - child closing";
         exit;
     }
@@ -4626,12 +4626,12 @@ sub sudoalert {
 
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "sudoalert", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "sudoalert", $timer ) }
         logfile("*SUDO login* from account $sufrom to account $suto: $status");
 
         $0 = "lfd - (child) sending SU login alert email from $sufrom to $suto";
@@ -4647,7 +4647,7 @@ sub sudoalert {
         }
         ConfigServer::Sendmail::relay( "", "", @message );
 
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "sudoalert", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "sudoalert", $timer ) }
         $0 = "lfd - child closing";
         exit;
     }
@@ -4662,12 +4662,12 @@ sub consolealert {
 
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "consolealert", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "consolealert", $timer ) }
         logfile("*CONSOLE login* to root");
 
         $0 = "lfd - (child) sending console login alert email";
@@ -4680,7 +4680,7 @@ sub consolealert {
         }
         ConfigServer::Sendmail::relay( "", "", @message );
 
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "consolealert", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "consolealert", $timer ) }
         $0 = "lfd - child closing";
         exit;
     }
@@ -4697,12 +4697,12 @@ sub cpanelalert {
 
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "cpanelalert", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "cpanelalert", $timer ) }
         logfile("*WHM/cPanel $user access* from $ip");
 
         $0 = "lfd - (child) sending WHM/cPanel access alert email for $ip";
@@ -4723,7 +4723,7 @@ sub cpanelalert {
             system( $config{LF_CPANEL_ALERT_ACTION}, $ip, $user, $tip );
         }
 
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "cpanelalert", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "cpanelalert", $timer ) }
         $0 = "lfd - child closing";
         exit;
     }
@@ -4742,12 +4742,12 @@ sub scriptalert {
 
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "scriptalert", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "scriptalert", $timer ) }
         if ( $skipscript{$path} ) {
             logfile("*Script Alert* - A script in '$path' has sent an email $count times within the last hour - ignored");
             exit;
@@ -4804,7 +4804,7 @@ sub scriptalert {
             system( $config{LF_SCRIPT_ACTION}, $path, $count, $mails, $files );
         }
 
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "scriptalert", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "scriptalert", $timer ) }
         $0 = "lfd - child closing";
         exit;
     }
@@ -4822,12 +4822,12 @@ sub relayalert {
 
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "relayalert", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "relayalert", $timer ) }
 
         logfile("*Exceeded $check limit* from $ip ($cnt in the last hour)");
 
@@ -4847,10 +4847,10 @@ sub relayalert {
         }
 
         if ( $config{"RT\_$check\_BLOCK"} ) {
-            if ( checkip( \$ip ) and !&ignoreip($ip) ) {
+            if ( checkip( \$ip ) and !ignoreip($ip) ) {
                 my $perm = 0;
                 if ( $config{"RT\_$check\_BLOCK"} == 1 ) { $perm = 1 }
-                if ( &ipblock( $perm, "$tip $check limit exceeded", $ip, $ports{smtpauth}, "in", $config{"RT\_$check\_BLOCK"}, 0, $mails, "RT\_$check\_LIMIT" ) ) {
+                if ( ipblock( $perm, "$tip $check limit exceeded", $ip, $ports{smtpauth}, "in", $config{"RT\_$check\_BLOCK"}, 0, $mails, "RT\_$check\_LIMIT" ) ) {
                     if ( $config{DEBUG} >= 1 ) { logfile("debug: $ip already blocked") }
                 }
             }
@@ -4861,7 +4861,7 @@ sub relayalert {
         if ( $config{"RT\_$check\_BLOCK"} == 1 ) { $block = "Permanent Block [RT\_$check\_LIMIT]" }
         if ( $config{"RT\_$check\_BLOCK"} > 1 )  { $block = "Temporary Block for " . $config{"RT\_$check\_BLOCK"} . " seconds [RT\_$check\_LIMIT]" }
 
-        my $allowip = &allowip($ip);
+        my $allowip = allowip($ip);
         if ( $allowip == 1 and $block ne "No" ) { $block .= " (IP match in csf.allow, block may not work)" }
         if ( $allowip == 2 and $block ne "No" ) { $block .= " (IP match in GLOBAL_ALLOW, block may not work)" }
 
@@ -4882,7 +4882,7 @@ sub relayalert {
             system( $config{RT_ACTION}, $ip, $check, $block, $cnt, $mails );
         }
 
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "relayalert", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "relayalert", $timer ) }
         $0 = "lfd - child closing";
         exit;
     }
@@ -4898,12 +4898,12 @@ sub portknocking {
 
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "portknocking", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "portknocking", $timer ) }
         logfile("*Port Knocking* port $port opened by $ip");
 
         $0 = "lfd - (child) sending Port Knocking alert email for $ip";
@@ -4918,7 +4918,7 @@ sub portknocking {
         }
         ConfigServer::Sendmail::relay( "", "", @message );
 
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "portknocking", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "portknocking", $timer ) }
         $0 = "lfd - child closing";
         exit;
     }
@@ -4931,21 +4931,21 @@ sub portknocking {
 sub blocklist {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "blocklist", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "blocklist", $timer ) }
         $0 = "lfd - retrieving blocklists";
 
         my $lockstr = "BLOCKLISTS";
-        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or &childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
-        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or &childcleanup("*Lock Error* [$lockstr] still active - section skipped");
+        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
+        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or childcleanup("*Lock Error* [$lockstr] still active - section skipped");
         print $THISLOCK time;
 
         $0 = "lfd - retrieving blocklists (waiting for list lock)";
-        &listlock("lock");
+        listlock("lock");
 
         my $skipcxs;
         foreach my $name ( keys %blocklists ) {
@@ -5003,7 +5003,7 @@ sub blocklist {
                 foreach my $bl ( keys %blocklists ) {
                     if ( $bl eq $name ) { next }
                     if ( -e "/var/lib/csf/csf.block.$bl" ) {
-                        sysopen( my $BLOCK, "/var/lib/csf/csf.block.$bl", O_RDWR | O_CREAT ) or &childcleanup( __LINE__, "*Error* Cannot open out file: $!" );
+                        sysopen( my $BLOCK, "/var/lib/csf/csf.block.$bl", O_RDWR | O_CREAT ) or childcleanup( __LINE__, "*Error* Cannot open out file: $!" );
                         flock( $BLOCK, LOCK_SH );
                         while ( my $ipstr = <$BLOCK> ) {
                             chomp $ipstr;
@@ -5019,13 +5019,13 @@ sub blocklist {
                     }
                 }
 
-                if (&csflock) { &lockfail("BLOCKLIST") }
+                if (&csflock) { lockfail("BLOCKLIST") }
                 if ($verbose) { logfile("Retrieved and blocking blocklist $name IP address ranges") }
                 my $drop = $config{DROP};
                 if ( $config{DROP_IP_LOGGING} ) { $drop = "BLOCKDROP" }
 
                 if ( $text =~ m[^PK\x03\x04] or $text =~ m[^PK\x05\x06] or $text =~ m[^PK\x07\x08] ) {
-                    sysopen( my $BLOCK, "/var/lib/csf/csf.block.${name}.zip", O_WRONLY | O_CREAT ) or &childcleanup( __LINE__, "*Error* Cannot open out file: $!" );
+                    sysopen( my $BLOCK, "/var/lib/csf/csf.block.${name}.zip", O_WRONLY | O_CREAT ) or childcleanup( __LINE__, "*Error* Cannot open out file: $!" );
                     flock( $BLOCK, LOCK_EX );
                     print $BLOCK $text;
                     close($BLOCK);
@@ -5034,7 +5034,7 @@ sub blocklist {
                         local $SIG{__DIE__} = undef;
                         local $SIG{'ALRM'}  = sub { die };
                         alarm(180);
-                        @data = &syscommand( __LINE__, $config{UNZIP}, "-p", "/var/lib/csf/csf.block.${name}.zip" );
+                        @data = syscommand( __LINE__, $config{UNZIP}, "-p", "/var/lib/csf/csf.block.${name}.zip" );
                         alarm(0);
                     };
                     alarm(0);
@@ -5048,7 +5048,7 @@ sub blocklist {
                     }
                 }
 
-                sysopen( my $BLOCK, "/var/lib/csf/csf.block.$name", O_WRONLY | O_CREAT ) or &childcleanup( __LINE__, "*Error* Cannot open out file: $!" );
+                sysopen( my $BLOCK, "/var/lib/csf/csf.block.$name", O_WRONLY | O_CREAT ) or childcleanup( __LINE__, "*Error* Cannot open out file: $!" );
                 flock( $BLOCK, LOCK_EX );
                 seek( $BLOCK, 0, 0 );
                 truncate( $BLOCK, 0 );
@@ -5109,27 +5109,27 @@ sub blocklist {
                         }
                     }
                     close($BLOCK);
-                    &ipsetrestore("new_$name");
-                    &ipsetswap( "new_$name", "bl_$name" );
+                    ipsetrestore("new_$name");
+                    ipsetswap( "new_$name", "bl_$name" );
                     if ( $config{IPV6} ) {
                         @ipset = @ipset6;
-                        &ipsetrestore("new_6_$name");
-                        &ipsetswap( "new_6_$name", "bl_6_$name" );
+                        ipsetrestore("new_6_$name");
+                        ipsetswap( "new_6_$name", "bl_6_$name" );
                     }
                 }
                 else {
                     if ( $config{SAFECHAINUPDATE} ) {
-                        &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NEW$name" );
+                        iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NEW$name" );
                     }
                     else {
-                        &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F $name" );
+                        iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F $name" );
                     }
                     if ( $config{IPV6} ) {
                         if ( $config{SAFECHAINUPDATE} ) {
-                            &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -N NEW$name" );
+                            iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -N NEW$name" );
                         }
                         else {
-                            &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F $name" );
+                            iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F $name" );
                         }
                     }
                     open( my $BLOCK, "<", "/var/lib/csf/csf.block.$name" );
@@ -5140,69 +5140,69 @@ sub blocklist {
                         if ( $line =~ /($ipv4reg(\/\d+)?)/ ) {
                             my $iprange = $1;
                             if ( $config{SAFECHAINUPDATE} ) {
-                                &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A NEW$name -s $iprange -j $drop" );
+                                iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A NEW$name -s $iprange -j $drop" );
                             }
                             else {
-                                &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A $name -s $iprange -j $drop" );
+                                iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A $name -s $iprange -j $drop" );
                             }
                         }
                         elsif ( $line =~ /($ipv6reg(\/\d+)?)/ ) {
                             my $iprange = $1;
                             if ( $config{SAFECHAINUPDATE} ) {
-                                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A NEW$name -s $iprange -j $drop" );
+                                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A NEW$name -s $iprange -j $drop" );
                             }
                             else {
-                                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A $name -s $iprange -j $drop" );
+                                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A $name -s $iprange -j $drop" );
                             }
                         }
                     }
                     close($BLOCK);
-                    if ( $config{FASTSTART} ) { &faststart("Blocklist [$name]") }
+                    if ( $config{FASTSTART} ) { faststart("Blocklist [$name]") }
 
                     $config{LF_BOGON_SKIP} =~ s/\s//g;
                     if ( $name eq "BOGON" and $config{LF_BOGON_SKIP} ne "" ) {
                         foreach my $device ( split( /\,/, $config{LF_BOGON_SKIP} ) ) {
                             if ( $config{SAFECHAINUPDATE} ) {
-                                &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -I NEWBOGON -i $device -j RETURN" );
+                                iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -I NEWBOGON -i $device -j RETURN" );
                             }
                             else {
-                                &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -I BOGON -i $device -j RETURN" );
+                                iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -I BOGON -i $device -j RETURN" );
                             }
                         }
                     }
                     if ( $config{SAFECHAINUPDATE} ) {
                         if ( $cxsreputation and $name =~ /^CXS_/ and $name ne "CXS_ALL" and $cxsports{$name} ne "" ) {
-                            &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A LOCALINPUT -p tcp -m multiport --dport $cxsports{$name} $ethdevin -j NEW$name" );
-                            &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D LOCALINPUT -p tcp -m multiport --dport $cxsports{$name} $ethdevin -j $name" );
+                            iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A LOCALINPUT -p tcp -m multiport --dport $cxsports{$name} $ethdevin -j NEW$name" );
+                            iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D LOCALINPUT -p tcp -m multiport --dport $cxsports{$name} $ethdevin -j $name" );
                         }
                         else {
-                            &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A LOCALINPUT $ethdevin -j NEW$name" );
-                            &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j $name" );
+                            iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A LOCALINPUT $ethdevin -j NEW$name" );
+                            iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j $name" );
                         }
-                        &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F $name" );
-                        &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -X $name" );
-                        &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -E NEW$name $name" );
+                        iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F $name" );
+                        iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -X $name" );
+                        iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -E NEW$name $name" );
                         if ( $config{IPV6} ) {
                             if ( $cxsreputation and $name =~ /^CXS_/ and $name ne "CXS_ALL" and $cxsports{$name} ne "" ) {
-                                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A LOCALINPUT -p tcp -m multiport --dport $cxsports{$name} $ethdevin -j NEW$name" );
-                                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D LOCALINPUT -p tcp -m multiport --dport $cxsports{$name} $ethdevin -j $name" );
+                                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A LOCALINPUT -p tcp -m multiport --dport $cxsports{$name} $ethdevin -j NEW$name" );
+                                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D LOCALINPUT -p tcp -m multiport --dport $cxsports{$name} $ethdevin -j $name" );
                             }
                             else {
-                                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A LOCALINPUT $ethdevin -j NEW$name" );
-                                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j $name" );
+                                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A LOCALINPUT $ethdevin -j NEW$name" );
+                                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j $name" );
                             }
-                            &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F $name" );
-                            &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -X $name" );
-                            &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -E NEW$name $name" );
+                            iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F $name" );
+                            iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -X $name" );
+                            iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -E NEW$name $name" );
                         }
                     }
                 }
             }
         }
 
-        &listlock("unlock");
+        listlock("unlock");
         close($THISLOCK);
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "blocklist", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "blocklist", $timer ) }
         $0 = "lfd - child closing";
         exit;
     }
@@ -5222,21 +5222,21 @@ sub countrycode {
 
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "countrycode", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "countrycode", $timer ) }
         $0 = "lfd - retrieving countrycode lists";
 
         my $lockstr = "COUNTRYCODE";
-        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or &childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
-        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or &childcleanup("*Lock Error* [$lockstr] still active - section skipped");
+        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
+        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or childcleanup("*Lock Error* [$lockstr] still active - section skipped");
         print $THISLOCK time;
 
         $0 = "lfd - retrieving countrycode lists (waiting for list lock)";
-        &listlock("lock");
+        listlock("lock");
         $0 = "lfd - retrieving countrycode lists";
 
         my $drop = $config{DROP};
@@ -5286,7 +5286,7 @@ sub countrycode {
                         local $SIG{__DIE__} = undef;
                         local $SIG{'ALRM'}  = sub { die };
                         alarm(180);
-                        @data = &syscommand( __LINE__, $config{UNZIP}, "-DDjod", "/var/lib/csf/Geo/", "/var/lib/csf/Geo/GeoLite2-Country-CSV.zip" );
+                        @data = syscommand( __LINE__, $config{UNZIP}, "-DDjod", "/var/lib/csf/Geo/", "/var/lib/csf/Geo/GeoLite2-Country-CSV.zip" );
                         alarm(0);
                     };
                     alarm(0);
@@ -5315,7 +5315,7 @@ sub countrycode {
                         local $SIG{__DIE__} = undef;
                         local $SIG{'ALRM'}  = sub { die };
                         alarm(180);
-                        @data = &syscommand( __LINE__, $config{UNZIP}, "-DDjod", "/var/lib/csf/Geo/", "/var/lib/csf/Geo/GeoLite2-ASN-CSV.zip" );
+                        @data = syscommand( __LINE__, $config{UNZIP}, "-DDjod", "/var/lib/csf/Geo/", "/var/lib/csf/Geo/GeoLite2-ASN-CSV.zip" );
                         alarm(0);
                     };
                     alarm(0);
@@ -5456,7 +5456,7 @@ sub countrycode {
                         local $SIG{__DIE__} = undef;
                         local $SIG{'ALRM'}  = sub { die };
                         alarm(180);
-                        @data = &syscommand( __LINE__, $config{GUNZIP}, "/var/lib/csf/Geo/ip2asn-combined.tsv.gz" );
+                        @data = syscommand( __LINE__, $config{GUNZIP}, "/var/lib/csf/Geo/ip2asn-combined.tsv.gz" );
                         alarm(0);
                     };
                     alarm(0);
@@ -5501,7 +5501,7 @@ sub countrycode {
             if ($getgeo) {
                 logfile("CC: Processing $config{asn_src} ASN database");
                 my %dcidr;
-                open( $IN, "<", "/var/lib/csf/Geo/ip2asn-combined.tsv" );
+                open( my $IN, "<", "/var/lib/csf/Geo/ip2asn-combined.tsv" );
                 flock( $IN, LOCK_SH );
                 while ( my $record = <$IN> ) {
                     chomp $record;
@@ -5569,14 +5569,14 @@ sub countrycode {
             if ($redo_allow_filter) { $cclist .= $config{CC_ALLOW_FILTER} . "," }
             if ($redo_allow_ports)  { $cclist .= $config{CC_ALLOW_PORTS} . "," }
             if ($redo_deny_ports)   { $cclist .= $config{CC_DENY_PORTS} }
-            if ( $config{CC_ALLOW_FILTER} and $redo_allow_filter ) { &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F CC_ALLOWF" ) }
+            if ( $config{CC_ALLOW_FILTER} and $redo_allow_filter ) { iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F CC_ALLOWF" ) }
 
             foreach my $cc ( split( /\,/, $cclist ) ) {
                 if ( $cc eq "" ) { next }
                 undef @ipset;
                 $cc = lc $cc;
                 if ( $config{CC_ALLOW_FILTER} and $redo_allow_filter ) {
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A CC_ALLOWF -m set --match-set cc_$cc src -j RETURN" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A CC_ALLOWF -m set --match-set cc_$cc src -j RETURN" );
                 }
                 if ( -e "/var/lib/csf/zone/$cc.zone" ) {
                     logfile( "CC: Repopulating ipset cc_$cc with IP addresses from [" . uc($cc) . "]" );
@@ -5595,34 +5595,34 @@ sub countrycode {
                             $cnt++;
                         }
                     }
-                    &ipsetrestore("new_$cc");
-                    &ipsetswap( "new_$cc", "cc_$cc" );
+                    ipsetrestore("new_$cc");
+                    ipsetswap( "new_$cc", "cc_$cc" );
                 }
             }
             if ( $config{CC_ALLOW_FILTER} and $redo_allow_filter and $cnt > 0 ) {
-                &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A CC_ALLOWF -j $drop" );
+                iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A CC_ALLOWF -j $drop" );
                 if ( $config{LF_SPI} ) {
                     my $statemodule = "-m state --state";
                     if ( $config{USE_CONNTRACK} ) { $statemodule = "-m conntrack --ctstate" }
                     if ( $config{USE_FTPHELPER} ) {
-                        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -I CC_ALLOWF $ethdevin $statemodule RELATED -m helper --helper ftp -j $accept" );
+                        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -I CC_ALLOWF $ethdevin $statemodule RELATED -m helper --helper ftp -j $accept" );
 
-                        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -I CC_ALLOWF $ethdevin $statemodule ESTABLISHED -j $accept" );
+                        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -I CC_ALLOWF $ethdevin $statemodule ESTABLISHED -j $accept" );
                     }
                     else {
-                        &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -I CC_ALLOWF $ethdevin $statemodule ESTABLISHED,RELATED -j $accept" );
+                        syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -I CC_ALLOWF $ethdevin $statemodule ESTABLISHED,RELATED -j $accept" );
                     }
                 }
             }
         }
         else {
             if ( $config{CC_DENY} and $redo_deny ) {
-                if (&csflock) { &lockfail("CC_DENY") }
+                if (&csflock) { lockfail("CC_DENY") }
                 if ( $config{SAFECHAINUPDATE} ) {
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NEWCC_DENY" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NEWCC_DENY" );
                 }
                 else {
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F CC_DENY" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F CC_DENY" );
                 }
                 foreach my $cc ( split( /\,/, $config{CC_DENY} ) ) {
                     $cc = lc $cc;
@@ -5641,34 +5641,34 @@ sub countrycode {
                                     if ( $drop_cidr > $config{CC_DROP_CIDR} ) { next }
                                 }
                                 if ( $config{SAFECHAINUPDATE} ) {
-                                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A NEWCC_DENY -s $ip -j $drop" );
+                                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A NEWCC_DENY -s $ip -j $drop" );
                                 }
                                 else {
-                                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A CC_DENY -s $ip -j $drop" );
+                                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A CC_DENY -s $ip -j $drop" );
                                 }
                             }
                         }
                         close($IN);
-                        if ( $config{FASTSTART} ) { &faststart( "CC_DENY [" . uc($cc) . "]" ) }
+                        if ( $config{FASTSTART} ) { faststart( "CC_DENY [" . uc($cc) . "]" ) }
                         logfile( "CC: Finished repopulating CC_DENY with IP addresses from [" . uc($cc) . "]" );
                     }
                 }
                 if ( $config{SAFECHAINUPDATE} ) {
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A LOCALINPUT $ethdevin -j NEWCC_DENY" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j CC_DENY" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F CC_DENY" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -X CC_DENY" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -E NEWCC_DENY CC_DENY" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A LOCALINPUT $ethdevin -j NEWCC_DENY" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j CC_DENY" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F CC_DENY" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -X CC_DENY" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -E NEWCC_DENY CC_DENY" );
                 }
             }
 
             if ( $config{CC_ALLOW} and $redo_allow ) {
-                if (&csflock) { &lockfail("CC_ALLOW") }
+                if (&csflock) { lockfail("CC_ALLOW") }
                 if ( $config{SAFECHAINUPDATE} ) {
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NEWCC_ALLOW" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NEWCC_ALLOW" );
                 }
                 else {
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F CC_ALLOW" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F CC_ALLOW" );
                 }
                 foreach my $cc ( split( /\,/, $config{CC_ALLOW} ) ) {
                     $cc = lc $cc;
@@ -5687,35 +5687,35 @@ sub countrycode {
                                     if ( $drop_cidr > $config{CC_DROP_CIDR} ) { next }
                                 }
                                 if ( $config{SAFECHAINUPDATE} ) {
-                                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A NEWCC_ALLOW -s $ip -j $accept" );
+                                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A NEWCC_ALLOW -s $ip -j $accept" );
                                 }
                                 else {
-                                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A CC_ALLOW -s $ip -j $accept" );
+                                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A CC_ALLOW -s $ip -j $accept" );
                                 }
                             }
                         }
                         close($IN);
-                        if ( $config{FASTSTART} ) { &faststart( "CC_ALLOW [" . uc($cc) . "]" ) }
+                        if ( $config{FASTSTART} ) { faststart( "CC_ALLOW [" . uc($cc) . "]" ) }
                         logfile( "CC: Finished repopulating CC_ALLOW with IP addresses from [" . uc($cc) . "]" );
                     }
                 }
                 if ( $config{SAFECHAINUPDATE} ) {
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -I LOCALINPUT $ethdevin -j NEWCC_ALLOW" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j CC_ALLOW" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F CC_ALLOW" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -X CC_ALLOW" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -E NEWCC_ALLOW CC_ALLOW" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -I LOCALINPUT $ethdevin -j NEWCC_ALLOW" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j CC_ALLOW" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F CC_ALLOW" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -X CC_ALLOW" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -E NEWCC_ALLOW CC_ALLOW" );
                 }
             }
 
             if ( $config{CC_ALLOW_FILTER} and $redo_allow_filter ) {
                 my $cnt = 0;
-                if (&csflock) { &lockfail("CC_ALLOW_FILTER") }
+                if (&csflock) { lockfail("CC_ALLOW_FILTER") }
                 if ( $config{SAFECHAINUPDATE} ) {
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NCC_ALLOWF" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NCC_ALLOWF" );
                 }
                 else {
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F CC_ALLOWF" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F CC_ALLOWF" );
                 }
                 foreach my $cc ( split( /\,/, $config{CC_ALLOW_FILTER} ) ) {
                     $cc = lc $cc;
@@ -5735,39 +5735,39 @@ sub countrycode {
                                 }
                                 $cnt++;
                                 if ( $config{SAFECHAINUPDATE} ) {
-                                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A NCC_ALLOWF -s $ip -j RETURN" );
+                                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A NCC_ALLOWF -s $ip -j RETURN" );
                                 }
                                 else {
-                                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A CC_ALLOWF -s $ip -j RETURN" );
+                                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A CC_ALLOWF -s $ip -j RETURN" );
                                 }
                             }
                         }
                         close($IN);
-                        if ( $config{FASTSTART} ) { &faststart( "CC_ALLOW_FILTER [" . uc($cc) . "]" ) }
+                        if ( $config{FASTSTART} ) { faststart( "CC_ALLOW_FILTER [" . uc($cc) . "]" ) }
                         logfile( "CC: Finished repopulating CC_ALLOWF with IP addresses from [" . uc($cc) . "]" );
                     }
                 }
                 if ( $config{SAFECHAINUPDATE} ) {
-                    if ( $cnt > 0 ) { &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A NCC_ALLOWF -j $drop" ) }
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A LOCALINPUT $ethdevin -j NCC_ALLOWF" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j CC_ALLOWF" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F CC_ALLOWF" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -X CC_ALLOWF" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -E NCC_ALLOWF CC_ALLOWF" );
+                    if ( $cnt > 0 ) { iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A NCC_ALLOWF -j $drop" ) }
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A LOCALINPUT $ethdevin -j NCC_ALLOWF" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j CC_ALLOWF" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F CC_ALLOWF" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -X CC_ALLOWF" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -E NCC_ALLOWF CC_ALLOWF" );
                 }
                 else {
                     if ( $cnt > 0 ) {
-                        &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A CC_ALLOWF -j $drop" );
+                        iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A CC_ALLOWF -j $drop" );
                         if ( $config{LF_SPI} ) {
                             my $statemodule = "-m state --state";
                             if ( $config{USE_CONNTRACK} ) { $statemodule = "-m conntrack --ctstate" }
                             if ( $config{USE_FTPHELPER} ) {
-                                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -I CC_ALLOWF $ethdevin $statemodule RELATED -m helper --helper ftp -j $accept" );
+                                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -I CC_ALLOWF $ethdevin $statemodule RELATED -m helper --helper ftp -j $accept" );
 
-                                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -I CC_ALLOWF $ethdevin $statemodule ESTABLISHED -j $accept" );
+                                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -I CC_ALLOWF $ethdevin $statemodule ESTABLISHED -j $accept" );
                             }
                             else {
-                                &syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -I CC_ALLOWF $ethdevin $statemodule ESTABLISHED,RELATED -j $accept" );
+                                syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -I CC_ALLOWF $ethdevin $statemodule ESTABLISHED,RELATED -j $accept" );
                             }
                         }
                     }
@@ -5776,12 +5776,12 @@ sub countrycode {
 
             if ( $config{CC_ALLOW_PORTS} and $redo_allow_ports ) {
                 my $cnt = 0;
-                if (&csflock) { &lockfail("CC_ALLOW_PORTS") }
+                if (&csflock) { lockfail("CC_ALLOW_PORTS") }
                 if ( $config{SAFECHAINUPDATE} ) {
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NCC_ALLOWP" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NCC_ALLOWP" );
                 }
                 else {
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F CC_ALLOWP" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F CC_ALLOWP" );
                 }
                 foreach my $cc ( split( /\,/, $config{CC_ALLOW_PORTS} ) ) {
                     $cc = lc $cc;
@@ -5801,35 +5801,35 @@ sub countrycode {
                                 }
                                 $cnt++;
                                 if ( $config{SAFECHAINUPDATE} ) {
-                                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A NCC_ALLOWP -s $ip -j CC_ALLOWPORTS" );
+                                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A NCC_ALLOWP -s $ip -j CC_ALLOWPORTS" );
                                 }
                                 else {
-                                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A CC_ALLOWP -s $ip -j CC_ALLOWPORTS" );
+                                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A CC_ALLOWP -s $ip -j CC_ALLOWPORTS" );
                                 }
                             }
                         }
                         close($IN);
-                        if ( $config{FASTSTART} ) { &faststart( "CC_ALLOW_PORTS [" . uc($cc) . "]" ) }
+                        if ( $config{FASTSTART} ) { faststart( "CC_ALLOW_PORTS [" . uc($cc) . "]" ) }
                         logfile( "CC: Finished repopulating CC_ALLOWP with IP addresses from [" . uc($cc) . "]" );
                     }
                 }
                 if ( $config{SAFECHAINUPDATE} ) {
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A LOCALINPUT $ethdevin -j NCC_ALLOWP" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j CC_ALLOWP" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F CC_ALLOWP" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -X CC_ALLOWP" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -E NCC_ALLOWP CC_ALLOWP" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A LOCALINPUT $ethdevin -j NCC_ALLOWP" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j CC_ALLOWP" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F CC_ALLOWP" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -X CC_ALLOWP" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -E NCC_ALLOWP CC_ALLOWP" );
                 }
             }
 
             if ( $config{CC_DENY_PORTS} and $redo_deny_ports ) {
                 my $cnt = 0;
-                if (&csflock) { &lockfail("CC_DENY_PORTS") }
+                if (&csflock) { lockfail("CC_DENY_PORTS") }
                 if ( $config{SAFECHAINUPDATE} ) {
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NCC_DENYP" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NCC_DENYP" );
                 }
                 else {
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F CC_DENYP" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F CC_DENYP" );
                 }
                 foreach my $cc ( split( /\,/, $config{CC_DENY_PORTS} ) ) {
                     $cc = lc $cc;
@@ -5849,29 +5849,29 @@ sub countrycode {
                                 }
                                 $cnt++;
                                 if ( $config{SAFECHAINUPDATE} ) {
-                                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A NCC_DENYP -s $ip -j CC_DENYPORTS" );
+                                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A NCC_DENYP -s $ip -j CC_DENYPORTS" );
                                 }
                                 else {
-                                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A CC_DENYP -s $ip -j CC_DENYPORTS" );
+                                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A CC_DENYP -s $ip -j CC_DENYPORTS" );
                                 }
                             }
                         }
                         close($IN);
-                        if ( $config{FASTSTART} ) { &faststart( "CC_DENY_PORTS [" . uc($cc) . "]" ) }
+                        if ( $config{FASTSTART} ) { faststart( "CC_DENY_PORTS [" . uc($cc) . "]" ) }
                         logfile( "CC: Finished repopulating CC_DENYP with IP addresses from [" . uc($cc) . "]" );
                     }
                 }
                 if ( $config{SAFECHAINUPDATE} ) {
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A LOCALINPUT $ethdevin -j NCC_DENYP" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j CC_DENYP" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F CC_DENYP" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -X CC_DENYP" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -E NCC_DENYP CC_DENYP" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A LOCALINPUT $ethdevin -j NCC_DENYP" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j CC_DENYP" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F CC_DENYP" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -X CC_DENYP" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -E NCC_DENYP CC_DENYP" );
                 }
             }
         }
         if ( $config{CC6_LOOKUPS} and $config{IPV6} ) {
-            &countrycode6($force);
+            countrycode6($force);
         }
 
         if ( $config{CC_ALLOW_SMTPAUTH} and $config{SMTPAUTH_RESTRICT} and $redo_allow_smtpauth ) {
@@ -5944,9 +5944,9 @@ sub countrycode {
             chmod( 0644, "/etc/exim.smtpauth" );
         }
 
-        &listlock("unlock");
+        listlock("unlock");
         close($THISLOCK);
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "countrycode", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "countrycode", $timer ) }
         $0 = "lfd - child closing";
         exit;
     }
@@ -5967,21 +5967,21 @@ sub countrycodelookups {
 
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "countrycodelookups", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "countrycodelookups", $timer ) }
         $0 = "lfd - retrieving countrycode lookups";
 
         my $lockstr = "CC_LOOKUPS";
-        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or &childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
-        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or &childcleanup("*Lock Error* [$lockstr] still active - section skipped");
+        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
+        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or childcleanup("*Lock Error* [$lockstr] still active - section skipped");
         print $THISLOCK time;
 
         $0 = "lfd - retrieving countrycodelookups lists (waiting for list lock)";
-        &listlock("lock");
+        listlock("lock");
         $0 = "lfd - retrieving countrycodelookups lists";
 
         if ( $config{CC_SRC} eq "" or $config{CC_SRC} eq "1" ) {
@@ -6036,14 +6036,14 @@ sub countrycodelookups {
                         alarm(180);
                         my ( $childin, $childout, $cmdpid );
                         if ( $config{CC_LOOKUPS} == 3 ) {
-                            @data = &syscommand( __LINE__, $config{UNZIP}, "-DDjod", "/var/lib/csf/Geo/", "/var/lib/csf/Geo/GeoLite2-ASN-CSV.zip" );
-                            @data = &syscommand( __LINE__, $config{UNZIP}, "-DDjod", "/var/lib/csf/Geo/", "/var/lib/csf/Geo/GeoLite2-City-CSV.zip" );
+                            @data = syscommand( __LINE__, $config{UNZIP}, "-DDjod", "/var/lib/csf/Geo/", "/var/lib/csf/Geo/GeoLite2-ASN-CSV.zip" );
+                            @data = syscommand( __LINE__, $config{UNZIP}, "-DDjod", "/var/lib/csf/Geo/", "/var/lib/csf/Geo/GeoLite2-City-CSV.zip" );
                         }
                         elsif ( $config{CC_LOOKUPS} == 2 ) {
-                            @data = &syscommand( __LINE__, $config{UNZIP}, "-DDjod", "/var/lib/csf/Geo/", "/var/lib/csf/Geo/GeoLite2-City-CSV.zip" );
+                            @data = syscommand( __LINE__, $config{UNZIP}, "-DDjod", "/var/lib/csf/Geo/", "/var/lib/csf/Geo/GeoLite2-City-CSV.zip" );
                         }
                         else {
-                            @data = &syscommand( __LINE__, $config{UNZIP}, "-DDjod", "/var/lib/csf/Geo/", "/var/lib/csf/Geo/GeoLite2-Country-CSV.zip" );
+                            @data = syscommand( __LINE__, $config{UNZIP}, "-DDjod", "/var/lib/csf/Geo/", "/var/lib/csf/Geo/GeoLite2-Country-CSV.zip" );
                         }
                         alarm(0);
                     };
@@ -6128,7 +6128,7 @@ sub countrycodelookups {
                             local $SIG{__DIE__} = undef;
                             local $SIG{'ALRM'}  = sub { die };
                             alarm(180);
-                            @data = &syscommand( __LINE__, $config{GUNZIP}, "/var/lib/csf/Geo/dbip-city-lite.csv.gz" );
+                            @data = syscommand( __LINE__, $config{GUNZIP}, "/var/lib/csf/Geo/dbip-city-lite.csv.gz" );
                             alarm(0);
                         };
                         alarm(0);
@@ -6152,7 +6152,7 @@ sub countrycodelookups {
                                 local $SIG{__DIE__} = undef;
                                 local $SIG{'ALRM'}  = sub { die };
                                 alarm(180);
-                                @data = &syscommand( __LINE__, $config{GUNZIP}, "/var/lib/csf/Geo/ip2asn-combined.tsv.gz" );
+                                @data = syscommand( __LINE__, $config{GUNZIP}, "/var/lib/csf/Geo/ip2asn-combined.tsv.gz" );
                                 alarm(0);
                             };
                             alarm(0);
@@ -6178,7 +6178,7 @@ sub countrycodelookups {
                             local $SIG{__DIE__} = undef;
                             local $SIG{'ALRM'}  = sub { die };
                             alarm(180);
-                            @data = &syscommand( __LINE__, $config{GUNZIP}, "/var/lib/csf/Geo/dbip-country-lite.csv.gz" );
+                            @data = syscommand( __LINE__, $config{GUNZIP}, "/var/lib/csf/Geo/dbip-country-lite.csv.gz" );
                             alarm(0);
                         };
                         alarm(0);
@@ -6193,9 +6193,9 @@ sub countrycodelookups {
             }
         }
 
-        &listlock("unlock");
+        listlock("unlock");
         close($THISLOCK);
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "countrycodelookups", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "countrycodelookups", $timer ) }
         $0 = "lfd - child closing";
         exit;
     }
@@ -6327,7 +6327,7 @@ sub countrycode6 {
         if ($getgeo) {
             logfile("CC: Processing $config{cc_src} Country/ASN IPv6 database");
             my %dcidr;
-            open( $IN, "<", "/var/lib/csf/Geo/ip2asn-combined.tsv" );
+            open( my $IN, "<", "/var/lib/csf/Geo/ip2asn-combined.tsv" );
             flock( $IN, LOCK_SH );
             while ( my $record = <$IN> ) {
                 chomp $record;
@@ -6386,13 +6386,13 @@ sub countrycode6 {
         if ($redo_allow_filter) { $cclist .= $config{CC_ALLOW_FILTER} . "," }
         if ($redo_allow_ports)  { $cclist .= $config{CC_ALLOW_PORTS} . "," }
         if ($redo_deny_ports)   { $cclist .= $config{CC_DENY_PORTS} }
-        if ( $config{CC_ALLOW_FILTER} and $redo_allow_filter ) { &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F CC_ALLOWF" ) }
+        if ( $config{CC_ALLOW_FILTER} and $redo_allow_filter ) { iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F CC_ALLOWF" ) }
 
         foreach my $cc ( split( /\,/, $cclist ) ) {
             if ( $cc eq "" ) { next }
             undef @ipset;
             $cc = lc $cc;
-            if ( $config{CC_ALLOW_FILTER} and $redo_allow_filter ) { &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A CC_ALLOWF -m set --match-set cc_6_$cc src -j RETURN" ) }
+            if ( $config{CC_ALLOW_FILTER} and $redo_allow_filter ) { iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A CC_ALLOWF -m set --match-set cc_6_$cc src -j RETURN" ) }
             if ( -e "/var/lib/csf/zone/$cc.zone6" ) {
                 logfile( "CC: Repopulating ipset cc_6_$cc with IP addresses from [" . uc($cc) . "]" );
                 open( my $IN, "<", "/var/lib/csf/zone/$cc.zone6" );
@@ -6410,34 +6410,34 @@ sub countrycode6 {
                         $cnt++;
                     }
                 }
-                &ipsetrestore("new_6_$cc");
-                &ipsetswap( "new_6_$cc", "cc_6_$cc" );
+                ipsetrestore("new_6_$cc");
+                ipsetswap( "new_6_$cc", "cc_6_$cc" );
             }
         }
         if ( $config{CC_ALLOW_FILTER} and $redo_allow_filter and $cnt > 0 ) {
-            &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A CC_ALLOWF -j $drop" );
+            iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A CC_ALLOWF -j $drop" );
             if ( $config{IPV6_SPI} ) {
                 my $statemodule = "-m state --state";
                 if ( $config{USE_FTPHELPER} ) {
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -I CC_ALLOWF $ethdevin $statemodule RELATED -m helper --helper ftp -j $accept" );
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -I CC_ALLOWF $ethdevin $statemodule RELATED -m helper --helper ftp -j $accept" );
 
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -I CC_ALLOWF $ethdevin $statemodule ESTABLISHED -j $accept" );
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -I CC_ALLOWF $ethdevin $statemodule ESTABLISHED -j $accept" );
                 }
                 else {
-                    &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -I CC_ALLOWF $ethdevin $statemodule ESTABLISHED,RELATED -j $accept" );
+                    syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -I CC_ALLOWF $ethdevin $statemodule ESTABLISHED,RELATED -j $accept" );
                 }
-                &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT}  -I CC_ALLOWF $eth6devin -p icmpv6 -j $accept" );
+                syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT}  -I CC_ALLOWF $eth6devin -p icmpv6 -j $accept" );
             }
         }
     }
     else {
         if ( $config{CC_DENY} and $redo_deny ) {
-            if (&csflock) { &lockfail("CC_DENY") }
+            if (&csflock) { lockfail("CC_DENY") }
             if ( $config{SAFECHAINUPDATE} ) {
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -N NEWCC_DENY" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -N NEWCC_DENY" );
             }
             else {
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F CC_DENY" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F CC_DENY" );
             }
             foreach my $cc ( split( /\,/, $config{CC_DENY} ) ) {
                 $cc = lc $cc;
@@ -6451,34 +6451,34 @@ sub countrycode6 {
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
                         if ( cccheckip( \$ip ) ) {
                             if ( $config{SAFECHAINUPDATE} ) {
-                                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A NEWCC_DENY -s $ip -j $drop" );
+                                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A NEWCC_DENY -s $ip -j $drop" );
                             }
                             else {
-                                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A CC_DENY -s $ip -j $drop" );
+                                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A CC_DENY -s $ip -j $drop" );
                             }
                         }
                     }
                     close($IN);
-                    if ( $config{FASTSTART} ) { &faststart( "CC_DENY [" . uc($cc) . "]" ) }
+                    if ( $config{FASTSTART} ) { faststart( "CC_DENY [" . uc($cc) . "]" ) }
                     logfile( "CC: Finished repopulating CC_DENY with IP addresses from [" . uc($cc) . "]" );
                 }
             }
             if ( $config{SAFECHAINUPDATE} ) {
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A LOCALINPUT $ethdevin -j NEWCC_DENY" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j CC_DENY" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F CC_DENY" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -X CC_DENY" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -E NEWCC_DENY CC_DENY" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A LOCALINPUT $ethdevin -j NEWCC_DENY" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j CC_DENY" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F CC_DENY" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -X CC_DENY" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -E NEWCC_DENY CC_DENY" );
             }
         }
 
         if ( $config{CC_ALLOW} and $redo_allow ) {
-            if (&csflock) { &lockfail("CC_ALLOW") }
+            if (&csflock) { lockfail("CC_ALLOW") }
             if ( $config{SAFECHAINUPDATE} ) {
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -N NEWCC_ALLOW" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -N NEWCC_ALLOW" );
             }
             else {
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F CC_ALLOW" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F CC_ALLOW" );
             }
             foreach my $cc ( split( /\,/, $config{CC_ALLOW} ) ) {
                 $cc = lc $cc;
@@ -6492,35 +6492,35 @@ sub countrycode6 {
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
                         if ( cccheckip( \$ip ) ) {
                             if ( $config{SAFECHAINUPDATE} ) {
-                                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A NEWCC_ALLOW -s $ip -j $accept" );
+                                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A NEWCC_ALLOW -s $ip -j $accept" );
                             }
                             else {
-                                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A CC_ALLOW -s $ip -j $accept" );
+                                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A CC_ALLOW -s $ip -j $accept" );
                             }
                         }
                     }
                     close($IN);
-                    if ( $config{FASTSTART} ) { &faststart( "CC_ALLOW [" . uc($cc) . "]" ) }
+                    if ( $config{FASTSTART} ) { faststart( "CC_ALLOW [" . uc($cc) . "]" ) }
                     logfile( "CC: Finished repopulating CC_ALLOW with IP addresses from [" . uc($cc) . "]" );
                 }
             }
             if ( $config{SAFECHAINUPDATE} ) {
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -I LOCALINPUT $ethdevin -j NEWCC_ALLOW" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j CC_ALLOW" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F CC_ALLOW" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -X CC_ALLOW" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -E NEWCC_ALLOW CC_ALLOW" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -I LOCALINPUT $ethdevin -j NEWCC_ALLOW" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j CC_ALLOW" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F CC_ALLOW" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -X CC_ALLOW" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -E NEWCC_ALLOW CC_ALLOW" );
             }
         }
 
         if ( $config{CC_ALLOW_FILTER} and $redo_allow_filter ) {
             my $cnt = 0;
-            if (&csflock) { &lockfail("CC_ALLOW_FILTER") }
+            if (&csflock) { lockfail("CC_ALLOW_FILTER") }
             if ( $config{SAFECHAINUPDATE} ) {
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -N NCC_ALLOWF" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -N NCC_ALLOWF" );
             }
             else {
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F CC_ALLOWF" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F CC_ALLOWF" );
             }
             foreach my $cc ( split( /\,/, $config{CC_ALLOW_FILTER} ) ) {
                 $cc = lc $cc;
@@ -6535,40 +6535,40 @@ sub countrycode6 {
                         if ( cccheckip( \$ip ) ) {
                             $cnt++;
                             if ( $config{SAFECHAINUPDATE} ) {
-                                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A NCC_ALLOWF -s $ip -j RETURN" );
+                                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A NCC_ALLOWF -s $ip -j RETURN" );
                             }
                             else {
-                                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A CC_ALLOWF -s $ip -j RETURN" );
+                                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A CC_ALLOWF -s $ip -j RETURN" );
                             }
                         }
                     }
                     close($IN);
-                    if ( $config{FASTSTART} ) { &faststart( "CC_ALLOW_FILTER [" . uc($cc) . "]" ) }
+                    if ( $config{FASTSTART} ) { faststart( "CC_ALLOW_FILTER [" . uc($cc) . "]" ) }
                     logfile( "CC: Finished repopulating CC_ALLOWF with IP addresses from [" . uc($cc) . "]" );
                 }
             }
             if ( $config{SAFECHAINUPDATE} ) {
-                if ( $cnt > 0 ) { &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A NCC_ALLOWF -j $drop" ) }
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A LOCALINPUT $ethdevin -j NCC_ALLOWF" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j CC_ALLOWF" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F CC_ALLOWF" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -X CC_ALLOWF" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -E NCC_ALLOWF CC_ALLOWF" );
+                if ( $cnt > 0 ) { iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A NCC_ALLOWF -j $drop" ) }
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A LOCALINPUT $ethdevin -j NCC_ALLOWF" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j CC_ALLOWF" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F CC_ALLOWF" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -X CC_ALLOWF" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -E NCC_ALLOWF CC_ALLOWF" );
             }
             else {
                 if ( $cnt > 0 ) {
-                    &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A CC_ALLOWF -j $drop" );
+                    iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A CC_ALLOWF -j $drop" );
                     if ( $config{IPV6_SPI} ) {
                         my $statemodule = "-m state --state";
                         if ( $config{USE_FTPHELPER} ) {
-                            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -I CC_ALLOWF $ethdevin $statemodule RELATED -m helper --helper ftp -j $accept" );
+                            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -I CC_ALLOWF $ethdevin $statemodule RELATED -m helper --helper ftp -j $accept" );
 
-                            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -I CC_ALLOWF $ethdevin $statemodule ESTABLISHED -j $accept" );
+                            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -I CC_ALLOWF $ethdevin $statemodule ESTABLISHED -j $accept" );
                         }
                         else {
-                            &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -I CC_ALLOWF $ethdevin $statemodule ESTABLISHED,RELATED -j $accept" );
+                            syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -I CC_ALLOWF $ethdevin $statemodule ESTABLISHED,RELATED -j $accept" );
                         }
-                        &syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT}  -I CC_ALLOWF $eth6devin -p icmpv6 -j $accept" );
+                        syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT}  -I CC_ALLOWF $eth6devin -p icmpv6 -j $accept" );
                     }
                 }
             }
@@ -6576,12 +6576,12 @@ sub countrycode6 {
 
         if ( $config{CC_ALLOW_PORTS} and $redo_allow_ports ) {
             my $cnt = 0;
-            if (&csflock) { &lockfail("CC_ALLOW_PORTS") }
+            if (&csflock) { lockfail("CC_ALLOW_PORTS") }
             if ( $config{SAFECHAINUPDATE} ) {
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -N NCC_ALLOWP" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -N NCC_ALLOWP" );
             }
             else {
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F CC_ALLOWP" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F CC_ALLOWP" );
             }
             foreach my $cc ( split( /\,/, $config{CC_ALLOW_PORTS} ) ) {
                 $cc = lc $cc;
@@ -6596,35 +6596,35 @@ sub countrycode6 {
                         if ( cccheckip( \$ip ) ) {
                             $cnt++;
                             if ( $config{SAFECHAINUPDATE} ) {
-                                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A NCC_ALLOWP -s $ip -j CC_ALLOWPORTS" );
+                                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A NCC_ALLOWP -s $ip -j CC_ALLOWPORTS" );
                             }
                             else {
-                                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A CC_ALLOWP -s $ip -j CC_ALLOWPORTS" );
+                                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A CC_ALLOWP -s $ip -j CC_ALLOWPORTS" );
                             }
                         }
                     }
                     close($IN);
-                    if ( $config{FASTSTART} ) { &faststart( "CC_ALLOW_PORTS [" . uc($cc) . "]" ) }
+                    if ( $config{FASTSTART} ) { faststart( "CC_ALLOW_PORTS [" . uc($cc) . "]" ) }
                     logfile( "CC: Finished repopulating CC_ALLOWP with IP addresses from [" . uc($cc) . "]" );
                 }
             }
             if ( $config{SAFECHAINUPDATE} ) {
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A LOCALINPUT $ethdevin -j NCC_ALLOWP" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j CC_ALLOWP" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F CC_ALLOWP" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -X CC_ALLOWP" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -E NCC_ALLOWP CC_ALLOWP" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A LOCALINPUT $ethdevin -j NCC_ALLOWP" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j CC_ALLOWP" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F CC_ALLOWP" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -X CC_ALLOWP" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -E NCC_ALLOWP CC_ALLOWP" );
             }
         }
 
         if ( $config{CC_DENY_PORTS} and $redo_deny_ports ) {
             my $cnt = 0;
-            if (&csflock) { &lockfail("CC_DENY_PORTS") }
+            if (&csflock) { lockfail("CC_DENY_PORTS") }
             if ( $config{SAFECHAINUPDATE} ) {
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -N NCC_DENYP" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -N NCC_DENYP" );
             }
             else {
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F CC_DENYP" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F CC_DENYP" );
             }
             foreach my $cc ( split( /\,/, $config{CC_DENY_PORTS} ) ) {
                 $cc = lc $cc;
@@ -6639,24 +6639,24 @@ sub countrycode6 {
                         if ( cccheckip( \$ip ) ) {
                             $cnt++;
                             if ( $config{SAFECHAINUPDATE} ) {
-                                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A NCC_DENYP -s $ip -j CC_DENYPORTS" );
+                                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A NCC_DENYP -s $ip -j CC_DENYPORTS" );
                             }
                             else {
-                                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A CC_DENYP -s $ip -j CC_DENYPORTS" );
+                                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A CC_DENYP -s $ip -j CC_DENYPORTS" );
                             }
                         }
                     }
                     close($IN);
-                    if ( $config{FASTSTART} ) { &faststart( "CC_DENY_PORTS [" . uc($cc) . "]" ) }
+                    if ( $config{FASTSTART} ) { faststart( "CC_DENY_PORTS [" . uc($cc) . "]" ) }
                     logfile( "CC: Finished repopulating CC_DENYP with IP addresses from [" . uc($cc) . "]" );
                 }
             }
             if ( $config{SAFECHAINUPDATE} ) {
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A LOCALINPUT $ethdevin -j NCC_DENYP" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j CC_DENYP" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F CC_DENYP" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -X CC_DENYP" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -E NCC_DENYP CC_DENYP" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A LOCALINPUT $ethdevin -j NCC_DENYP" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j CC_DENYP" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F CC_DENYP" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -X CC_DENYP" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -E NCC_DENYP CC_DENYP" );
             }
         }
     }
@@ -6669,21 +6669,21 @@ sub countrycode6 {
 sub global {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "global", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "global", $timer ) }
         $0 = "lfd - retrieving global lists";
 
         my $lockstr = "LF_GLOBAL";
-        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or &childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
-        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or &childcleanup("*Lock Error* [$lockstr] still active - section skipped");
+        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
+        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or childcleanup("*Lock Error* [$lockstr] still active - section skipped");
         print $THISLOCK time;
 
         $0 = "lfd - retrieving global lists (waiting for list lock)";
-        &listlock("lock");
+        listlock("lock");
         $0 = "lfd - retrieving global lists";
 
         if ( $config{GLOBAL_ALLOW} ) {
@@ -6692,46 +6692,46 @@ sub global {
                 logfile("Unable to retrieve global allow list - $text");
             }
             else {
-                if (&csflock) { &lockfail("GLOBAL_ALLOW") }
+                if (&csflock) { lockfail("GLOBAL_ALLOW") }
                 logfile("Global Allow - retrieved and allowing IP address ranges");
 
                 if ( $config{SAFECHAINUPDATE} ) {
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NEWGALLOWIN" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NEWGALLOWOUT" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NEWGALLOWIN" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NEWGALLOWOUT" );
                     if ( $config{LF_IPSET} ) {
-                        &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A NEWGALLOWIN -m set --match-set chain_GALLOW src -j $accept" );
-                        &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A NEWGALLOWOUT -m set --match-set chain_GALLOW dst -j $accept" );
-                        &ipsetcreate("chain_NEWGALLOW");
+                        iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A NEWGALLOWIN -m set --match-set chain_GALLOW src -j $accept" );
+                        iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A NEWGALLOWOUT -m set --match-set chain_GALLOW dst -j $accept" );
+                        ipsetcreate("chain_NEWGALLOW");
                     }
                     if ( $config{IPV6} ) {
-                        &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -N NEWGALLOWIN" );
-                        &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -N NEWGALLOWOUT" );
+                        iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -N NEWGALLOWIN" );
+                        iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -N NEWGALLOWOUT" );
                         if ( $config{LF_IPSET} ) {
-                            &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A NEWGALLOWIN -m set --match-set chain_6_GALLOW src -j $accept" );
-                            &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A NEWGALLOWOUT -m set --match-set chain_6_GALLOW dst -j $accept" );
-                            &ipsetcreate("chain_6_NEWGALLOW");
+                            iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A NEWGALLOWIN -m set --match-set chain_6_GALLOW src -j $accept" );
+                            iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A NEWGALLOWOUT -m set --match-set chain_6_GALLOW dst -j $accept" );
+                            ipsetcreate("chain_6_NEWGALLOW");
                         }
                     }
                 }
                 else {
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F GALLOWIN" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F GALLOWOUT" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F GALLOWIN" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F GALLOWOUT" );
                     if ( $config{LF_IPSET} ) {
-                        &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A GALLOWIN -m set --match-set chain_GALLOW src -j $accept" );
-                        &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A GALLOWOUT -m set --match-set chain_GALLOW dst -j $accept" );
-                        &ipsetflush("chain_GALLOW");
+                        iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A GALLOWIN -m set --match-set chain_GALLOW src -j $accept" );
+                        iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A GALLOWOUT -m set --match-set chain_GALLOW dst -j $accept" );
+                        ipsetflush("chain_GALLOW");
                     }
                     if ( $config{IPV6} ) {
-                        &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F GALLOWIN" );
-                        &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F GALLOWOUT" );
+                        iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F GALLOWIN" );
+                        iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F GALLOWOUT" );
                         if ( $config{LF_IPSET} ) {
-                            &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A GALLOWIN -m set --match-set chain_6_GALLOW src -j $accept" );
-                            &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A GALLOWOUT -m set --match-set chain_6_GALLOW dst -j $accept" );
-                            &ipsetflush("chain_6_GALLOW");
+                            iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A GALLOWIN -m set --match-set chain_6_GALLOW src -j $accept" );
+                            iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A GALLOWOUT -m set --match-set chain_6_GALLOW dst -j $accept" );
+                            ipsetflush("chain_6_GALLOW");
                         }
                     }
                 }
-                sysopen( my $GALLOW, "/var/lib/csf/csf.gallow", O_WRONLY | O_CREAT ) or &childcleanup( __LINE__, "*Error* Cannot open out file: $!" );
+                sysopen( my $GALLOW, "/var/lib/csf/csf.gallow", O_WRONLY | O_CREAT ) or childcleanup( __LINE__, "*Error* Cannot open out file: $!" );
                 flock( $GALLOW, LOCK_EX );
                 seek( $GALLOW, 0, 0 );
                 truncate( $GALLOW, 0 );
@@ -6741,42 +6741,42 @@ sub global {
                     my ( $ip, $comment ) = split( /\s/, $line, 2 );
                     print $GALLOW "$ip\n";
                     if ( $config{SAFECHAINUPDATE} ) {
-                        &linefilter( $ip, "allow", "NEWGALLOW" );
+                        linefilter( $ip, "allow", "NEWGALLOW" );
                     }
                     else {
-                        &linefilter( $ip, "allow", "GALLOW" );
+                        linefilter( $ip, "allow", "GALLOW" );
                     }
                 }
-                if ( $config{FASTSTART} ) { &faststart("GLOBAL_ALLOW") }
+                if ( $config{FASTSTART} ) { faststart("GLOBAL_ALLOW") }
                 close($GALLOW);
                 if ( $config{SAFECHAINUPDATE} ) {
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -I LOCALINPUT $ethdevin -j NEWGALLOWIN" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -I LOCALOUTPUT $ethdevout -j NEWGALLOWOUT" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j GALLOWIN" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D LOCALOUTPUT $ethdevout -j GALLOWOUT" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F GALLOWIN" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F GALLOWOUT" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -X GALLOWIN" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -X GALLOWOUT" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -E NEWGALLOWIN GALLOWIN" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -E NEWGALLOWOUT GALLOWOUT" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -I LOCALINPUT $ethdevin -j NEWGALLOWIN" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -I LOCALOUTPUT $ethdevout -j NEWGALLOWOUT" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j GALLOWIN" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D LOCALOUTPUT $ethdevout -j GALLOWOUT" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F GALLOWIN" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F GALLOWOUT" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -X GALLOWIN" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -X GALLOWOUT" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -E NEWGALLOWIN GALLOWIN" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -E NEWGALLOWOUT GALLOWOUT" );
 
                     if ( $config{IPV6} ) {
-                        &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -I LOCALINPUT $eth6devin -j NEWGALLOWIN" );
-                        &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -I LOCALOUTPUT $eth6devout -j NEWGALLOWOUT" );
-                        &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D LOCALINPUT $eth6devin -j GALLOWIN" );
-                        &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D LOCALOUTPUT $eth6devout -j GALLOWOUT" );
-                        &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F GALLOWIN" );
-                        &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F GALLOWOUT" );
-                        &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -X GALLOWIN" );
-                        &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -X GALLOWOUT" );
-                        &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -E NEWGALLOWIN GALLOWIN" );
-                        &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -E NEWGALLOWOUT GALLOWOUT" );
+                        iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -I LOCALINPUT $eth6devin -j NEWGALLOWIN" );
+                        iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -I LOCALOUTPUT $eth6devout -j NEWGALLOWOUT" );
+                        iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D LOCALINPUT $eth6devin -j GALLOWIN" );
+                        iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D LOCALOUTPUT $eth6devout -j GALLOWOUT" );
+                        iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F GALLOWIN" );
+                        iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F GALLOWOUT" );
+                        iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -X GALLOWIN" );
+                        iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -X GALLOWOUT" );
+                        iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -E NEWGALLOWIN GALLOWIN" );
+                        iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -E NEWGALLOWOUT GALLOWOUT" );
                     }
                     if ( $config{LF_IPSET} ) {
-                        &ipsetswap( "chain_NEWGALLOW", "chain_GALLOW" );
+                        ipsetswap( "chain_NEWGALLOW", "chain_GALLOW" );
                         if ( $config{IPV6} ) {
-                            &ipsetswap( "chain_6_NEWGALLOW", "chain_6_GALLOW" );
+                            ipsetswap( "chain_6_NEWGALLOW", "chain_6_GALLOW" );
                         }
                     }
                 }
@@ -6789,64 +6789,64 @@ sub global {
                 logfile("Unable to retrieve global deny list - $text");
             }
             else {
-                if (&csflock) { &lockfail("GLOBAL_DENY") }
+                if (&csflock) { lockfail("GLOBAL_DENY") }
                 logfile("Global Deny - retrieved and blocking IP address ranges");
                 my $drop = $config{DROP};
                 if ( $config{DROP_IP_LOGGING} ) { $drop = "BLOCKDROP" }
 
                 if ( $config{SAFECHAINUPDATE} ) {
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NEWGDENYIN" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NEWGDENYOUT" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NEWGDENYIN" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NEWGDENYOUT" );
                     if ( $config{LF_IPSET} ) {
                         my $pktin  = $config{DROP};
                         my $pktout = $config{DROP_OUT};
                         if ( $config{DROP_IP_LOGGING} )  { $pktin  = "LOGDROPIN" }
                         if ( $config{DROP_OUT_LOGGING} ) { $pktout = "LOGDROPOUT" }
-                        &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A NEWGDENYIN -m set --match-set chain_GDENY src -j $pktin" );
-                        unless ( $config{LF_BLOCKINONLY} ) { &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A NEWGDENYOUT -m set --match-set chain_GDENY dst -j $pktout" ) }
-                        &ipsetcreate("chain_NEWGDENY");
+                        iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A NEWGDENYIN -m set --match-set chain_GDENY src -j $pktin" );
+                        unless ( $config{LF_BLOCKINONLY} ) { iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A NEWGDENYOUT -m set --match-set chain_GDENY dst -j $pktout" ) }
+                        ipsetcreate("chain_NEWGDENY");
                     }
                     if ( $config{IPV6} ) {
-                        &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -N NEWGDENYIN" );
-                        &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -N NEWGDENYOUT" );
+                        iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -N NEWGDENYIN" );
+                        iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -N NEWGDENYOUT" );
                         if ( $config{LF_IPSET} ) {
                             my $pktin  = $config{DROP};
                             my $pktout = $config{DROP_OUT};
                             if ( $config{DROP_IP_LOGGING} )  { $pktin  = "LOGDROPIN" }
                             if ( $config{DROP_OUT_LOGGING} ) { $pktout = "LOGDROPOUT" }
-                            &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A NEWGDENYIN -m set --match-set chain_6_GDENY src -j $pktin" );
-                            unless ( $config{LF_BLOCKINONLY} ) { &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A NEWGDENYOUT -m set --match-set chain_6_GDENY dst -j $pktout" ) }
-                            &ipsetcreate("chain_6_NEWGDENY");
+                            iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A NEWGDENYIN -m set --match-set chain_6_GDENY src -j $pktin" );
+                            unless ( $config{LF_BLOCKINONLY} ) { iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A NEWGDENYOUT -m set --match-set chain_6_GDENY dst -j $pktout" ) }
+                            ipsetcreate("chain_6_NEWGDENY");
                         }
                     }
                 }
                 else {
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F GDENYIN" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F GDENYOUT" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F GDENYIN" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F GDENYOUT" );
                     if ( $config{LF_IPSET} ) {
                         my $pktin  = $config{DROP};
                         my $pktout = $config{DROP_OUT};
                         if ( $config{DROP_IP_LOGGING} )  { $pktin  = "LOGDROPIN" }
                         if ( $config{DROP_OUT_LOGGING} ) { $pktout = "LOGDROPOUT" }
-                        &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A GDENYIN -m set --match-set chain_GDENY src -j $pktin" );
-                        unless ( $config{LF_BLOCKINONLY} ) { &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A GDENYOUT -m set --match-set chain_GDENY dst -j $pktout" ) }
-                        &ipsetflush("chain_GDENY");
+                        iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A GDENYIN -m set --match-set chain_GDENY src -j $pktin" );
+                        unless ( $config{LF_BLOCKINONLY} ) { iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A GDENYOUT -m set --match-set chain_GDENY dst -j $pktout" ) }
+                        ipsetflush("chain_GDENY");
                     }
                     if ( $config{IPV6} ) {
-                        &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F GDENYIN" );
-                        &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F GDENYOUT" );
+                        iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F GDENYIN" );
+                        iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F GDENYOUT" );
                         if ( $config{LF_IPSET} ) {
                             my $pktin  = $config{DROP};
                             my $pktout = $config{DROP_OUT};
                             if ( $config{DROP_IP_LOGGING} )  { $pktin  = "LOGDROPIN" }
                             if ( $config{DROP_OUT_LOGGING} ) { $pktout = "LOGDROPOUT" }
-                            &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A GDENYIN -m set --match-set chain_6_GDENY src -j $pktin" );
-                            unless ( $config{LF_BLOCKINONLY} ) { &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A GDENYOUT -m set --match-set chain_6_GDENY dst -j $pktout" ) }
-                            &ipsetflush("chain_6_GDENY");
+                            iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A GDENYIN -m set --match-set chain_6_GDENY src -j $pktin" );
+                            unless ( $config{LF_BLOCKINONLY} ) { iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A GDENYOUT -m set --match-set chain_6_GDENY dst -j $pktout" ) }
+                            ipsetflush("chain_6_GDENY");
                         }
                     }
                 }
-                sysopen( my $GDENY, "/var/lib/csf/csf.gdeny", O_WRONLY | O_CREAT ) or &childcleanup( __LINE__, "*Error* Cannot open out file: $!" );
+                sysopen( my $GDENY, "/var/lib/csf/csf.gdeny", O_WRONLY | O_CREAT ) or childcleanup( __LINE__, "*Error* Cannot open out file: $!" );
                 flock( $GDENY, LOCK_EX );
                 seek( $GDENY, 0, 0 );
                 truncate( $GDENY, 0 );
@@ -6856,42 +6856,42 @@ sub global {
                     my ( $ip, $comment ) = split( /\s/, $line, 2 );
                     print $GDENY "$ip\n";
                     if ( $config{SAFECHAINUPDATE} ) {
-                        &linefilter( $ip, "deny", "NEWGDENY" );
+                        linefilter( $ip, "deny", "NEWGDENY" );
                     }
                     else {
-                        &linefilter( $ip, "deny", "GDENY" );
+                        linefilter( $ip, "deny", "GDENY" );
                     }
                 }
-                if ( $config{FASTSTART} ) { &faststart("GLOBAL_DENY") }
+                if ( $config{FASTSTART} ) { faststart("GLOBAL_DENY") }
                 close($GDENY);
                 if ( $config{SAFECHAINUPDATE} ) {
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A LOCALINPUT $ethdevin -j NEWGDENYIN" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A LOCALOUTPUT $ethdevout -j NEWGDENYOUT" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j GDENYIN" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D LOCALOUTPUT $ethdevout -j GDENYOUT" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F GDENYIN" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F GDENYOUT" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -X GDENYIN" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -X GDENYOUT" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -E NEWGDENYIN GDENYIN" );
-                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -E NEWGDENYOUT GDENYOUT" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A LOCALINPUT $ethdevin -j NEWGDENYIN" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A LOCALOUTPUT $ethdevout -j NEWGDENYOUT" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j GDENYIN" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D LOCALOUTPUT $ethdevout -j GDENYOUT" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F GDENYIN" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F GDENYOUT" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -X GDENYIN" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -X GDENYOUT" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -E NEWGDENYIN GDENYIN" );
+                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -E NEWGDENYOUT GDENYOUT" );
 
                     if ( $config{IPV6} ) {
-                        &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A LOCALINPUT $eth6devin -j NEWGDENYIN" );
-                        &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A LOCALOUTPUT $eth6devout -j NEWGDENYOUT" );
-                        &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D LOCALINPUT $eth6devin -j GDENYIN" );
-                        &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D LOCALOUTPUT $eth6devout -j GDENYOUT" );
-                        &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F GDENYIN" );
-                        &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F GDENYOUT" );
-                        &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -X GDENYIN" );
-                        &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -X GDENYOUT" );
-                        &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -E NEWGDENYIN GDENYIN" );
-                        &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -E NEWGDENYOUT GDENYOUT" );
+                        iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A LOCALINPUT $eth6devin -j NEWGDENYIN" );
+                        iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A LOCALOUTPUT $eth6devout -j NEWGDENYOUT" );
+                        iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D LOCALINPUT $eth6devin -j GDENYIN" );
+                        iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D LOCALOUTPUT $eth6devout -j GDENYOUT" );
+                        iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F GDENYIN" );
+                        iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F GDENYOUT" );
+                        iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -X GDENYIN" );
+                        iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -X GDENYOUT" );
+                        iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -E NEWGDENYIN GDENYIN" );
+                        iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -E NEWGDENYOUT GDENYOUT" );
                     }
                     if ( $config{LF_IPSET} ) {
-                        &ipsetswap( "chain_NEWGDENY", "chain_GDENY" );
+                        ipsetswap( "chain_NEWGDENY", "chain_GDENY" );
                         if ( $config{IPV6} ) {
-                            &ipsetswap( "chain_6_NEWGDENY", "chain_6_GDENY" );
+                            ipsetswap( "chain_6_NEWGDENY", "chain_6_GDENY" );
                         }
                     }
                 }
@@ -6906,7 +6906,7 @@ sub global {
             else {
                 logfile("Global Ignore - retrieved and ignoring");
 
-                sysopen( my $GIGNORE, "/var/lib/csf/csf.gignore", O_WRONLY | O_CREAT ) or &childcleanup( __LINE__, "*Error* Cannot open out file: $!" );
+                sysopen( my $GIGNORE, "/var/lib/csf/csf.gignore", O_WRONLY | O_CREAT ) or childcleanup( __LINE__, "*Error* Cannot open out file: $!" );
                 flock( $GIGNORE, LOCK_EX );
                 seek( $GIGNORE, 0, 0 );
                 truncate( $GIGNORE, 0 );
@@ -6927,7 +6927,7 @@ sub global {
             else {
                 logfile("Global DynDNS - retrieved and allowing IP addresses");
 
-                sysopen( my $GDYNDNS, "/var/lib/csf/csf.gdyndns", O_WRONLY | O_CREAT ) or &childcleanup( __LINE__, "*Error* Cannot open out file: $!" );
+                sysopen( my $GDYNDNS, "/var/lib/csf/csf.gdyndns", O_WRONLY | O_CREAT ) or childcleanup( __LINE__, "*Error* Cannot open out file: $!" );
                 flock( $GDYNDNS, LOCK_EX );
                 seek( $GDYNDNS, 0, 0 );
                 truncate( $GDYNDNS, 0 );
@@ -6937,13 +6937,13 @@ sub global {
                     print $GDYNDNS "$ip\n";
                 }
                 close($GDYNDNS);
-                &globaldyndns;
+                globaldyndns();
             }
         }
 
-        &listlock("unlock");
+        listlock("unlock");
         close($THISLOCK);
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "global", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "global", $timer ) }
         $0 = "lfd - child closing";
         exit;
     }
@@ -6956,21 +6956,21 @@ sub global {
 sub dyndns {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "dyndns", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "dyndns", $timer ) }
         $0 = "lfd - resolving dyndns IP addresses";
 
         my $lockstr = "DYNDNS";
-        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or &childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
-        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or &childcleanup("*Lock Error* [$lockstr] still active - section skipped");
+        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
+        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or childcleanup("*Lock Error* [$lockstr] still active - section skipped");
         print $THISLOCK time;
 
         $0 = "lfd - resolving dyndns IP addresses (waiting for list lock)";
-        &listlock("lock");
+        listlock("lock");
         $0 = "lfd - resolving dyndns IP addresses";
 
         my @dyndns;
@@ -6988,35 +6988,35 @@ sub dyndns {
             push @dyndns, $line;
         }
 
-        if (&csflock)              { &lockfail("DYNDNS") }
+        if (&csflock)              { lockfail("DYNDNS") }
         if ( $config{DEBUG} >= 1 ) { logfile("DynDNS - update IP addresses") }
         if ( $config{SAFECHAINUPDATE} ) {
-            &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NEWALLOWDYNIN" );
-            &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NEWALLOWDYNOUT" );
+            iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NEWALLOWDYNIN" );
+            iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NEWALLOWDYNOUT" );
             if ( $config{LF_IPSET} ) {
-                &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A NEWALLOWDYNIN -m set --match-set chain_ALLOWDYN src -j $accept" );
-                &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A NEWALLOWDYNOUT -m set --match-set chain_ALLOWDYN dst -j $accept" );
+                iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A NEWALLOWDYNIN -m set --match-set chain_ALLOWDYN src -j $accept" );
+                iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A NEWALLOWDYNOUT -m set --match-set chain_ALLOWDYN dst -j $accept" );
             }
         }
         else {
-            &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F ALLOWDYNIN" );
-            &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F ALLOWDYNOUT" );
+            iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F ALLOWDYNIN" );
+            iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F ALLOWDYNOUT" );
             if ( $config{LF_IPSET} ) {
-                &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A ALLOWDYNIN -m set --match-set chain_ALLOWDYN src -j $accept" );
-                &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A ALLOWDYNOUT -m set --match-set chain_ALLOWDYN dst -j $accept" );
+                iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A ALLOWDYNIN -m set --match-set chain_ALLOWDYN src -j $accept" );
+                iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A ALLOWDYNOUT -m set --match-set chain_ALLOWDYN dst -j $accept" );
             }
         }
         if ( $config{IPV6} ) {
             if ( $config{SAFECHAINUPDATE} ) {
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -N NEWALLOWDYNIN" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -N NEWALLOWDYNOUT" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -N NEWALLOWDYNIN" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -N NEWALLOWDYNOUT" );
             }
             else {
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F ALLOWDYNIN" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F ALLOWDYNOUT" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F ALLOWDYNIN" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F ALLOWDYNOUT" );
             }
         }
-        sysopen( my $TEMPDYN, "/var/lib/csf/csf.tempdyn", O_WRONLY | O_CREAT ) or &childcleanup( __LINE__, "*Error* Cannot open out file: $!" );
+        sysopen( my $TEMPDYN, "/var/lib/csf/csf.tempdyn", O_WRONLY | O_CREAT ) or childcleanup( __LINE__, "*Error* Cannot open out file: $!" );
         flock( $TEMPDYN, LOCK_EX );
         seek( $TEMPDYN, 0, 0 );
         truncate( $TEMPDYN, 0 );
@@ -7029,10 +7029,10 @@ sub dyndns {
                 foreach my $ip (@results) {
                     if ($adport) { $ip = $adport . $ip }
                     if ( $config{SAFECHAINUPDATE} ) {
-                        &linefilter( $ip, "allow", "NEWALLOWDYN" );
+                        linefilter( $ip, "allow", "NEWALLOWDYN" );
                     }
                     else {
-                        &linefilter( $ip, "allow", "ALLOWDYN" );
+                        linefilter( $ip, "allow", "ALLOWDYN" );
                     }
                     print $TEMPDYN "$ip\n";
                 }
@@ -7043,35 +7043,35 @@ sub dyndns {
         }
         close($TEMPDYN);
         if ( $config{SAFECHAINUPDATE} ) {
-            &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -I LOCALINPUT $ethdevin -j NEWALLOWDYNIN" );
-            &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -I LOCALOUTPUT $ethdevout -j NEWALLOWDYNOUT" );
-            &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j ALLOWDYNIN" );
-            &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D LOCALOUTPUT $ethdevout -j ALLOWDYNOUT" );
-            &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F ALLOWDYNIN" );
-            &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F ALLOWDYNOUT" );
-            &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -X ALLOWDYNIN" );
-            &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -X ALLOWDYNOUT" );
-            &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -E NEWALLOWDYNIN ALLOWDYNIN" );
-            &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -E NEWALLOWDYNOUT ALLOWDYNOUT" );
+            iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -I LOCALINPUT $ethdevin -j NEWALLOWDYNIN" );
+            iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -I LOCALOUTPUT $ethdevout -j NEWALLOWDYNOUT" );
+            iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j ALLOWDYNIN" );
+            iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D LOCALOUTPUT $ethdevout -j ALLOWDYNOUT" );
+            iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F ALLOWDYNIN" );
+            iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F ALLOWDYNOUT" );
+            iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -X ALLOWDYNIN" );
+            iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -X ALLOWDYNOUT" );
+            iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -E NEWALLOWDYNIN ALLOWDYNIN" );
+            iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -E NEWALLOWDYNOUT ALLOWDYNOUT" );
         }
         if ( $config{IPV6} ) {
             if ( $config{SAFECHAINUPDATE} ) {
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -I LOCALINPUT $ethdevin -j NEWALLOWDYNIN" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -I LOCALOUTPUT $ethdevout -j NEWALLOWDYNOUT" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j ALLOWDYNIN" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D LOCALOUTPUT $ethdevout -j ALLOWDYNOUT" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F ALLOWDYNIN" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F ALLOWDYNOUT" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -X ALLOWDYNIN" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -X ALLOWDYNOUT" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -E NEWALLOWDYNIN ALLOWDYNIN" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -E NEWALLOWDYNOUT ALLOWDYNOUT" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -I LOCALINPUT $ethdevin -j NEWALLOWDYNIN" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -I LOCALOUTPUT $ethdevout -j NEWALLOWDYNOUT" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j ALLOWDYNIN" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D LOCALOUTPUT $ethdevout -j ALLOWDYNOUT" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F ALLOWDYNIN" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F ALLOWDYNOUT" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -X ALLOWDYNIN" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -X ALLOWDYNOUT" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -E NEWALLOWDYNIN ALLOWDYNIN" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -E NEWALLOWDYNOUT ALLOWDYNOUT" );
             }
         }
 
-        &listlock("unlock");
+        listlock("unlock");
         close($THISLOCK);
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "dyndns", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "dyndns", $timer ) }
         $0 = "lfd - child closing";
         exit;
     }
@@ -7084,21 +7084,21 @@ sub dyndns {
 sub globaldyndns {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "globaldyndns", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "globaldyndns", $timer ) }
         $0 = "lfd - resolving global dyndns IP addresses";
 
         my $lockstr = "GLOBAL_DYNDNS_INTERVAL";
-        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or &childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
-        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or &childcleanup("*Lock Error* [$lockstr] still active - section skipped");
+        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
+        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or childcleanup("*Lock Error* [$lockstr] still active - section skipped");
         print $THISLOCK time;
 
         $0 = "lfd - resolving global dyndns IP addresses (waiting for list lock)";
-        &listlock("lock");
+        listlock("lock");
         $0 = "lfd - resolving global dyndns IP addresses";
 
         open( my $IN, "<", "/var/lib/csf/csf.gdyndns" );
@@ -7107,43 +7107,43 @@ sub globaldyndns {
         close($IN);
         chomp @dyndns;
 
-        if (&csflock) { &lockfail("GLOBAL_DYNDNS_INTERVAL") }
+        if (&csflock) { lockfail("GLOBAL_DYNDNS_INTERVAL") }
         logfile("Global DynDNS - update IP addresses");
         if ( $config{SAFECHAINUPDATE} ) {
-            &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NEWGDYNIN" );
-            &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NEWGDYNOUT" );
+            iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NEWGDYNIN" );
+            iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NEWGDYNOUT" );
             if ( $config{LF_IPSET} ) {
-                &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A NEWGDYNIN -m set --match-set chain_GDYN src -j $accept" );
-                &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A NEWGDYNOUT -m set --match-set chain_GDYN dst -j $accept" );
+                iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A NEWGDYNIN -m set --match-set chain_GDYN src -j $accept" );
+                iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A NEWGDYNOUT -m set --match-set chain_GDYN dst -j $accept" );
             }
         }
         else {
-            &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F GDYNIN" );
-            &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F GDYNOUT" );
+            iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F GDYNIN" );
+            iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F GDYNOUT" );
             if ( $config{LF_IPSET} ) {
-                &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A GDYNIN -m set --match-set chain_GDYN src -j $accept" );
-                &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A GDYNOUT -m set --match-set chain_GDYN dst -j $accept" );
+                iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A GDYNIN -m set --match-set chain_GDYN src -j $accept" );
+                iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A GDYNOUT -m set --match-set chain_GDYN dst -j $accept" );
             }
         }
         if ( $config{IPV6} ) {
             if ( $config{SAFECHAINUPDATE} ) {
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -N NEWGDYNIN" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -N NEWGDYNOUT" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -N NEWGDYNIN" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -N NEWGDYNOUT" );
                 if ( $config{LF_IPSET} ) {
-                    &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A NEWGDYNIN -m set --match-set chain_6_GDYN src -j $accept" );
-                    &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A NEWGDYNOUT -m set --match-set chain_6_GDYN dst -j $accept" );
+                    iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A NEWGDYNIN -m set --match-set chain_6_GDYN src -j $accept" );
+                    iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A NEWGDYNOUT -m set --match-set chain_6_GDYN dst -j $accept" );
                 }
             }
             else {
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F GDYNIN" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F GDYNOUT" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F GDYNIN" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F GDYNOUT" );
                 if ( $config{LF_IPSET} ) {
-                    &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A GDYNIN -m set --match-set chain_6_GDYN src -j $accept" );
-                    &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A GDYNOUT -m set --match-set chain_6_GDYN dst -j $accept" );
+                    iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A GDYNIN -m set --match-set chain_6_GDYN src -j $accept" );
+                    iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A GDYNOUT -m set --match-set chain_6_GDYN dst -j $accept" );
                 }
             }
         }
-        sysopen( my $TEMPDYN, "/var/lib/csf/csf.tempgdyn", O_WRONLY | O_CREAT ) or &childcleanup( __LINE__, "*Error* Cannot open out file: $!" );
+        sysopen( my $TEMPDYN, "/var/lib/csf/csf.tempgdyn", O_WRONLY | O_CREAT ) or childcleanup( __LINE__, "*Error* Cannot open out file: $!" );
         flock( $TEMPDYN, LOCK_EX );
         seek( $TEMPDYN, 0, 0 );
         truncate( $TEMPDYN, 0 );
@@ -7163,10 +7163,10 @@ sub globaldyndns {
                 foreach my $ip (@results) {
                     if ($adport) { $ip = $adport . $ip }
                     if ( $config{SAFECHAINUPDATE} ) {
-                        &linefilter( $ip, "allow", "NEWGDYN" );
+                        linefilter( $ip, "allow", "NEWGDYN" );
                     }
                     else {
-                        &linefilter( $ip, "allow", "GDYN" );
+                        linefilter( $ip, "allow", "GDYN" );
                     }
                     print $TEMPDYN "$ip\n";
                 }
@@ -7177,35 +7177,35 @@ sub globaldyndns {
         }
         close($TEMPDYN);
         if ( $config{SAFECHAINUPDATE} ) {
-            &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -I LOCALINPUT $ethdevin -j NEWGDYNIN" );
-            &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -I LOCALOUTPUT $ethdevout -j NEWGDYNOUT" );
-            &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j GDYNIN" );
-            &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D LOCALOUTPUT $ethdevout -j GDYNOUT" );
-            &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F GDYNIN" );
-            &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F GDYNOUT" );
-            &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -X GDYNIN" );
-            &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -X GDYNOUT" );
-            &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -E NEWGDYNIN GDYNIN" );
-            &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -E NEWGDYNOUT GDYNOUT" );
+            iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -I LOCALINPUT $ethdevin -j NEWGDYNIN" );
+            iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -I LOCALOUTPUT $ethdevout -j NEWGDYNOUT" );
+            iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j GDYNIN" );
+            iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D LOCALOUTPUT $ethdevout -j GDYNOUT" );
+            iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F GDYNIN" );
+            iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -F GDYNOUT" );
+            iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -X GDYNIN" );
+            iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -X GDYNOUT" );
+            iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -E NEWGDYNIN GDYNIN" );
+            iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -E NEWGDYNOUT GDYNOUT" );
         }
         if ( $config{IPV6} ) {
             if ( $config{SAFECHAINUPDATE} ) {
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -I LOCALINPUT $ethdevin -j NEWGDYNIN" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -I LOCALOUTPUT $ethdevout -j NEWGDYNOUT" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j GDYNIN" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D LOCALOUTPUT $ethdevout -j GDYNOUT" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F GDYNIN" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F GDYNOUT" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -X GDYNIN" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -X GDYNOUT" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -E NEWGDYNIN GDYNIN" );
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -E NEWGDYNOUT GDYNOUT" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -I LOCALINPUT $ethdevin -j NEWGDYNIN" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -I LOCALOUTPUT $ethdevout -j NEWGDYNOUT" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D LOCALINPUT $ethdevin -j GDYNIN" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D LOCALOUTPUT $ethdevout -j GDYNOUT" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F GDYNIN" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -F GDYNOUT" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -X GDYNIN" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -X GDYNOUT" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -E NEWGDYNIN GDYNIN" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -E NEWGDYNOUT GDYNOUT" );
             }
         }
 
-        &listlock("unlock");
+        listlock("unlock");
         close($THISLOCK);
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "globaldyndns", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "globaldyndns", $timer ) }
         $0 = "lfd - child closing";
         exit;
     }
@@ -7215,12 +7215,12 @@ sub globaldyndns {
 # end globaldyndns
 ###############################################################################
 # start listlock
+my $listlock_fh;
 sub listlock {
     my $state = shift;
-    state $listlock_fh;
     if ( $state eq "lock" ) {
-        sysopen( $listlock_fh, "/var/lib/csf/lock/list.lock", O_RDWR | O_CREAT ) or &childcleanup("*Error* Unable to open /var/lib/csf/lock/list.lock");
-        flock( $listlock_fh, LOCK_EX )                                           or &childcleanup("*Lock Error* [listlock] unable to lock");
+        sysopen( $listlock_fh, "/var/lib/csf/lock/list.lock", O_RDWR | O_CREAT ) or childcleanup("*Error* Unable to open /var/lib/csf/lock/list.lock");
+        flock( $listlock_fh, LOCK_EX )                                           or childcleanup("*Lock Error* [listlock] unable to lock");
         print $listlock_fh time;
     }
     else {
@@ -7235,17 +7235,17 @@ sub listlock {
 sub dirwatch {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "dirwatch", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "dirwatch", $timer ) }
         $0 = "lfd - checking directories";
 
         my $lockstr = "LF_DIRWATCH";
-        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or &childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
-        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or &childcleanup("*Lock Error* [$lockstr] still active - section skipped");
+        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
+        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or childcleanup("*Lock Error* [$lockstr] still active - section skipped");
         print $THISLOCK time;
 
         my $alarm = int( $config{LF_DIRWATCH} / 10 ) + 10;
@@ -7314,7 +7314,7 @@ sub dirwatch {
                     $matches++;
                     if ( $matches > 10 ) {
                         logfile("Too many hits for *LF_DIRWATCH* - Directory Watching disabled");
-                        sysopen( my $DWDISABLE, "/var/lib/csf/csf.dwdisable", O_WRONLY | O_APPEND | O_CREAT ) or &childcleanup( __LINE__, "*Error* Cannot append out file: $!" );
+                        sysopen( my $DWDISABLE, "/var/lib/csf/csf.dwdisable", O_WRONLY | O_APPEND | O_CREAT ) or childcleanup( __LINE__, "*Error* Cannot append out file: $!" );
                         flock( $DWDISABLE, LOCK_EX );
                         print $DWDISABLE "disabled\n";
                         close($DWDISABLE);
@@ -7367,7 +7367,7 @@ sub dirwatch {
                     ConfigServer::Sendmail::relay( "", "", @message );
 
                     if ( !$config{LF_DIRWATCH_DISABLE} ) {
-                        sysopen( my $TEMPFILES, "/var/lib/csf/csf.tempfiles", O_WRONLY | O_APPEND | O_CREAT ) or &childcleanup( __LINE__, "*Error* Cannot append out file: $!" );
+                        sysopen( my $TEMPFILES, "/var/lib/csf/csf.tempfiles", O_WRONLY | O_APPEND | O_CREAT ) or childcleanup( __LINE__, "*Error* Cannot append out file: $!" );
                         flock( $TEMPFILES, LOCK_EX );
                         print $TEMPFILES time . ":$file\n";
                         close($TEMPFILES);
@@ -7378,7 +7378,7 @@ sub dirwatch {
 
         if ($tfail) {
             $config{LF_DIRWATCH} = $config{LF_DIRWATCH} * 3;
-            sysopen( my $TEMPCONF, "/var/lib/csf/csf.tempconf", O_WRONLY | O_APPEND | O_CREAT ) or &childcleanup( __LINE__, "*Error* Cannot append out file: $!" );
+            sysopen( my $TEMPCONF, "/var/lib/csf/csf.tempconf", O_WRONLY | O_APPEND | O_CREAT ) or childcleanup( __LINE__, "*Error* Cannot append out file: $!" );
             flock( $TEMPCONF, LOCK_EX );
             print $TEMPCONF "LF_DIRWATCH = \"$config{LF_DIRWATCH}\"\n";
             close($TEMPCONF);
@@ -7386,7 +7386,7 @@ sub dirwatch {
         }
 
         close($THISLOCK);
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "dirwatch", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "dirwatch", $timer ) }
         $0 = "lfd - child closing";
         exit;
     }
@@ -7474,16 +7474,16 @@ sub dirfiles {
 sub dirwatchfile {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "dirwatchfile", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "dirwatchfile", $timer ) }
 
         my $lockstr = "LF_DIRWATCH_FILE";
-        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or &childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
-        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or &childcleanup("*Lock Error* [$lockstr] still active - section skipped");
+        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
+        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or childcleanup("*Lock Error* [$lockstr] still active - section skipped");
         print $THISLOCK time;
 
         $0 = "lfd - checking files and directories";
@@ -7513,7 +7513,7 @@ sub dirwatchfile {
                 local $SIG{__DIE__} = undef;
                 local $SIG{'ALRM'}  = sub { die };
                 alarm(10);
-                @data = &syscommand( __LINE__, $config{LS}, "--full-time", "-lARt", $file );
+                @data = syscommand( __LINE__, $config{LS}, "--full-time", "-lARt", $file );
                 alarm(0);
             };
             alarm(0);
@@ -7551,7 +7551,7 @@ sub dirwatchfile {
             }
         }
 
-        sysopen( my $TEMPWATCH, "/var/lib/csf/csf.tempwatch", O_WRONLY | O_CREAT ) or &childcleanup( __LINE__, "*Error* Cannot write out file: $!" );
+        sysopen( my $TEMPWATCH, "/var/lib/csf/csf.tempwatch", O_WRONLY | O_CREAT ) or childcleanup( __LINE__, "*Error* Cannot write out file: $!" );
         flock( $TEMPWATCH, LOCK_EX );
         seek( $TEMPWATCH, 0, 0 );
         truncate( $TEMPWATCH, 0 );
@@ -7561,7 +7561,7 @@ sub dirwatchfile {
         close($TEMPWATCH);
 
         close($THISLOCK);
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "dirwatchfile", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "dirwatchfile", $timer ) }
         $0 = "lfd - child closing";
         exit;
     }
@@ -7574,16 +7574,16 @@ sub dirwatchfile {
 sub integrity {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "integrity", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "integrity", $timer ) }
 
         my $lockstr = "LF_INTEGRITY";
-        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or &childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
-        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or &childcleanup("*Lock Error* [$lockstr] still active - section skipped");
+        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
+        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or childcleanup("*Lock Error* [$lockstr] still active - section skipped");
         print $THISLOCK time;
 
         $0 = "lfd - checking system integrity";
@@ -7601,7 +7601,7 @@ sub integrity {
                 local $SIG{__DIE__} = undef;
                 local $SIG{'ALRM'}  = sub { die };
                 alarm($alarm);
-                &syscommand( __LINE__, "$config{MD5SUM} $integrity > /var/lib/csf/csf.tempint" );
+                syscommand( __LINE__, "$config{MD5SUM} $integrity > /var/lib/csf/csf.tempint" );
                 alarm(0);
             };
             alarm(0);
@@ -7616,7 +7616,7 @@ sub integrity {
                 local $SIG{__DIE__} = undef;
                 local $SIG{'ALRM'}  = sub { die };
                 alarm($alarm);
-                @data = &syscommand( __LINE__, "$config{MD5SUM} --check /var/lib/csf/csf.tempint" );
+                @data = syscommand( __LINE__, "$config{MD5SUM} --check /var/lib/csf/csf.tempint" );
                 alarm(0);
             };
             alarm(0);
@@ -7654,7 +7654,7 @@ sub integrity {
                         local $SIG{__DIE__} = undef;
                         local $SIG{'ALRM'}  = sub { die };
                         alarm($alarm);
-                        &syscommand( __LINE__, "$config{MD5SUM} $integrity > /var/lib/csf/csf.tempint" );
+                        syscommand( __LINE__, "$config{MD5SUM} $integrity > /var/lib/csf/csf.tempint" );
                         alarm(0);
                     };
                     alarm(0);
@@ -7668,7 +7668,7 @@ sub integrity {
 
         if ($tfail) {
             $config{LF_INTEGRITY} = $config{LF_INTEGRITY} * 1.5;
-            sysopen( my $TEMPCONF, "/var/lib/csf/csf.tempconf", O_WRONLY | O_APPEND | O_CREAT ) or &childcleanup( __LINE__, "*Error* Cannot append out file: $!" );
+            sysopen( my $TEMPCONF, "/var/lib/csf/csf.tempconf", O_WRONLY | O_APPEND | O_CREAT ) or childcleanup( __LINE__, "*Error* Cannot append out file: $!" );
             flock( $TEMPCONF, LOCK_EX );
             print $TEMPCONF "LF_INTEGRITY = \"$config{LF_INTEGRITY}\"\n";
             close($TEMPCONF);
@@ -7676,7 +7676,7 @@ sub integrity {
         }
 
         close($THISLOCK);
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "integrity", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "integrity", $timer ) }
         $0 = "lfd - child closing";
         exit;
     }
@@ -7692,16 +7692,16 @@ sub logscanner {
     else                       { $hour = "$hour:00" }
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "logscanner", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "logscanner", $timer ) }
 
         my $lockstr = "LOGSCANNER";
-        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or &childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
-        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or &childcleanup("*Lock Error* [$lockstr] still active - section skipped");
+        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
+        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or childcleanup("*Lock Error* [$lockstr] still active - section skipped");
         print $THISLOCK time;
 
         $0 = "lfd - log scanner";
@@ -7761,7 +7761,7 @@ sub logscanner {
         }
 
         close($THISLOCK);
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "logscanner", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "logscanner", $timer ) }
         $0 = "lfd - child closing";
         exit;
     }
@@ -7774,16 +7774,16 @@ sub logscanner {
 sub exploit {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "exploit", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "exploit", $timer ) }
 
         my $lockstr = "LF_EXPLOIT";
-        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or &childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
-        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or &childcleanup("*Lock Error* [$lockstr] still active - section skipped");
+        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
+        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or childcleanup("*Lock Error* [$lockstr] still active - section skipped");
         print $THISLOCK time;
 
         $0 = "lfd - checking system exploit";
@@ -7804,7 +7804,7 @@ sub exploit {
 
         if ($report) {
             $0 = "lfd - (child) system exploit alert";
-            sysopen( my $TEMPEXPLOIT, "/var/lib/csf/csf.tempexploit", O_WRONLY | O_CREAT ) or &childcleanup( __LINE__, "*Error* Cannot open out file: $!" );
+            sysopen( my $TEMPEXPLOIT, "/var/lib/csf/csf.tempexploit", O_WRONLY | O_CREAT ) or childcleanup( __LINE__, "*Error* Cannot open out file: $!" );
             flock( $TEMPEXPLOIT, LOCK_EX );
             print $TEMPEXPLOIT time;
             close($TEMPEXPLOIT);
@@ -7820,7 +7820,7 @@ sub exploit {
         }
 
         close($THISLOCK);
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "exploit", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "exploit", $timer ) }
         $0 = "lfd - child closing";
         exit;
     }
@@ -8109,38 +8109,38 @@ sub linefilter {
     if ($checkip) {
         if ($chain) {
             if ( $config{LF_IPSET} ) {
-                if   ($ipv4) { &ipsetadd( "chain_$chainin",     $line ) }
-                else         { &ipsetadd( "chain_6_${chainin}", $line ) }
+                if   ($ipv4) { ipsetadd( "chain_$chainin",     $line ) }
+                else         { ipsetadd( "chain_6_${chainin}", $line ) }
             }
             else {
-                &iptablescmd( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose -A $chainin $linein -s $line -j $pktin" );
-                if ( ( $ad eq "deny" and !$config{LF_BLOCKINONLY} ) or ( $ad ne "deny" ) ) { &iptablescmd( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose -A $chainout $lineout -d $line -j $pktout" ) }
+                iptablescmd( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose -A $chainin $linein -s $line -j $pktin" );
+                if ( ( $ad eq "deny" and !$config{LF_BLOCKINONLY} ) or ( $ad ne "deny" ) ) { iptablescmd( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose -A $chainout $lineout -d $line -j $pktout" ) }
             }
         }
         else {
             if ($delete) {
                 if ( $config{LF_IPSET} ) {
-                    if   ($ipv4) { &ipsetdel( "chain_$localin",     $line ) }
-                    else         { &ipsetdel( "chain_6_${localin}", $line ) }
+                    if   ($ipv4) { ipsetdel( "chain_$localin",     $line ) }
+                    else         { ipsetdel( "chain_6_${localin}", $line ) }
                 }
                 else {
-                    &iptablescmd( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose -D $localin $linein -s $line -j $pktin" );
-                    if ( ( $ad eq "deny" and !$config{LF_BLOCKINONLY} ) or ( $ad ne "deny" ) ) { &syscommand( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose -D $localout $lineout -d $line -j $pktout" ) }
+                    iptablescmd( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose -D $localin $linein -s $line -j $pktin" );
+                    if ( ( $ad eq "deny" and !$config{LF_BLOCKINONLY} ) or ( $ad ne "deny" ) ) { syscommand( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose -D $localout $lineout -d $line -j $pktout" ) }
                 }
-                if ( ( $ad eq "deny" ) and ( $ipv4 and $config{MESSENGER}  and $config{MESSENGER_PERM} ) ) { &domessenger( $line, "D" ) }
-                if ( ( $ad eq "deny" ) and ( $ipv6 and $config{MESSENGER6} and $config{MESSENGER_PERM} ) ) { &domessenger( $line, "D" ) }
+                if ( ( $ad eq "deny" ) and ( $ipv4 and $config{MESSENGER}  and $config{MESSENGER_PERM} ) ) { domessenger( $line, "D" ) }
+                if ( ( $ad eq "deny" ) and ( $ipv6 and $config{MESSENGER6} and $config{MESSENGER_PERM} ) ) { domessenger( $line, "D" ) }
             }
             else {
                 if ( $config{LF_IPSET} ) {
-                    if   ($ipv4) { &ipsetadd( "chain_$localin",     $line ) }
-                    else         { &ipsetadd( "chain_6_${localin}", $line ) }
+                    if   ($ipv4) { ipsetadd( "chain_$localin",     $line ) }
+                    else         { ipsetadd( "chain_6_${localin}", $line ) }
                 }
                 else {
-                    &iptablescmd( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose $inadd $localin $linein -s $line -j $pktin" );
-                    if ( ( $ad eq "deny" and !$config{LF_BLOCKINONLY} ) or ( $ad ne "deny" ) ) { &iptablescmd( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose $inadd $localout $lineout -d $line -j $pktout" ) }
+                    iptablescmd( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose $inadd $localin $linein -s $line -j $pktin" );
+                    if ( ( $ad eq "deny" and !$config{LF_BLOCKINONLY} ) or ( $ad ne "deny" ) ) { iptablescmd( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose $inadd $localout $lineout -d $line -j $pktout" ) }
                 }
-                if ( ( $ad eq "deny" ) and ( $ipv4 and $config{MESSENGER}  and $config{MESSENGER_PERM} ) ) { &domessenger( $line, "A" ) }
-                if ( ( $ad eq "deny" ) and ( $ipv6 and $config{MESSENGER6} and $config{MESSENGER_PERM} ) ) { &domessenger( $line, "A" ) }
+                if ( ( $ad eq "deny" ) and ( $ipv4 and $config{MESSENGER}  and $config{MESSENGER_PERM} ) ) { domessenger( $line, "A" ) }
+                if ( ( $ad eq "deny" ) and ( $ipv6 and $config{MESSENGER6} and $config{MESSENGER_PERM} ) ) { domessenger( $line, "A" ) }
             }
         }
     }
@@ -8246,31 +8246,31 @@ sub linefilter {
                 my $bip = $sip;
                 $bip =~ s/-s //o;
                 if ($chain) {
-                    &iptablescmd( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose -A $chainin $linein $protocol $dip $sip $dport $sport -j $pktin" );
+                    iptablescmd( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose -A $chainin $linein $protocol $dip $sip $dport $sport -j $pktin" );
                 }
                 else {
                     if ($delete) {
-                        &iptablescmd( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose -D $localin $linein $protocol $dip $sip $dport $sport -j $pktin" );
-                        if ( $messengerports{$bport} and ( $ad eq "deny" ) and ( $ipv4 and $config{MESSENGER}  and $config{MESSENGER_PERM} ) ) { &domessenger( $bip, "D", "$bport" ) }
-                        if ( $messengerports{$bport} and ( $ad eq "deny" ) and ( $ipv6 and $config{MESSENGER6} and $config{MESSENGER_PERM} ) ) { &domessenger( $bip, "D", "$bport" ) }
+                        iptablescmd( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose -D $localin $linein $protocol $dip $sip $dport $sport -j $pktin" );
+                        if ( $messengerports{$bport} and ( $ad eq "deny" ) and ( $ipv4 and $config{MESSENGER}  and $config{MESSENGER_PERM} ) ) { domessenger( $bip, "D", "$bport" ) }
+                        if ( $messengerports{$bport} and ( $ad eq "deny" ) and ( $ipv6 and $config{MESSENGER6} and $config{MESSENGER_PERM} ) ) { domessenger( $bip, "D", "$bport" ) }
                     }
                     else {
-                        &iptablescmd( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose $inadd $localin $linein $protocol $dip $sip $dport $sport -j $pktin" );
-                        if ( $messengerports{$bport} and ( $ad eq "deny" ) and ( $ipv4 and $config{MESSENGER}  and $config{MESSENGER_PERM} ) ) { &domessenger( $bip, "A", "$bport" ) }
-                        if ( $messengerports{$bport} and ( $ad eq "deny" ) and ( $ipv6 and $config{MESSENGER6} and $config{MESSENGER_PERM} ) ) { &domessenger( $bip, "A", "$bport" ) }
+                        iptablescmd( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose $inadd $localin $linein $protocol $dip $sip $dport $sport -j $pktin" );
+                        if ( $messengerports{$bport} and ( $ad eq "deny" ) and ( $ipv4 and $config{MESSENGER}  and $config{MESSENGER_PERM} ) ) { domessenger( $bip, "A", "$bport" ) }
+                        if ( $messengerports{$bport} and ( $ad eq "deny" ) and ( $ipv6 and $config{MESSENGER6} and $config{MESSENGER_PERM} ) ) { domessenger( $bip, "A", "$bport" ) }
                     }
                 }
             }
             if ( $inout eq "out" ) {
                 if ($chain) {
-                    &iptablescmd( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose -A $chainout $lineout $protocol $dip $sip $dport $sport -j $pktout" );
+                    iptablescmd( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose -A $chainout $lineout $protocol $dip $sip $dport $sport -j $pktout" );
                 }
                 else {
                     if ($delete) {
-                        &iptablescmd( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose -D $localout $lineout $protocol $dip $sip $dport $sport -j $pktout" );
+                        iptablescmd( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose -D $localout $lineout $protocol $dip $sip $dport $sport -j $pktout" );
                     }
                     else {
-                        &iptablescmd( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose $inadd $localout $lineout $protocol $dip $sip $dport $sport -j $pktout" );
+                        iptablescmd( __LINE__, "$iptables $config{IPTABLESWAIT} $verbose $inadd $localout $lineout $protocol $dip $sip $dport $sport -j $pktout" );
                     }
                 }
             }
@@ -8318,7 +8318,7 @@ sub iptablescmd {
     }
 
     if ( -e "/etc/csf/csf.error" ) {
-        &cleanup( __LINE__, "*Error* csf reported an error (see /etc/csf/csf.error). *lfd stopped*" );
+        cleanup( __LINE__, "*Error* csf reported an error (see /etc/csf/csf.error). *lfd stopped*" );
         exit 1;
     }
 
@@ -8332,7 +8332,7 @@ sub iptablescmd {
             logfile("csf is currently restarting - command [$command] skipped on line $line");
             unless ( $masterpid == $$ ) { exit }
         }
-        if ($iptableslock) { &iptableslock("lock") }
+        if ($iptableslock) { iptableslock("lock") }
         my @output;
         if ( $iptableslock and $config{WAITLOCK} ) {
             eval {
@@ -8347,7 +8347,7 @@ sub iptablescmd {
             };
             alarm(0);
             if ( $@ eq "alarm\n" ) {
-                &cleanup( __LINE__, "*Error* timeout after iptables --wait for $config{WAITLOCK_TIMEOUT} seconds - WAITLOCK" );
+                cleanup( __LINE__, "*Error* timeout after iptables --wait for $config{WAITLOCK_TIMEOUT} seconds - WAITLOCK" );
             }
         }
         else {
@@ -8356,7 +8356,7 @@ sub iptablescmd {
             @output = <$childout>;
             waitpid( $cmdpid, 0 );
         }
-        if ($iptableslock) { &iptableslock("unlock") }
+        if ($iptableslock) { iptableslock("unlock") }
 
         chomp @output;
         if ( $output[0] =~ /# Warning: iptables-legacy tables present/ ) { shift @output }
@@ -8370,12 +8370,12 @@ sub iptablescmd {
             while ( $cnt < $repeat ) {
                 sleep 1;
                 if ( $config{DEBUG} >= 1 ) { logfile( "debug[$line]: Retry (" . ( $cnt + 1 ) . ") [$command] due to [$output[0]]" ) }
-                if ($iptableslock)         { &iptableslock("lock") }
+                if ($iptableslock)         { iptableslock("lock") }
                 my ( $childin, $childout );
                 my $cmdpid = open3( $childin, $childout, $childout, $command );
                 my @output = <$childout>;
                 waitpid( $cmdpid, 0 );
-                if ($iptableslock) { &iptableslock("unlock") }
+                if ($iptableslock) { iptableslock("unlock") }
                 chomp @output;
                 if ( $output[0] =~ /# Warning: iptables-legacy tables present/ ) { shift @output }
                 $cnt++;
@@ -8400,7 +8400,7 @@ sub syscommand {
     my @output;
 
     if ( -e "/etc/csf/csf.error" ) {
-        &cleanup( __LINE__, "*Error* csf reported an error (see /etc/csf/csf.error). *lfd stopped*" );
+        cleanup( __LINE__, "*Error* csf reported an error (see /etc/csf/csf.error). *lfd stopped*" );
         exit 1;
     }
 
@@ -8428,10 +8428,10 @@ sub syscommand {
 # end syscommand
 ###############################################################################
 # start iptableslock
+my $iptableslock_fh;
 sub iptableslock {
     my $lock      = shift;
     my $iptablesx = shift;
-    state $iptableslock_fh;
     if ( $lock eq "lock" ) {
         sysopen( $iptableslock_fh, "/var/lib/csf/lock/command.lock", O_RDWR | O_CREAT );
         flock( $iptableslock_fh, LOCK_EX );
@@ -8471,7 +8471,7 @@ sub timer {
 # start csflock
 sub csflock {
     my $ret = 0;
-    sysopen( my $CSFLOCKFILE, "/var/lib/csf/csf.lock", O_RDWR | O_CREAT ) or &childcleanup("*Error* Unable to open csf lock file");
+    sysopen( my $CSFLOCKFILE, "/var/lib/csf/csf.lock", O_RDWR | O_CREAT ) or childcleanup("*Error* Unable to open csf lock file");
     flock( $CSFLOCKFILE, LOCK_SH | LOCK_NB ) or $ret = 1;
     close($CSFLOCKFILE);
 
@@ -8533,7 +8533,7 @@ sub ipblock {
 
     my $blocked = 0;
     if ( !$iscidr and ( $config{LF_PERMBLOCK} or $config{LF_NETBLOCK} ) ) {
-        if ( &denycheck($ip) ) {
+        if ( denycheck($ip) ) {
             $return = 2;
         }
         else {
@@ -8663,11 +8663,11 @@ sub ipblock {
                 else {
                     my $tip = iplookup($ipblock);
                     $message = "(NETBLOCK) $tip has had more than $config{LF_NETBLOCK_COUNT} blocks in the last $config{LF_NETBLOCK_INTERVAL} secs";
-                    &syscommand( __LINE__, "/usr/sbin/csf", "-d", $ipblock, "lfd: $message" );
+                    syscommand( __LINE__, "/usr/sbin/csf", "-d", $ipblock, "lfd: $message" );
                     logfile("$message - *Blocked in csf* [$active]");
-                    if ( $config{CLUSTER_BLOCK} and $config{CLUSTER_SENDTO} and !$cluster ) { &lfdclient( 1, $message, $ipblock, "", "inout", "0" ) }
-                    if ( $config{BLOCK_REPORT} )                                            { &block_report( $ipblock, "*", "1", "inout", "0", $message, "", "LF_NETBLOCK_COUNT" ) }
-                    if ( $config{ST_ENABLE} )                                               { &stats_report( $ipblock, "*", "1", "inout", "0", $message, "", "LF_NETBLOCK_COUNT" ) }
+                    if ( $config{CLUSTER_BLOCK} and $config{CLUSTER_SENDTO} and !$cluster ) { lfdclient( 1, $message, $ipblock, "", "inout", "0" ) }
+                    if ( $config{BLOCK_REPORT} )                                            { block_report( $ipblock, "*", "1", "inout", "0", $message, "", "LF_NETBLOCK_COUNT" ) }
+                    if ( $config{ST_ENABLE} )                                               { stats_report( $ipblock, "*", "1", "inout", "0", $message, "", "LF_NETBLOCK_COUNT" ) }
                     $blocked = 1;
                 }
 
@@ -8705,12 +8705,12 @@ sub ipblock {
                 else {
                     my $tip = iplookup($ip);
                     $message = "(PERMBLOCK) $tip has had more than $config{LF_PERMBLOCK_COUNT} temp blocks in the last $config{LF_PERMBLOCK_INTERVAL} secs";
-                    &syscommand( __LINE__, "/usr/sbin/csf", "-tr", $ip );
-                    &syscommand( __LINE__, "/usr/sbin/csf", "-d", $ip, "lfd: $message" );
+                    syscommand( __LINE__, "/usr/sbin/csf", "-tr", $ip );
+                    syscommand( __LINE__, "/usr/sbin/csf", "-d", $ip, "lfd: $message" );
                     logfile("$message - *Blocked in csf* [$active]");
-                    if ( $config{CLUSTER_BLOCK} and $config{CLUSTER_SENDTO} and !$cluster ) { &lfdclient( 1, $message, $ip, "", "inout", "0" ) }
-                    if ( $config{BLOCK_REPORT} )                                            { &block_report( $ip, "*", "1", "inout", "0", $message, "", "LF_PERMBLOCK_COUNT" ) }
-                    if ( $config{ST_ENABLE} )                                               { &stats_report( $ip, "*", "1", "inout", "0", $message, "", "LF_PERMBLOCK_COUNT" ) }
+                    if ( $config{CLUSTER_BLOCK} and $config{CLUSTER_SENDTO} and !$cluster ) { lfdclient( 1, $message, $ip, "", "inout", "0" ) }
+                    if ( $config{BLOCK_REPORT} )                                            { block_report( $ip, "*", "1", "inout", "0", $message, "", "LF_PERMBLOCK_COUNT" ) }
+                    if ( $config{ST_ENABLE} )                                               { stats_report( $ip, "*", "1", "inout", "0", $message, "", "LF_PERMBLOCK_COUNT" ) }
                     $blocked = 1;
                 }
                 if ( $config{LF_PERMBLOCK_ALERT} ) {
@@ -8751,14 +8751,14 @@ sub ipblock {
                         logfile($status);
                     }
                     else {
-                        if ( &denycheck( "tcp|in|d=$dport|s=$ip", undef, $perm ) ) {
+                        if ( denycheck( "tcp|in|d=$dport|s=$ip", undef, $perm ) ) {
                             $return = 2;
                         }
                         else {
                             my ( $tport, $proto ) = split( /\;/, $dport );
                             $dport = $tport;
                             if ( $proto eq "" ) { $proto = "tcp" }
-                            &syscommand( __LINE__, "/usr/sbin/csf", "-d", "$proto|in|d=$dport|s=$ip", "lfd: $message" );
+                            syscommand( __LINE__, "/usr/sbin/csf", "-d", "$proto|in|d=$dport|s=$ip", "lfd: $message" );
                             logfile("$message - *Blocked in csf* port=$dport [$active]");
                             $blocked = 1;
                         }
@@ -8773,25 +8773,25 @@ sub ipblock {
                     logfile($status);
                 }
                 else {
-                    if ( &denycheck( $ip, undef, $perm ) ) {
+                    if ( denycheck( $ip, undef, $perm ) ) {
                         $blocked = 0;
                         $return  = 2;
                     }
                     else {
                         $blocked = 1;
-                        &syscommand( __LINE__, "/usr/sbin/csf", "-d", $ip, "lfd: $message" );
+                        syscommand( __LINE__, "/usr/sbin/csf", "-d", $ip, "lfd: $message" );
                         logfile("$message - *Blocked in csf* [$active]");
                     }
                 }
             }
             if ($blocked) {
-                if ( $config{CLUSTER_BLOCK} and $config{CLUSTER_SENDTO} and !$cluster ) { &lfdclient( 1, $message, $ip, $port, $inout, "0" ) }
-                if ( $config{BLOCK_REPORT} )                                            { &block_report(@report) }
-                if ( $config{ST_ENABLE} )                                               { &stats_report(@report) }
+                if ( $config{CLUSTER_BLOCK} and $config{CLUSTER_SENDTO} and !$cluster ) { lfdclient( 1, $message, $ip, $port, $inout, "0" ) }
+                if ( $config{BLOCK_REPORT} )                                            { block_report(@report) }
+                if ( $config{ST_ENABLE} )                                               { stats_report(@report) }
             }
         }
         else {
-            if ( &denycheck( $ip, $port, $perm ) ) {
+            if ( denycheck( $ip, $port, $perm ) ) {
                 $return = 2;
             }
             else {
@@ -8809,23 +8809,23 @@ sub ipblock {
                             $dport = $tport;
                             if ( $proto eq "" ) { $proto = "tcp" }
                             if ( $iptype == 6 ) {
-                                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A DENYIN $eth6devin -p $proto --dport $dport -s $ip -j $dropin" );
-                                if ( $messengerports{$dport} and $config{MESSENGER6} and $config{MESSENGER_TEMP} ) { &domessenger( $ip, "A", $dport ) }
+                                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A DENYIN $eth6devin -p $proto --dport $dport -s $ip -j $dropin" );
+                                if ( $messengerports{$dport} and $config{MESSENGER6} and $config{MESSENGER_TEMP} ) { domessenger( $ip, "A", $dport ) }
                             }
                             else {
-                                &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A DENYIN $ethdevin -p $proto --dport $dport -s $ip -j $dropin" );
-                                if ( $messengerports{$dport} and $config{MESSENGER} and $config{MESSENGER_TEMP} ) { &domessenger( $ip, "A", $dport ) }
+                                iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A DENYIN $ethdevin -p $proto --dport $dport -s $ip -j $dropin" );
+                                if ( $messengerports{$dport} and $config{MESSENGER} and $config{MESSENGER_TEMP} ) { domessenger( $ip, "A", $dport ) }
                             }
                         }
                     }
                     else {
                         if ( $iptype == 6 ) {
-                            &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A DENYIN $eth6devin -s $ip -j $dropin" );
-                            if ( $config{MESSENGER6} and $config{MESSENGER_TEMP} ) { &domessenger( $ip, "A" ) }
+                            iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A DENYIN $eth6devin -s $ip -j $dropin" );
+                            if ( $config{MESSENGER6} and $config{MESSENGER_TEMP} ) { domessenger( $ip, "A" ) }
                         }
                         else {
-                            &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A DENYIN $ethdevin -s $ip -j $dropin" );
-                            if ( $config{MESSENGER} and $config{MESSENGER_TEMP} ) { &domessenger( $ip, "A" ) }
+                            iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A DENYIN $ethdevin -s $ip -j $dropin" );
+                            if ( $config{MESSENGER} and $config{MESSENGER_TEMP} ) { domessenger( $ip, "A" ) }
                         }
                     }
                 }
@@ -8836,31 +8836,31 @@ sub ipblock {
                             $dport = $tport;
                             if ( $proto eq "" ) { $proto = "tcp" }
                             if ( $iptype == 6 ) {
-                                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A DENYOUT $eth6devout -p $proto --dport $dport -d $ip -j $dropout" );
+                                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A DENYOUT $eth6devout -p $proto --dport $dport -d $ip -j $dropout" );
                             }
                             else {
-                                &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A DENYOUT $ethdevout -p $proto --dport $dport -d $ip -j $dropout" );
+                                iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A DENYOUT $ethdevout -p $proto --dport $dport -d $ip -j $dropout" );
                             }
                         }
                     }
                     else {
                         if ( $iptype == 6 ) {
-                            &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A DENYOUT $eth6devout -d $ip -j $dropout" );
+                            iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -A DENYOUT $eth6devout -d $ip -j $dropout" );
                         }
                         else {
-                            &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A DENYOUT $ethdevout -d $ip -j $dropout" );
+                            iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -A DENYOUT $ethdevout -d $ip -j $dropout" );
                         }
                     }
                 }
-                sysopen( my $TEMPBAN, "/var/lib/csf/csf.tempban", O_WRONLY | O_APPEND | O_CREAT ) or &childcleanup( __LINE__, "*Error* Cannot append out file: $!" );
+                sysopen( my $TEMPBAN, "/var/lib/csf/csf.tempban", O_WRONLY | O_APPEND | O_CREAT ) or childcleanup( __LINE__, "*Error* Cannot append out file: $!" );
                 flock( $TEMPBAN, LOCK_EX );
                 print $TEMPBAN time . "|$ip|$port|$inout|$timeout|lfd - $message\n";
                 close($TEMPBAN);
 
                 if ($message)                                                           { logfile("$message - *Blocked in csf* for $timeout secs [$active]") }
-                if ( $config{CLUSTER_BLOCK} and $config{CLUSTER_SENDTO} and !$cluster ) { &lfdclient( $perm, $message, $ip, $port, $inout, $timeout ) }
-                if ( $config{BLOCK_REPORT} )                                            { &block_report(@report) }
-                if ( $config{ST_ENABLE} )                                               { &stats_report(@report) }
+                if ( $config{CLUSTER_BLOCK} and $config{CLUSTER_SENDTO} and !$cluster ) { lfdclient( $perm, $message, $ip, $port, $inout, $timeout ) }
+                if ( $config{BLOCK_REPORT} )                                            { block_report(@report) }
+                if ( $config{ST_ENABLE} )                                               { stats_report(@report) }
             }
         }
     }
@@ -8874,14 +8874,14 @@ sub ipunblock {
     if ( !-z "/var/lib/csf/csf.tempban" ) {
         $SIG{CHLD} = 'IGNORE';
         unless ( defined( $childpid = fork ) ) {
-            &cleanup( __LINE__, "*Error* cannot fork: $!" );
+            cleanup( __LINE__, "*Error* cannot fork: $!" );
         }
         $forks{$childpid} = 1;
         unless ($childpid) {
             $0 = "lfd - processing temporary bans";
             my $timer = time;
-            if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "ipunblock", $timer ) }
-            sysopen( my $TEMPBAN, "/var/lib/csf/csf.tempban", O_RDWR | O_CREAT ) or &childcleanup( __LINE__, "Unable to open /var/lib/csf/csf.tempban: $!" );
+            if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "ipunblock", $timer ) }
+            sysopen( my $TEMPBAN, "/var/lib/csf/csf.tempban", O_RDWR | O_CREAT ) or childcleanup( __LINE__, "Unable to open /var/lib/csf/csf.tempban: $!" );
             unless ( flock( $TEMPBAN, LOCK_EX | LOCK_NB ) ) {
                 if ( $config{DEBUG} >= 3 ) { logfile("debug: Unable to lock csf.tempban in ipunblock") }
             }
@@ -8913,28 +8913,28 @@ sub ipunblock {
                                     $dport = $tport;
                                     if ( $proto eq "" ) { $proto = "tcp" }
                                     if ( $iptype == 6 ) {
-                                        &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D DENYIN $eth6devin -p $proto --dport $dport -s $ip -j $dropin" );
-                                        if ( $messengerports{$dport} and $config{MESSENGER6} and $config{MESSENGER_TEMP} ) { &domessenger( $ip, "D", $dport ) }
+                                        iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D DENYIN $eth6devin -p $proto --dport $dport -s $ip -j $dropin" );
+                                        if ( $messengerports{$dport} and $config{MESSENGER6} and $config{MESSENGER_TEMP} ) { domessenger( $ip, "D", $dport ) }
                                     }
                                     else {
-                                        &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D DENYIN $ethdevin -p $proto --dport $dport -s $ip -j $dropin" );
-                                        if ( $messengerports{$dport} and $config{MESSENGER} and $config{MESSENGER_TEMP} ) { &domessenger( $ip, "D", $dport ) }
+                                        iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D DENYIN $ethdevin -p $proto --dport $dport -s $ip -j $dropin" );
+                                        if ( $messengerports{$dport} and $config{MESSENGER} and $config{MESSENGER_TEMP} ) { domessenger( $ip, "D", $dport ) }
                                     }
                                     logfile("Incoming IP $ip:$dport temporary block removed");
-                                    if ( $config{UNBLOCK_REPORT} ) { &unblock_report( $ip, $dport ) }
+                                    if ( $config{UNBLOCK_REPORT} ) { unblock_report( $ip, $dport ) }
                                 }
                             }
                             else {
                                 if ( $iptype == 6 ) {
-                                    &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D DENYIN $eth6devin -s $ip -j $dropin" );
-                                    if ( $config{MESSENGER6} and $config{MESSENGER_TEMP} ) { &domessenger( $ip, "D" ) }
+                                    iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D DENYIN $eth6devin -s $ip -j $dropin" );
+                                    if ( $config{MESSENGER6} and $config{MESSENGER_TEMP} ) { domessenger( $ip, "D" ) }
                                 }
                                 else {
-                                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D DENYIN $ethdevin -s $ip -j $dropin" );
-                                    if ( $config{MESSENGER} and $config{MESSENGER_TEMP} ) { &domessenger( $ip, "D" ) }
+                                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D DENYIN $ethdevin -s $ip -j $dropin" );
+                                    if ( $config{MESSENGER} and $config{MESSENGER_TEMP} ) { domessenger( $ip, "D" ) }
                                 }
                                 logfile("Incoming IP $ip temporary block removed");
-                                if ( $config{UNBLOCK_REPORT} ) { &unblock_report($ip) }
+                                if ( $config{UNBLOCK_REPORT} ) { unblock_report($ip) }
                             }
                         }
                         if ( $inout =~ /out/ ) {
@@ -8944,27 +8944,27 @@ sub ipunblock {
                                     $dport = $tport;
                                     if ( $proto eq "" ) { $proto = "tcp" }
                                     if ( $iptype == 6 ) {
-                                        &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D DENYOUT $eth6devout -p $proto --dport $dport -d $ip -j $dropout" );
+                                        iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D DENYOUT $eth6devout -p $proto --dport $dport -d $ip -j $dropout" );
                                     }
                                     else {
-                                        &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D DENYOUT $ethdevout -p $proto --dport $dport -d $ip -j $dropout" );
+                                        iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D DENYOUT $ethdevout -p $proto --dport $dport -d $ip -j $dropout" );
                                     }
                                     logfile("Outgoing IP $ip:$dport temporary block removed");
-                                    if ( $config{UNBLOCK_REPORT} ) { &unblock_report( $ip, $dport ) }
+                                    if ( $config{UNBLOCK_REPORT} ) { unblock_report( $ip, $dport ) }
                                 }
                             }
                             else {
                                 if ( $iptype == 6 ) {
-                                    &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D DENYOUT $eth6devout -d $ip -j $dropout" );
+                                    iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D DENYOUT $eth6devout -d $ip -j $dropout" );
                                 }
                                 else {
-                                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D DENYOUT $ethdevout -d $ip -j $dropout" );
+                                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D DENYOUT $ethdevout -d $ip -j $dropout" );
                                 }
                                 logfile("Outgoing IP $ip temporary block removed");
                             }
-                            if ( $config{UNBLOCK_REPORT} ) { &unblock_report($ip) }
+                            if ( $config{UNBLOCK_REPORT} ) { unblock_report($ip) }
                         }
-                        if ( $config{CF_ENABLE} and $message =~ /\(CF_ENABLE\)/ ) { &cloudflare( "remove", $ip, $config{CF_BLOCK} ) }
+                        if ( $config{CF_ENABLE} and $message =~ /\(CF_ENABLE\)/ ) { cloudflare( "remove", $ip, $config{CF_BLOCK} ) }
                     }
                     else {
                         push @newdata, $line;
@@ -8985,7 +8985,7 @@ sub ipunblock {
                 alarm(0);
             }
             close($TEMPBAN);
-            if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "ipunblock", $timer ) }
+            if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "ipunblock", $timer ) }
             $0 = "lfd - (child) closing";
             exit;
         }
@@ -8993,14 +8993,14 @@ sub ipunblock {
     if ( !-z "/var/lib/csf/csf.tempallow" ) {
         $SIG{CHLD} = 'IGNORE';
         unless ( defined( $childpid = fork ) ) {
-            &cleanup( __LINE__, "*Error* cannot fork: $!" );
+            cleanup( __LINE__, "*Error* cannot fork: $!" );
         }
         $forks{$childpid} = 1;
         unless ($childpid) {
             $0 = "lfd - processing temporary allows";
             my $timer = time;
-            if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "ipunblock", $timer ) }
-            sysopen( my $TEMPALLOW, "/var/lib/csf/csf.tempallow", O_RDWR | O_CREAT ) or &childcleanup( __LINE__, "Enable to open /var/lib/csf/csf.tempallow: $!" );
+            if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "ipunblock", $timer ) }
+            sysopen( my $TEMPALLOW, "/var/lib/csf/csf.tempallow", O_RDWR | O_CREAT ) or childcleanup( __LINE__, "Enable to open /var/lib/csf/csf.tempallow: $!" );
             unless ( flock( $TEMPALLOW, LOCK_EX | LOCK_NB ) ) {
                 if ( $config{DEBUG} >= 3 ) { logfile("debug: Unable to lock csf.tempallow in ipunblock") }
             }
@@ -9021,20 +9021,20 @@ sub ipunblock {
                                     $dport = $tport;
                                     if ( $proto eq "" ) { $proto = "tcp" }
                                     if ( $iptype == 6 ) {
-                                        &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D ALLOWIN $eth6devin -p $proto --dport $dport -s $ip -j $accept" );
+                                        iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D ALLOWIN $eth6devin -p $proto --dport $dport -s $ip -j $accept" );
                                     }
                                     else {
-                                        &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D ALLOWIN $ethdevin -p $proto --dport $dport -s $ip -j $accept" );
+                                        iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D ALLOWIN $ethdevin -p $proto --dport $dport -s $ip -j $accept" );
                                     }
                                     logfile("Incoming IP $ip:$dport temporary allow removed");
                                 }
                             }
                             else {
                                 if ( $iptype == 6 ) {
-                                    &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D ALLOWIN $eth6devin -s $ip -j $accept" );
+                                    iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D ALLOWIN $eth6devin -s $ip -j $accept" );
                                 }
                                 else {
-                                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D ALLOWIN $ethdevin -s $ip -j $accept" );
+                                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D ALLOWIN $ethdevin -s $ip -j $accept" );
                                 }
                                 logfile("Incoming IP $ip temporary allow removed");
                             }
@@ -9046,25 +9046,25 @@ sub ipunblock {
                                     $dport = $tport;
                                     if ( $proto eq "" ) { $proto = "tcp" }
                                     if ( $iptype == 6 ) {
-                                        &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D ALLOWOUT $eth6devout -p $proto --dport $dport -d $ip -j $accept" );
+                                        iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D ALLOWOUT $eth6devout -p $proto --dport $dport -d $ip -j $accept" );
                                     }
                                     else {
-                                        &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D ALLOWOUT $ethdevout -p $proto --dport $dport -d $ip -j $accept" );
+                                        iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D ALLOWOUT $ethdevout -p $proto --dport $dport -d $ip -j $accept" );
                                     }
                                     logfile("Outgoing IP $ip:$dport temporary allow removed");
                                 }
                             }
                             else {
                                 if ( $iptype == 6 ) {
-                                    &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D ALLOWOUT $eth6devout -d $ip -j $accept" );
+                                    iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -D ALLOWOUT $eth6devout -d $ip -j $accept" );
                                 }
                                 else {
-                                    &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D ALLOWOUT $ethdevout -d $ip -j $accept" );
+                                    iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -D ALLOWOUT $ethdevout -d $ip -j $accept" );
                                 }
                                 logfile("Outgoing IP $ip temporary allow removed");
                             }
                         }
-                        if ( $config{CF_ENABLE} and $message =~ /\(CF_ENABLE\)/ ) { &cloudflare( "remove", $ip, "whitelist" ) }
+                        if ( $config{CF_ENABLE} and $message =~ /\(CF_ENABLE\)/ ) { cloudflare( "remove", $ip, "whitelist" ) }
                     }
                     else {
                         push @newdata, $line;
@@ -9085,7 +9085,7 @@ sub ipunblock {
                 alarm(0);
             }
             close($TEMPALLOW);
-            if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "ipunblock", $timer ) }
+            if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "ipunblock", $timer ) }
             $0 = "lfd - (child) closing";
             exit;
         }
@@ -9104,12 +9104,12 @@ sub cloudflare {
 
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "cloudflare", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "cloudflare", $timer ) }
         $0 = "lfd - (child) CloudFlare $action...";
 
         if ( $action eq "remove" ) {
@@ -9119,7 +9119,7 @@ sub cloudflare {
             ConfigServer::CloudFlare::action( "deny", $ip, $config{CF_BLOCK}, "", $domains, 1 );
         }
 
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "cloudflare", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "cloudflare", $timer ) }
         $0 = "lfd - (child) closing";
         exit;
     }
@@ -9133,19 +9133,19 @@ sub block_report {
     my @report = @_;
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "block_report", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "block_report", $timer ) }
         $0 = "lfd - (child) Block Report...";
 
         eval {
             local $SIG{__DIE__} = undef;
             local $SIG{'ALRM'}  = sub { die };
             alarm(10);
-            if ( $config{DEBUG} >= 1 ) { &logfile("debug: BLOCK_REPORT [$config{BLOCK_REPORT}] triggered") }
+            if ( $config{DEBUG} >= 1 ) { logfile("debug: BLOCK_REPORT [$config{BLOCK_REPORT}] triggered") }
             system( $config{BLOCK_REPORT}, @report );
             alarm(0);
         };
@@ -9157,7 +9157,7 @@ sub block_report {
             if ( $config{DEBUG} >= 3 ) { logfile("debug: BLOCK_REPORT [$config{BLOCK_REPORT}] for ['$report[0]' '$report[1]' '$report[2]' '$report[3]' '$report[4]' '$report[5]']") }
         }
 
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "block_report", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "block_report", $timer ) }
         $0 = "lfd - (child) closing";
         exit;
     }
@@ -9172,12 +9172,12 @@ sub unblock_report {
     my $port = shift;
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "unblock_report", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "unblock_report", $timer ) }
         $0 = "lfd - (child) Block Report...";
 
         eval {
@@ -9195,7 +9195,7 @@ sub unblock_report {
             if ( $config{DEBUG} >= 3 ) { logfile("debug: UNBLOCK_REPORT [$config{UNBLOCK_REPORT}] for [$ip] [$port]") }
         }
 
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "unblock_report", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "unblock_report", $timer ) }
         $0 = "lfd - (child) closing";
         exit;
     }
@@ -9209,22 +9209,22 @@ sub stats_report {
     my @report = @_;
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "stats_report", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "stats_report", $timer ) }
         $0 = "lfd - (child) Stats Report...";
 
         my $lockstr = "ST_ENABLE_report";
-        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or &childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
+        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
         unless ( flock( $THISLOCK, LOCK_EX | LOCK_NB ) ) {
             if ( $config{DEBUG} >= 1 ) {
-                &childcleanup("debug: *Lock Error* [$lockstr] still active - section skipped");
+                childcleanup("debug: *Lock Error* [$lockstr] still active - section skipped");
             }
             else {
-                &childcleanup;
+                childcleanup();
             }
         }
         print $THISLOCK time;
@@ -9361,7 +9361,7 @@ sub stats_report {
 
         close($THISLOCK);
 
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "stats_report", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "stats_report", $timer ) }
         $0 = "lfd - (child) closing";
         exit;
     }
@@ -9398,17 +9398,17 @@ sub messengerrecaptcha {
 
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "messengerrecaptcha", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "messengerrecaptcha", $timer ) }
         $0            = "lfd - reCAPTCHA csf...";
         $childproc    = "Messenger (Recaptcha)";
         $SIG{INT}     = \&childcleanup;
         $SIG{TERM}    = \&childcleanup;
         $SIG{HUP}     = \&childcleanup;
-        $SIG{__DIE__} = sub { &childcleanup(@_); };
+        $SIG{__DIE__} = sub { childcleanup(@_); };
 
         if ( -f "$homedir/unblock.txt" ) {
             my @alert = slurp("/usr/local/csf/tpl/recaptcha.txt");
@@ -9418,9 +9418,9 @@ sub messengerrecaptcha {
                 chomp $line;
                 my ( $unblockip, $host, $hostip ) = split( /;/, $line );
                 if ( checkip( \$unblockip ) ) {
-                    &logfile("reCAPTCHA: Unblocking client [$unblockip] on domain [$host ($hostip)]");
-                    &syscommand( __LINE__, "/usr/sbin/csf", "-dr", $unblockip );
-                    &syscommand( __LINE__, "/usr/sbin/csf", "-tr", $unblockip );
+                    logfile("reCAPTCHA: Unblocking client [$unblockip] on domain [$host ($hostip)]");
+                    syscommand( __LINE__, "/usr/sbin/csf", "-dr", $unblockip );
+                    syscommand( __LINE__, "/usr/sbin/csf", "-tr", $unblockip );
 
                     if ( $config{RECAPTCHA_ALERT} ) {
                         my $tip = iplookup($unblockip);
@@ -9441,7 +9441,7 @@ sub messengerrecaptcha {
             close($UNBLOCK);
         }
 
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "messengerrecaptcha", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "messengerrecaptcha", $timer ) }
         exit;
     }
     return;
@@ -9501,29 +9501,29 @@ sub messenger {
 
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid}    = 1;
     $messengerips{$type} = $childpid;
     unless ($childpid) {
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "messenger", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "messenger", $timer ) }
         $0            = "lfd - messenger csf...";
         $SIG{INT}     = \&childcleanup;
         $SIG{TERM}    = \&childcleanup;
         $SIG{HUP}     = \&childcleanup;
-        $SIG{__DIE__} = sub { &childcleanup(@_); };
+        $SIG{__DIE__} = sub { childcleanup(@_); };
         $childproc    = "Messenger ($type)";
 
         my ( $status, $reason ) = $messenger1->start( $port, $user, $type );
         if ($status) {
             logfile("*MESSENGER*: Error starting $type service: $reason");
-            sysopen( my $TEMPCONF, "/var/lib/csf/csf.tempconf", O_WRONLY | O_APPEND | O_CREAT ) or &childcleanup( __LINE__, "*Error* Cannot append out file: $!" );
+            sysopen( my $TEMPCONF, "/var/lib/csf/csf.tempconf", O_WRONLY | O_APPEND | O_CREAT ) or childcleanup( __LINE__, "*Error* Cannot append out file: $!" );
             flock( $TEMPCONF, LOCK_EX );
             print $TEMPCONF "MESSENGER_${type}_IN = \"\"\n";
             close($TEMPCONF);
             logfile("*MESSENGER*: $type service temporarily *DISABLED*");
         }
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "messenger", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "messenger", $timer ) }
         exit;
     }
     return;
@@ -9537,18 +9537,18 @@ sub messengerv2 {
 
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "messengerv2", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "messengerv2", $timer ) }
         $0 = "lfd - messenger csf...";
 
         my ( $status, $reason ) = $messenger2->start();
         if ($status) {
             logfile("*MESSENGERV2* Error: $reason");
         }
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "messengerv2", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "messengerv2", $timer ) }
         exit;
     }
     return;
@@ -9562,18 +9562,18 @@ sub messengerv3 {
 
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "messengerv3", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "messengerv3", $timer ) }
         $0 = "lfd - messenger csf...";
 
         my ( $status, $reason ) = $messenger3->start();
         if ($status) {
             logfile("*MESSENGERV3* Error: $reason");
         }
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "messengerv3", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "messengerv3", $timer ) }
         exit;
     }
     return;
@@ -9637,44 +9637,44 @@ sub domessenger {
     if ( $config{LF_IPSET} ) {
         if ( $delete eq "D" ) {
             if ( $iptype == 4 ) {
-                &ipsetdel( "MESSENGER", $ip );
+                ipsetdel( "MESSENGER", $ip );
             }
             if ( $iptype == 6 and $config{MESSENGER6} ) {
-                &ipsetdel( "MESSENGER_6", $ip );
+                ipsetdel( "MESSENGER_6", $ip );
             }
         }
         else {
             if ( $iptype == 4 ) {
-                &ipsetadd( "MESSENGER", $ip );
+                ipsetadd( "MESSENGER", $ip );
             }
             if ( $iptype == 6 and $config{MESSENGER6} ) {
-                &ipsetadd( "MESSENGER_6", $ip );
+                ipsetadd( "MESSENGER_6", $ip );
             }
         }
     }
     else {
         if ( $httpsports ne "" ) {
             if ( $iptype == 4 ) {
-                &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -t nat $del PREROUTING $ethdevin -p tcp -s $ip -m multiport --dports $httpsports -j REDIRECT --to-ports $config{MESSENGER_HTTPS}" );
+                iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -t nat $del PREROUTING $ethdevin -p tcp -s $ip -m multiport --dports $httpsports -j REDIRECT --to-ports $config{MESSENGER_HTTPS}" );
             }
             if ( $iptype == 6 and $config{MESSENGER6} ) {
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -t nat $del PREROUTING $ethdevin -p tcp -s $ip -m multiport --dports $httpsports -j REDIRECT --to-ports $config{MESSENGER_HTTPS}" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -t nat $del PREROUTING $ethdevin -p tcp -s $ip -m multiport --dports $httpsports -j REDIRECT --to-ports $config{MESSENGER_HTTPS}" );
             }
         }
         if ( $htmlports ne "" ) {
             if ( $iptype == 4 ) {
-                &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -t nat $del PREROUTING $ethdevin -p tcp -s $ip -m multiport --dports $htmlports -j REDIRECT --to-ports $config{MESSENGER_HTML}" );
+                iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -t nat $del PREROUTING $ethdevin -p tcp -s $ip -m multiport --dports $htmlports -j REDIRECT --to-ports $config{MESSENGER_HTML}" );
             }
             if ( $iptype == 6 and $config{MESSENGER6} ) {
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -t nat $del PREROUTING $ethdevin -p tcp -s $ip -m multiport --dports $htmlports -j REDIRECT --to-ports $config{MESSENGER_HTML}" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -t nat $del PREROUTING $ethdevin -p tcp -s $ip -m multiport --dports $htmlports -j REDIRECT --to-ports $config{MESSENGER_HTML}" );
             }
         }
         if ( $textports ne "" ) {
             if ( $iptype == 4 ) {
-                &iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -t nat $del PREROUTING $ethdevin -p tcp -s $ip -m multiport --dports $textports -j REDIRECT --to-ports $config{MESSENGER_TEXT}" );
+                iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -t nat $del PREROUTING $ethdevin -p tcp -s $ip -m multiport --dports $textports -j REDIRECT --to-ports $config{MESSENGER_TEXT}" );
             }
             if ( $iptype == 6 and $config{MESSENGER6} ) {
-                &iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -t nat $del PREROUTING $ethdevin -p tcp -s $ip -m multiport --dports $textports -j REDIRECT --to-ports $config{MESSENGER_TEXT}" );
+                iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -t nat $del PREROUTING $ethdevin -p tcp -s $ip -m multiport --dports $textports -j REDIRECT --to-ports $config{MESSENGER_TEXT}" );
             }
         }
     }
@@ -9687,7 +9687,7 @@ sub domessenger {
 sub ui {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     $uiip = $childpid;
@@ -9696,7 +9696,7 @@ sub ui {
         $SIG{INT}     = \&childcleanup;
         $SIG{TERM}    = \&childcleanup;
         $SIG{HUP}     = \&childcleanup;
-        $SIG{__DIE__} = sub { &childcleanup(@_); };
+        $SIG{__DIE__} = sub { childcleanup(@_); };
         $childproc    = "UI";
 
         my @alert = slurp("/usr/local/csf/tpl/uialert.txt");
@@ -9716,7 +9716,7 @@ sub ui {
                 SSL_version            => $config{UI_SSL_VERSION},
                 SSL_key_file           => '/etc/csf/ui/server.key',
                 SSL_cert_file          => '/etc/csf/ui/server.crt',
-            ) or &childcleanup( __LINE__, "UI: *Error* cannot open server on port $config{UI_PORT}: " . IO::Socket::SSL->errstr );
+            ) or childcleanup( __LINE__, "UI: *Error* cannot open server on port $config{UI_PORT}: " . IO::Socket::SSL->errstr );
         }
         else {
             $server = IO::Socket::SSL->new(
@@ -9733,7 +9733,7 @@ sub ui {
                 SSL_version            => $config{UI_SSL_VERSION},
                 SSL_key_file           => '/etc/csf/ui/server.key',
                 SSL_cert_file          => '/etc/csf/ui/server.crt',
-            ) or &childcleanup( __LINE__, "UI: *Error* cannot open server on port $config{UI_PORT}: " . IO::Socket::SSL->errstr );
+            ) or childcleanup( __LINE__, "UI: *Error* cannot open server on port $config{UI_PORT}: " . IO::Socket::SSL->errstr );
         }
 
         my $looperrors;
@@ -9894,7 +9894,7 @@ sub ui {
                             exit;
                         }
                         if ( $clientcnt > $maxline ) {
-                            &ui_413;
+                            ui_413();
                             close($client);
                             alarm(0);
                             exit;
@@ -9929,7 +9929,7 @@ sub ui {
                                 exit;
                             }
                             if ( $clientcnt > $maxline ) {
-                                &ui_413;
+                                ui_413();
                                 close($client);
                                 alarm(0);
                                 exit;
@@ -9944,7 +9944,7 @@ sub ui {
                         $linecnt++;
 
                         if ( $linecnt > $maxheader ) {
-                            &ui_413;
+                            ui_413();
                             close($client);
                             alarm(0);
                             exit;
@@ -9952,7 +9952,7 @@ sub ui {
                     }
                     if ( $header{'content-length'} > 0 ) {
                         if ( $header{'content-length'} > $maxbody ) {
-                            &ui_413;
+                            ui_413();
                             close($client);
                             alarm(0);
                             exit;
@@ -9980,7 +9980,7 @@ sub ui {
                     if ( $header{cookie} =~ /csfsession=(\w+)/ ) { $cookie = $1 }
 
                     if ( ( $session ne "" and $cookie ne "" ) or defined $FORM{csflogin} ) {
-                        sysopen( my $SESSION, "/var/lib/csf/ui/ui.session", O_RDWR | O_CREAT ) or &childcleanup( __LINE__, "UI: unable to open csf.session: $!" );
+                        sysopen( my $SESSION, "/var/lib/csf/ui/ui.session", O_RDWR | O_CREAT ) or childcleanup( __LINE__, "UI: unable to open csf.session: $!" );
                         flock( $SESSION, LOCK_EX );
                         my @records = <$SESSION>;
                         chomp @records;
@@ -10061,7 +10061,7 @@ sub ui {
                         $fails{$peeraddress}++;
                         if ( $fails{$peeraddress} > $config{UI_RETRY} ) {
                             if ( $config{UI_BAN} ) {
-                                sysopen( my $SESSIONBAN, "/etc/csf/ui/ui.ban", O_WRONLY | O_APPEND | O_CREAT ) or &childcleanup( __LINE__, "UI: unable to open csf.session: $!" );
+                                sysopen( my $SESSIONBAN, "/etc/csf/ui/ui.ban", O_WRONLY | O_APPEND | O_CREAT ) or childcleanup( __LINE__, "UI: unable to open csf.session: $!" );
                                 flock( $SESSIONBAN, LOCK_EX );
                                 print $SESSIONBAN "$peeraddress - Banned for too many login failures " . localtime() . "\n";
                                 close($SESSIONBAN);
@@ -10070,7 +10070,7 @@ sub ui {
                             else {
                                 logfile("UI: *Invalid login* attempts from $peeraddress [$fails{$peeraddress}/$config{UI_RETRY}] - Not Banned");
                             }
-                            sysopen( my $SESSION, "/var/lib/csf/ui/ui.session", O_RDWR | O_CREAT ) or &childcleanup( __LINE__, "UI: unable to open csf.session: $!" );
+                            sysopen( my $SESSION, "/var/lib/csf/ui/ui.session", O_RDWR | O_CREAT ) or childcleanup( __LINE__, "UI: unable to open csf.session: $!" );
                             flock( $SESSION, LOCK_EX );
                             my @records = <$SESSION>;
                             chomp @records;
@@ -10086,7 +10086,7 @@ sub ui {
                                 my $perm = 0;
                                 if ( $config{UI_BLOCK} == 1 ) { $perm = 1 }
                                 my $tip = iplookup($peeraddress);
-                                &ipblock( "1", "UI: Invalid login attempts from $tip", $peeraddress, "", "in", $config{UI_BLOCK}, 0, "UI: *Invalid login* attempts from $peeraddress [$fails{$peeraddress}/$config{UI_RETRY}] - Banned", "UI_RETRY" );
+                                ipblock( "1", "UI: Invalid login attempts from $tip", $peeraddress, "", "in", $config{UI_BLOCK}, 0, "UI: *Invalid login* attempts from $peeraddress [$fails{$peeraddress}/$config{UI_RETRY}] - Banned", "UI_RETRY" );
                             }
                             if ( $config{UI_ALERT} >= 1 ) {
                                 my @message;
@@ -10105,14 +10105,14 @@ sub ui {
                                 }
                                 ConfigServer::Sendmail::relay( "", "", @message );
                             }
-                            &ui_403;
+                            ui_403();
                             close($client);
                             alarm(0);
                             exit;
                         }
                         else {
                             my $time = time;
-                            sysopen( my $SESSION, "/var/lib/csf/ui/ui.session", O_WRONLY | O_APPEND | O_CREAT ) or &childcleanup( __LINE__, "UI: unable to open csf.session: $!" );
+                            sysopen( my $SESSION, "/var/lib/csf/ui/ui.session", O_WRONLY | O_APPEND | O_CREAT ) or childcleanup( __LINE__, "UI: unable to open csf.session: $!" );
                             flock( $SESSION, LOCK_EX );
                             print $SESSION "fail|$time||||$peeraddress||\n";
                             close($SESSION);
@@ -10140,7 +10140,7 @@ sub ui {
                         $md5current->add( $header{'user-agent'} );
                         my $md5sum = $md5current->b64digest;
                         my $time   = time;
-                        sysopen( my $SESSION, "/var/lib/csf/ui/ui.session", O_RDWR | O_CREAT ) or &childcleanup( __LINE__, "UI: unable to open csf.session: $!" );
+                        sysopen( my $SESSION, "/var/lib/csf/ui/ui.session", O_RDWR | O_CREAT ) or childcleanup( __LINE__, "UI: unable to open csf.session: $!" );
                         flock( $SESSION, LOCK_EX );
                         my @records = <$SESSION>;
                         chomp @records;
@@ -10195,7 +10195,7 @@ sub ui {
                             elsif ( $FORM{csfapp} eq "cxs" and $config{UI_CXS} ) { $newapp = "cxs" }
                             elsif ( $FORM{csfapp} eq "cse" and $config{UI_CSE} ) { $newapp = "cse" }
                             if    ( $newapp ne $application ) {
-                                sysopen( my $SESSION, "/var/lib/csf/ui/ui.session", O_RDWR | O_CREAT ) or &childcleanup( __LINE__, "UI: unable to open csf.session: $!" );
+                                sysopen( my $SESSION, "/var/lib/csf/ui/ui.session", O_RDWR | O_CREAT ) or childcleanup( __LINE__, "UI: unable to open csf.session: $!" );
                                 flock( $SESSION, LOCK_EX );
                                 my @records = <$SESSION>;
                                 chomp @records;
@@ -10389,7 +10389,7 @@ EOF
                                 }
                             }
                             elsif ( $application eq "cxs" and $config{UI_CXS} ) {
-                                my @data = &syscommand( __LINE__, "/usr/sbin/cxs", "--version" );
+                                my @data = syscommand( __LINE__, "/usr/sbin/cxs", "--version" );
                                 chomp @data;
                                 if ( $data[0] =~ /v(.*)$/ ) { $myv = $1 }
                                 my %ajaxsubs = (
@@ -10537,7 +10537,7 @@ EOF
                             close($IMAGE);
                         }
                         else {
-                            &ui_403;
+                            ui_403();
                         }
                     }
                     alarm(0);
@@ -10588,7 +10588,7 @@ sub ui_413 {
 sub lfdserver {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     $clusterip = $childpid;
@@ -10603,14 +10603,14 @@ sub lfdserver {
         $SIG{INT}     = \&childcleanup;
         $SIG{TERM}    = \&childcleanup;
         $SIG{HUP}     = \&childcleanup;
-        $SIG{__DIE__} = sub { &childcleanup(@_); };
+        $SIG{__DIE__} = sub { childcleanup(@_); };
 
         my $server = IO::Socket::INET->new(
             LocalPort => $config{CLUSTER_PORT},
             Type      => SOCK_STREAM,
             ReuseAddr => 1,
             Listen    => $config{CLUSTER_CHILDREN},
-        ) or &childcleanup( __LINE__, "*Error* cannot open server on port $config{CLUSTER_PORT}: $!" );
+        ) or childcleanup( __LINE__, "*Error* cannot open server on port $config{CLUSTER_PORT}: $!" );
 
         while (1) {
             while ( my ( $client, $c_addr ) = $server->accept() ) {
@@ -10649,28 +10649,28 @@ sub lfdserver {
                             if ( $message eq "" )  { $message = "Not provided - $tip" }
 
                             if ( $command eq "D" ) {
-                                &ipblock( $perm, "Cluster member $pip said, DENY $ip, Reason:[$message]", $ip, $ports, $inout, $timeout, 1, "", "LF_CLUSTER" );
+                                ipblock( $perm, "Cluster member $pip said, DENY $ip, Reason:[$message]", $ip, $ports, $inout, $timeout, 1, "", "LF_CLUSTER" );
                             }
                             elsif ( $command eq "TD" ) {
-                                &ipblock( $perm, "Cluster member $pip said, TEMPDENY $ip, Reason:[$message]", $ip, $ports, $inout, $timeout, 1, "", "LF_CLUSTER" );
+                                ipblock( $perm, "Cluster member $pip said, TEMPDENY $ip, Reason:[$message]", $ip, $ports, $inout, $timeout, 1, "", "LF_CLUSTER" );
                             }
                             elsif ( $command eq "A" and checkip( \$ip ) ) {
                                 logfile("Cluster member $pip said, ALLOW $ip, [$message]");
-                                &syscommand( __LINE__, "/usr/sbin/csf", "-a", $ip, "Cluster member $pip said, ALLOW $ip, Reason:[$message]" );
+                                syscommand( __LINE__, "/usr/sbin/csf", "-a", $ip, "Cluster member $pip said, ALLOW $ip, Reason:[$message]" );
                             }
                             elsif ( $command eq "TA" ) {
                                 logfile("Cluster member $pip said, TEMPALLOW $ip, Reason:[$message]");
-                                &syscommand( __LINE__, "/usr/sbin/csf", "-ta", $ip, $timeout, "-p", $ports, "-d", $inout, "Cluster member $pip said, TEMPALLOW $ip, Reason:[$message]" );
+                                syscommand( __LINE__, "/usr/sbin/csf", "-ta", $ip, $timeout, "-p", $ports, "-d", $inout, "Cluster member $pip said, TEMPALLOW $ip, Reason:[$message]" );
                             }
                             elsif ( $command eq "AR" and checkip( \$ip ) ) {
                                 logfile("Cluster member $pip said, REMOVE ALLOW $tip");
-                                &syscommand( __LINE__, "/usr/sbin/csf", "-ar", $ip );
-                                &syscommand( __LINE__, "/usr/sbin/csf", "-tr", $ip );
+                                syscommand( __LINE__, "/usr/sbin/csf", "-ar", $ip );
+                                syscommand( __LINE__, "/usr/sbin/csf", "-tr", $ip );
                             }
                             elsif ( $command eq "R" and checkip( \$ip ) ) {
                                 logfile("Cluster member $pip said, REMOVE DENY $tip");
-                                &syscommand( __LINE__, "/usr/sbin/csf", "-dr", $ip );
-                                &syscommand( __LINE__, "/usr/sbin/csf", "-tr", $ip );
+                                syscommand( __LINE__, "/usr/sbin/csf", "-dr", $ip );
+                                syscommand( __LINE__, "/usr/sbin/csf", "-tr", $ip );
                             }
                             elsif ( $command eq "I" and checkip( \$ip ) ) {
                                 my $ignorematches;
@@ -10747,7 +10747,7 @@ sub lfdserver {
                             }
                             elsif ( $command eq "G" ) {
                                 logfile("Cluster member $pip said GREP $tip");
-                                my @output = &syscommand( __LINE__, "/usr/sbin/csf", "-g", $ip );
+                                my @output = syscommand( __LINE__, "/usr/sbin/csf", "-g", $ip );
                                 $grep = join( "", @output );
                             }
                             elsif ( $command eq "C" ) {
@@ -10757,7 +10757,7 @@ sub lfdserver {
                                     $value =~ s/(^\s*)|(\s*$)//g;
                                     if ( $config{CLUSTER_CONFIG} ) {
                                         logfile("Cluster member $pip said set [$name = \"$value\"]");
-                                        &updateconfig( $name, $value );
+                                        updateconfig( $name, $value );
                                     }
                                     else {
                                         logfile("Cluster member $pip said set [$name = \"$value\"], however CLUSTER_CONFIG disabled");
@@ -10793,7 +10793,7 @@ sub lfdserver {
                                     if ( $config{CLUSTER_CONFIG} ) {
                                         logfile("Cluster member $pip said restart csf and lfd");
                                         logfile("Cluster - csf restarting...");
-                                        &syscommand( __LINE__, "/usr/sbin/csf", "-sf" );
+                                        syscommand( __LINE__, "/usr/sbin/csf", "-sf" );
                                         logfile("Cluster - lfd restarting...");
                                         open( my $LFDOUT, ">", "/var/lib/csf/lfd.restart" );
                                         close($LFDOUT);
@@ -10851,12 +10851,12 @@ sub lfdclient {
 
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "lfdclient", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "lfdclient", $timer ) }
         $0 = "lfd - Cluster client";
 
         my $cipher = Crypt::CBC->new( -key => $config{CLUSTER_KEY}, -cipher => 'Blowfish' );
@@ -10895,7 +10895,7 @@ sub lfdclient {
                 shutdown( $sock, 2 );
             }
         }
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "lfdclient", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "lfdclient", $timer ) }
         $0 = "lfd - (child) closing";
         exit;
     }
@@ -10943,12 +10943,12 @@ sub stats {
 
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "stats", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "stats", $timer ) }
         $0 = "lfd - (child) Statistics...";
 
         eval {
@@ -10974,13 +10974,13 @@ sub stats {
 
                 if ( ( stat("/var/lib/csf/stats/iptables_log") )[7] > ( 2048 * $config{ST_IPTABLES} ) ) {
                     my $lockstr = "ST_IPTABLES";
-                    sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or &childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
+                    sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
                     unless ( flock( $THISLOCK, LOCK_EX | LOCK_NB ) ) {
                         if ( $config{DEBUG} >= 1 ) {
-                            &childcleanup("debug: *Lock Error* [$lockstr] still active - section skipped");
+                            childcleanup("debug: *Lock Error* [$lockstr] still active - section skipped");
                         }
                         else {
-                            &childcleanup;
+                            childcleanup();
                         }
                     }
 
@@ -11008,7 +11008,7 @@ sub stats {
         alarm(0);
         if ($@) { logfile("STATS: 15 sec. timeout performing iptables_log") }
 
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "stats", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "stats", $timer ) }
         $0 = "lfd - (child) closing";
         exit;
     }
@@ -11021,17 +11021,17 @@ sub stats {
 sub systemstats {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
-        &cleanup( __LINE__, "*Error* cannot fork: $!" );
+        cleanup( __LINE__, "*Error* cannot fork: $!" );
     }
     $forks{$childpid} = 1;
     unless ($childpid) {
         my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "start", "systemstats", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "systemstats", $timer ) }
         $0 = "lfd - (child) System Statistics...";
 
         my $lockstr = "ST_SYSTEM";
-        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or &childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
-        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or &childcleanup("*Lock Error* [$lockstr] still active - section skipped");
+        sysopen( my $THISLOCK, "/var/lib/csf/lock/$lockstr.lock", O_RDWR | O_CREAT ) or childcleanup("*Error* Unable to open /var/lib/csf/lock/$lockstr.lock");
+        flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or childcleanup("*Lock Error* [$lockstr] still active - section skipped");
         print $THISLOCK time;
 
         local $SIG{__DIE__} = undef;
@@ -11178,7 +11178,7 @@ sub systemstats {
         if ( $config{ST_MYSQL} ) {
             eval('use DBI;');    ##no critic
             if ($@) {
-                sysopen( my $TEMPCONF, "/var/lib/csf/csf.tempconf", O_WRONLY | O_APPEND | O_CREAT ) or &childcleanup( __LINE__, "*Error* Cannot append out file: $!" );
+                sysopen( my $TEMPCONF, "/var/lib/csf/csf.tempconf", O_WRONLY | O_APPEND | O_CREAT ) or childcleanup( __LINE__, "*Error* Cannot append out file: $!" );
                 flock( $TEMPCONF, LOCK_EX );
                 print $TEMPCONF "ST_MYSQL = \"0\"\n";
                 close($TEMPCONF);
@@ -11277,7 +11277,7 @@ sub systemstats {
                     local $SIG{__DIE__} = undef;
                     local $SIG{'ALRM'}  = sub { die };
                     alarm(15);
-                    my @dddata = &syscommand( __LINE__, "$config{DD} $config{ST_DISKW_DD}" );
+                    my @dddata = syscommand( __LINE__, "$config{DD} $config{ST_DISKW_DD}" );
                     chomp @dddata;
                     foreach my $line (@dddata) {
                         if ( $line =~ / (\d+(\.\d*)?) MB\/s$/ ) {
@@ -11310,7 +11310,7 @@ sub systemstats {
 
         close($THISLOCK);
 
-        if ( $config{DEBUG} >= 3 ) { $timer = &timer( "stop", "systemstats", $timer ) }
+        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", "systemstats", $timer ) }
         $0 = "lfd - (child) closing";
         exit;
     }
@@ -11404,12 +11404,12 @@ sub faststart {
     if (@faststart4) {
         if ( $config{DEBUG} >= 1 and $verbose ) { logfile("FASTSTART loading $text (IPv4)") }
         my $status;
-        if ( $config{VPS} ) { $status = &fastvps( scalar @faststart4 ) }
+        if ( $config{VPS} ) { $status = fastvps( scalar @faststart4 ) }
         if ($status) {
             logfile($status);
         }
         else {
-            &iptableslock("lock");
+            iptableslock("lock");
             my ( $childin, $childout );
             my $cmdpid = open3( $childin, $childout, $childout, "$config{IPTABLES_RESTORE} $config{IPTABLESWAIT} -n" );
             print $childin "*filter\n" . join( "\n", @faststart4 ) . "\nCOMMIT\n";
@@ -11424,18 +11424,18 @@ sub faststart {
                 if ( $results[1] =~ /^Error occurred at line: (\d+)$/ ) { $cmd = $faststart4[ $1 - 1 ] }
                 logfile("*Error* FASTSTART: ($text IPv4) [$cmd] [$results[0]]");
             }
-            &iptableslock( "unlock", 1 );
+            iptableslock( "unlock", 1 );
         }
     }
     if (@faststart4nat) {
         if ( $config{DEBUG} >= 1 and $verbose ) { logfile("FASTSTART loading $text (IPv4 nat)") }
         my $status;
-        if ( $config{VPS} ) { $status = &fastvps( scalar @faststart4nat ) }
+        if ( $config{VPS} ) { $status = fastvps( scalar @faststart4nat ) }
         if ($status) {
             logfile($status);
         }
         else {
-            &iptableslock("lock");
+            iptableslock("lock");
             my ( $childin, $childout );
             my $cmdpid = open3( $childin, $childout, $childout, "$config{IPTABLES_RESTORE} $config{IPTABLESWAIT} -n" );
             print $childin "*nat\n" . join( "\n", @faststart4nat ) . "\nCOMMIT\n";
@@ -11450,18 +11450,18 @@ sub faststart {
                 if ( $results[1] =~ /^Error occurred at line: (\d+)$/ ) { $cmd = $faststart4[ $1 - 1 ] }
                 logfile("*Error* FASTSTART: ($text IPv4nat) [$cmd] [$results[0]]");
             }
-            &iptableslock( "unlock", 1 );
+            iptableslock( "unlock", 1 );
         }
     }
     if (@faststart6) {
         if ( $config{DEBUG} >= 1 and $verbose ) { logfile("FASTSTART loading $text (IPv6)") }
         my $status;
-        if ( $config{VPS} ) { $status = &fastvps( scalar @faststart6 ) }
+        if ( $config{VPS} ) { $status = fastvps( scalar @faststart6 ) }
         if ($status) {
             logfile($status);
         }
         else {
-            &iptableslock("lock");
+            iptableslock("lock");
             my ( $childin, $childout );
             my $cmdpid = open3( $childin, $childout, $childout, "$config{IP6TABLES_RESTORE} $config{IPTABLESWAIT} -n" );
             print $childin "*filter\n" . join( "\n", @faststart6 ) . "\nCOMMIT\n";
@@ -11476,18 +11476,18 @@ sub faststart {
                 if ( $results[1] =~ /^Error occurred at line: (\d+)$/ ) { $cmd = $faststart4[ $1 - 1 ] }
                 logfile("*Error* FASTSTART: ($text IPv6) [$cmd] [$results[0]]");
             }
-            &iptableslock( "unlock", 1 );
+            iptableslock( "unlock", 1 );
         }
     }
     if (@faststart6nat) {
         if ( $config{DEBUG} >= 1 and $verbose ) { logfile("FASTSTART loading $text (IPv6 nat)") }
         my $status;
-        if ( $config{VPS} ) { $status = &fastvps( scalar @faststart6nat ) }
+        if ( $config{VPS} ) { $status = fastvps( scalar @faststart6nat ) }
         if ($status) {
             logfile($status);
         }
         else {
-            &iptableslock("lock");
+            iptableslock("lock");
             my ( $childin, $childout );
             my $cmdpid = open3( $childin, $childout, $childout, "$config{IP6TABLES_RESTORE} $config{IPTABLESWAIT} -n" );
             print $childin "*nat\n" . join( "\n", @faststart6nat ) . "\nCOMMIT\n";
@@ -11502,7 +11502,7 @@ sub faststart {
                 if ( $results[1] =~ /^Error occurred at line: (\d+)$/ ) { $cmd = $faststart6[ $1 - 1 ] }
                 logfile("*Error* FASTSTART: ($text IPv6nat) [$cmd] [$results[0]]");
             }
-            &iptableslock( "unlock", 1 );
+            iptableslock( "unlock", 1 );
         }
     }
     if (@faststartipset) {

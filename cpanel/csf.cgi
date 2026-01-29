@@ -114,7 +114,7 @@ if ( $Cpanel::Version::Tiny::major_version >= 65 ) {
             foreach (@confdata) {
                 print $CONF "$_\n";
             }
-            &printcmd( "/usr/local/cpanel/bin/register_appconfig", "/usr/local/cpanel/whostmgr/docroot/cgi/configserver/${thisapp}/${thisapp}.conf" );
+            printcmd( "/usr/local/cpanel/bin/register_appconfig", "/usr/local/cpanel/whostmgr/docroot/cgi/configserver/${thisapp}/${thisapp}.conf" );
             $reregister = "<div class='bs-callout bs-callout-info'><h4>Updated application. The next time you login to WHM this will open within the native WHM main window instead of launching a separate window</h4></div>\n";
         }
         close($CONF);
