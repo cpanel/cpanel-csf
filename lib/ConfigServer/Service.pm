@@ -97,6 +97,7 @@ L<ConfigServer::Config>, L<ConfigServer::Slurp>, L<IPC::Open3>
 package ConfigServer::Service;
 
 use cPstrict;
+
 use Carp                 ();
 use IPC::Open3           ();
 use ConfigServer::Config ();

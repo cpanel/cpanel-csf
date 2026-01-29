@@ -69,10 +69,7 @@ to include external NAT IP addresses.
 
 =cut
 
-use strict;
-use warnings;
-
-use lib '/usr/local/csf/lib';
+use cPstrict;
 
 use Fcntl      ();
 use IPC::Open3 ();

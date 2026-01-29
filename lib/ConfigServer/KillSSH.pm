@@ -63,8 +63,7 @@ deny list.
 
 =cut
 
-use strict;
-use warnings;
+use cPstrict;
 
 use Fcntl                ();
 use ConfigServer::Logger ();
@@ -136,7 +135,7 @@ None. This function always returns undef.
     # Block an IP and kill its SSH connections
     my $blocked_ip = '203.0.113.50';
     my $ssh_ports = '22,2222';
-    
+
     ConfigServer::KillSSH::find($blocked_ip, $ssh_ports);
     # Any sshd processes connected from that IP will be terminated
 

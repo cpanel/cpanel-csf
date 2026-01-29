@@ -55,8 +55,7 @@ This module uses L<Exporter> and can export the following functions on request:
 
 =cut
 
-use strict;
-use warnings;
+use cPstrict;
 
 use Fcntl                ();
 use ConfigServer::Config ();

@@ -107,13 +107,13 @@ package ConfigServer::Sendmail;
 
 use cPstrict;
 
-use Carp ();
-use POSIX ();
+use Carp      ();
+use POSIX     ();
 use Net::SMTP ();
 
 use ConfigServer::Config ();
 use ConfigServer::Logger ();
-use ConfigServer::Slurp ();
+use ConfigServer::Slurp  ();
 
 our $VERSION = 1.02;
 

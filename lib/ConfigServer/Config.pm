@@ -77,15 +77,12 @@ IPv4 and IPv6 addresses.
 
 =cut
 
-use strict;
-use warnings;
+use cPstrict;
 
 use version    ();
 use Carp       ();
 use IPC::Open3 ();
-use Fcntl      ();
 
-use lib '/usr/local/csf/lib';
 use ConfigServer::Slurp ();
 
 our $VERSION = 1.05;

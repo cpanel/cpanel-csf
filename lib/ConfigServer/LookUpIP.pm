@@ -49,8 +49,7 @@ performance for repeated hostname lookups.
 
 =cut
 
-use strict;
-use warnings;
+use cPstrict;
 
 use Carp             ();
 use Cpanel::JSON::XS ();

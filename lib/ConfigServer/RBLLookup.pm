@@ -131,7 +131,7 @@ use ConfigServer::CheckIP ();
 
 our $VERSION = 1.01;
 
-sub rbllookup ($ip, $rbl) {
+sub rbllookup ( $ip, $rbl ) {
     my %rblhits;
     my $netip;
     my $reversed_ip = '';

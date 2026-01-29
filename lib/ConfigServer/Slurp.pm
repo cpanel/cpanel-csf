@@ -47,7 +47,7 @@ detection and cleanup.
 
 use cPstrict;
 
-use Carp;
+use Carp ();
 
 use Cpanel::Slurper;
 
@@ -168,7 +168,7 @@ The 'ee' stands for 'Extended Edition'.
 
 =cut
 
-sub slurpee ($file, %opts) {
+sub slurpee ( $file, %opts ) {
     %opts = ( %defaults, %opts );
     local $@;
     my $text = eval { Cpanel::Slurper::read($file) };
@@ -178,7 +178,7 @@ sub slurpee ($file, %opts) {
         Carp::carp($err)  if $opts{'warn'};
         return;
     }
-    if(length $text ) {
+    if ( length $text ) {
         return split( /$slurpreg/, $text ) if $opts{'wantarray'};
         return $text;
     }

@@ -26,9 +26,9 @@ ConfigServer::AbuseIP - Look up abuse contact information for IP addresses
 =head1 SYNOPSIS
 
     use ConfigServer::AbuseIP qw(abuseip);
-    
+
     my ($contact, $message) = abuseip('192.0.2.1');
-    
+
     if ($contact) {
         print "Abuse contact: $contact\n";
         print "Message:\n$message\n";
@@ -36,9 +36,9 @@ ConfigServer::AbuseIP - Look up abuse contact information for IP addresses
 
 =head1 DESCRIPTION
 
-This module provides functionality to look up abuse contact information for 
-IP addresses using the Abuse Contact Database provided by abusix.com. The 
-database aggregates abuse contact information from Regional Internet Registries 
+This module provides functionality to look up abuse contact information for
+IP addresses using the Abuse Contact Database provided by abusix.com. The
+database aggregates abuse contact information from Regional Internet Registries
 (RIRs) and makes it available via DNS TXT record lookups.
 
 =cut
@@ -69,7 +69,7 @@ my %config = $config->config();
 
 =head2 abuseip
 
-Looks up the abuse contact information for the given IP address using the Abuse 
+Looks up the abuse contact information for the given IP address using the Abuse
 Contact Database provided by abusix.com.
 
 =over 4
@@ -86,13 +86,13 @@ Contact Database provided by abusix.com.
 
 In scalar context: the abuse contact email address (or undef if not found)
 
-In list context: a two-element list containing the abuse contact email address 
+In list context: a two-element list containing the abuse contact email address
 and a formatted message explaining the source of the contact information
 
 =item B<Implementation>
 
-The function performs DNS TXT record lookups against abuse-contacts.abusix.org 
-after reversing the IP address format. It uses a 10-second timeout for the 
+The function performs DNS TXT record lookups against abuse-contacts.abusix.org
+after reversing the IP address format. It uses a 10-second timeout for the
 external host command.
 
 =item B<Example>

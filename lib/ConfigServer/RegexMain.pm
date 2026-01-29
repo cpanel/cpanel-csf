@@ -26,18 +26,18 @@ ConfigServer::RegexMain - Log file pattern matching and processing for CSF
 =head1 SYNOPSIS
 
     use ConfigServer::RegexMain ();
-    
+
     my %globlogs = (
         SSHD_LOG  => { '/var/log/secure' => 1 },
         IMAPD_LOG => { '/var/log/maillog' => 1 },
     );
-    
+
     my ($reason, $ip, $app) = ConfigServer::RegexMain::processline(
         $log_line,
         $logfile_path,
         \%globlogs
     );
-    
+
     if ($reason) {
         print "Detected: $reason from $ip (app: $app)\n";
     }
@@ -128,7 +128,7 @@ if ( -e "/usr/local/csf/bin/regex.custom.pm" ) {
 Processes a single log line to detect failed authentication attempts and
 security events.
 
-    my ($reason, $ip, $app, $trigger, $ports, $temp, $cf) = 
+    my ($reason, $ip, $app, $trigger, $ports, $temp, $cf) =
         ConfigServer::RegexMain::processline($line, $logfile, \%globlogs);
 
 Arguments:

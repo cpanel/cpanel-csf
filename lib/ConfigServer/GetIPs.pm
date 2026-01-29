@@ -65,8 +65,7 @@ C<gethostbyname()> for IPv4-only resolution.
 
 =cut
 
-use strict;
-use warnings;
+use cPstrict;
 
 use Socket     ();
 use IPC::Open3 ();

@@ -26,7 +26,7 @@ ConfigServer::CheckIP - IP address validation and type detection
 =head1 SYNOPSIS
 
     use ConfigServer::CheckIP qw(checkip cccheckip);
-    
+
     # Check any IP address
     my $ip = "192.0.2.1";
     my $type = checkip(\$ip);
@@ -35,7 +35,7 @@ ConfigServer::CheckIP - IP address validation and type detection
     } elsif ($type == 6) {
         print "Valid IPv6 address (normalized to $ip)\n";
     }
-    
+
     # Check only public IP addresses
     my $public_ip = "8.8.8.8";
     my $type = cccheckip(\$public_ip);
@@ -51,8 +51,8 @@ between valid IPs and filter out loopback or private addresses.
 
 =cut
 
-use strict;
-use lib '/usr/local/csf/lib';
+use cPstrict;
+
 use Carp;
 use Net::IP;
 use ConfigServer::Config;
@@ -67,8 +67,8 @@ my $ipv6reg = ConfigServer::Config->ipv6reg;
 
 =head2 checkip
 
-Validates an IP address and determines if it is IPv4 or IPv6. Filters out 
-loopback addresses. For IPv6 addresses passed by reference, normalizes them 
+Validates an IP address and determines if it is IPv4 or IPv6. Filters out
+loopback addresses. For IPv6 addresses passed by reference, normalizes them
 to short form.
 
 =over 4
@@ -95,7 +95,7 @@ to short form.
 
 =item B<Side Effects>
 
-When passed a scalar reference containing an IPv6 address, modifies the 
+When passed a scalar reference containing an IPv6 address, modifies the
 referenced value to the normalized short form.
 
 =item B<Example>
@@ -103,7 +103,7 @@ referenced value to the normalized short form.
     my $ip = "2001:0db8::1";
     my $type = checkip(\$ip);
     # $type = 6, $ip = "2001:db8::1" (normalized)
-    
+
     my $invalid = checkip("127.0.0.1");
     # returns 0 (loopback filtered)
 
@@ -174,7 +174,7 @@ sub checkip {
 =head2 cccheckip
 
 Validates an IP address and determines if it is a PUBLIC IPv4 or IPv6 address.
-Filters out loopback and private/reserved addresses. For IPv6 addresses passed 
+Filters out loopback and private/reserved addresses. For IPv6 addresses passed
 by reference, normalizes them to short form.
 
 =over 4
@@ -201,7 +201,7 @@ by reference, normalizes them to short form.
 
 =item B<Side Effects>
 
-When passed a scalar reference containing an IPv6 address, modifies the 
+When passed a scalar reference containing an IPv6 address, modifies the
 referenced value to the normalized short form.
 
 =item B<Example>
@@ -209,7 +209,7 @@ referenced value to the normalized short form.
     my $ip = "8.8.8.8";
     my $type = cccheckip(\$ip);
     # $type = 4 (public IPv4)
-    
+
     my $private = cccheckip("192.168.1.1");
     # returns 0 (private address filtered)
 
@@ -325,8 +325,8 @@ B<Validation rules:>
 
 =head1 NORMALIZATION
 
-When an IPv6 address is passed by reference, both functions normalize it to 
-the short form using L<Net::IP>. This converts addresses like "2001:0db8:0000:0000:0000:0000:0000:0001" 
+When an IPv6 address is passed by reference, both functions normalize it to
+the short form using L<Net::IP>. This converts addresses like "2001:0db8:0000:0000:0000:0000:0000:0001"
 to "2001:db8::1".
 
 =head1 SEE ALSO

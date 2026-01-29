@@ -555,7 +555,7 @@ sub _servercheck {
             if ( -e $file ) {
                 my @conf = slurp($file);
                 chomp @conf;
-                @namedconf = ( @namedconf, @conf);
+                @namedconf = ( @namedconf, @conf );
             }
         }
 
