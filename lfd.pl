@@ -529,7 +529,7 @@ if ( $config{LOGSCANNER} ) {
         $line =~ s/$cleanreg//g;
         if   ( $line eq "" )               { next }
         if   ( $line =~ /^\s*\#|Include/ ) { next }
-        if   ( testregex($line) )         { push @logignore, $line }
+        if   ( testregex($line) )          { push @logignore, $line }
         else                               { logfile("*Error* Invalid regex [$line] in csf.logignore") }
     }
     logfile("Log Scanner...");
@@ -819,7 +819,7 @@ if ( $config{LF_DIRWATCH} ) {
             if ( $line =~ /^\s*\#|Include/ ) { next }
             if ( $line =~ /\*|\\/ ) {
                 if ( testregex($line) ) { push @matchfile, $line }
-                else                     { logfile("*Error* Invalid regex [$line] in csf.fignore") }
+                else                    { logfile("*Error* Invalid regex [$line] in csf.fignore") }
             }
             elsif ( $line =~ /^user:(.*)/ ) {
                 $skipuser{$1} = 1;
@@ -1033,7 +1033,7 @@ if ( $config{PT_LIMIT} ) {
             }
             elsif ( $item =~ /^(pcmd|pexe|puser)$/ ) {
                 if ( testregex($rule) ) { $pskip{$item}{$rule} = 1 }
-                else                     { logfile("*Error* Invalid regex [$line] in csf.pignore") }
+                else                    { logfile("*Error* Invalid regex [$line] in csf.pignore") }
             }
         }
     }
@@ -1685,7 +1685,6 @@ while (1) {
 
 exit;
 
-
 sub dochecks {
     my $line            = shift;
     my $lgfile          = shift;
@@ -2210,7 +2209,6 @@ sub dochecks {
     return;
 }
 
-
 sub getlogfile {
     my $logfile  = shift;
     my $lfn      = shift;
@@ -2266,7 +2264,6 @@ sub getlogfile {
     return undef;
 }
 
-
 sub openlogfile {
     my $logfile = shift;
     my $lfn     = shift;
@@ -2292,7 +2289,6 @@ sub openlogfile {
     return 0;
 }
 
-
 sub globlog {
     my $setting = shift;
     if ( $config{$setting} =~ /\*|\?|\[/ ) {
@@ -2307,7 +2303,6 @@ sub globlog {
     }
     return;
 }
-
 
 sub lockhang {
     $SIG{CHLD} = 'IGNORE';
@@ -2354,7 +2349,6 @@ sub lockhang {
     return;
 }
 
-
 sub syslog_init {
     local $SIG{CHLD} = 'DEFAULT';
     my %syslogusers;
@@ -2391,7 +2385,6 @@ sub syslog_init {
     }
     return;
 }
-
 
 sub syslog_perms {
     my $newpid = 1;
@@ -2473,7 +2466,6 @@ sub syslog_perms {
     }
     return;
 }
-
 
 sub block {
     my $ip      = shift;
@@ -2624,7 +2616,6 @@ sub block {
     return;
 }
 
-
 sub blockaccount {
     my $ipa     = shift;
     my @ips     = @$ipa;
@@ -2698,7 +2689,6 @@ sub blockaccount {
     return;
 }
 
-
 sub blockdistftp {
     my $ipa     = shift;
     my @ips     = @$ipa;
@@ -2756,7 +2746,6 @@ sub blockdistftp {
     }
     return;
 }
-
 
 sub blockdistsmtp {
     my $ipa     = shift;
@@ -2816,7 +2805,6 @@ sub blockdistsmtp {
     return;
 }
 
-
 sub disable404 {
     my $ip   = shift;
     my $text = shift;
@@ -2862,7 +2850,6 @@ sub disable404 {
     }
     return;
 }
-
 
 sub disable403 {
     my $ip   = shift;
@@ -2910,7 +2897,6 @@ sub disable403 {
     return;
 }
 
-
 sub disable401 {
     my $ip   = shift;
     my $text = shift;
@@ -2956,7 +2942,6 @@ sub disable401 {
     }
     return;
 }
-
 
 sub logindisable {
     my $app     = shift;
@@ -3012,7 +2997,6 @@ sub logindisable {
     }
     return;
 }
-
 
 sub portscans {
     my $ip     = shift;
@@ -3114,7 +3098,6 @@ sub portscans {
     return;
 }
 
-
 sub uidscans {
     my $uid    = shift;
     my $count  = shift;
@@ -3153,7 +3136,6 @@ sub uidscans {
     return;
 }
 
-
 sub csfrestart {
     my $timer = time;
     if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", "csfrestart", $timer ) }
@@ -3167,7 +3149,6 @@ sub csfrestart {
     $0 = "lfd - processing";
     return;
 }
-
 
 sub lfdrestart {
     $SIG{INT}  = 'IGNORE';
@@ -3186,7 +3167,6 @@ sub lfdrestart {
 
     exit 0;
 }
-
 
 sub csfcheck {
     my $timer = time;
@@ -3318,7 +3298,6 @@ sub csfcheck {
     return;
 }
 
-
 sub loadcheck {
     if ( -e "/var/lib/csf/csf.load" ) {
         open( my $IN, "<", "/var/lib/csf/csf.load" );
@@ -3445,7 +3424,6 @@ sub loadcheck {
     return;
 }
 
-
 sub denycheck {
     my $ip       = shift;
     my $port     = shift;
@@ -3475,7 +3453,6 @@ sub denycheck {
 
     return $skip;
 }
-
 
 sub queuecheck {
     if ( -e "/var/lib/csf/csf.queue" ) {
@@ -3564,7 +3541,6 @@ sub queuecheck {
     return;
 }
 
-
 sub modsecipdbcheck {
     if ( -e "/var/lib/csf/csf.modsecipdbcheck" ) {
         open( my $IN, "<", "/var/lib/csf/csf.modsecipdbcheck" );
@@ -3623,7 +3599,6 @@ sub modsecipdbcheck {
     }
     return;
 }
-
 
 sub connectiontracking {
 
@@ -3873,7 +3848,6 @@ sub connectiontracking {
     return;
 }
 
-
 sub accounttracking {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
@@ -3942,7 +3916,6 @@ sub accounttracking {
     return;
 }
 
-
 sub syslogcheck {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
@@ -3977,7 +3950,6 @@ sub syslogcheck {
     }
     return;
 }
-
 
 sub processtracking {
     $SIG{CHLD} = 'IGNORE';
@@ -4479,7 +4451,6 @@ sub processtracking {
     return;
 }
 
-
 sub sshalert {
     my $account = shift;
     my $ip      = shift;
@@ -4517,7 +4488,6 @@ sub sshalert {
     return;
 }
 
-
 sub sualert {
     my $suto   = shift;
     my $sufrom = shift;
@@ -4553,7 +4523,6 @@ sub sualert {
     }
     return;
 }
-
 
 sub sudoalert {
     my $suto   = shift;
@@ -4591,7 +4560,6 @@ sub sudoalert {
     return;
 }
 
-
 sub consolealert {
     my $logline = shift;
 
@@ -4621,7 +4589,6 @@ sub consolealert {
     }
     return;
 }
-
 
 sub cpanelalert {
     my $ip   = shift;
@@ -4662,7 +4629,6 @@ sub cpanelalert {
     }
     return;
 }
-
 
 sub scriptalert {
     my $path  = shift;
@@ -4742,7 +4708,6 @@ sub scriptalert {
     return;
 }
 
-
 sub relayalert {
     my $ip    = shift;
     my $cnt   = shift;
@@ -4818,7 +4783,6 @@ sub relayalert {
     return;
 }
 
-
 sub portknocking {
     my $ip   = shift;
     my $port = shift;
@@ -4851,7 +4815,6 @@ sub portknocking {
     }
     return;
 }
-
 
 sub blocklist {
     $SIG{CHLD} = 'IGNORE';
@@ -5133,7 +5096,6 @@ sub blocklist {
     }
     return;
 }
-
 
 sub countrycode {
     my $force = shift;
@@ -5876,7 +5838,6 @@ sub countrycode {
     return;
 }
 
-
 sub countrycodelookups {
     my $force = shift;
     if ( $config{CC_LOOKUPS} == 4 ) { return }
@@ -6122,7 +6083,6 @@ sub countrycodelookups {
     }
     return;
 }
-
 
 sub countrycode6 {
     my $force = shift;
@@ -6582,7 +6542,6 @@ sub countrycode6 {
     return;
 }
 
-
 sub global {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
@@ -6867,7 +6826,6 @@ sub global {
     return;
 }
 
-
 sub dyndns {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
@@ -6992,7 +6950,6 @@ sub dyndns {
     }
     return;
 }
-
 
 sub globaldyndns {
     $SIG{CHLD} = 'IGNORE';
@@ -7125,8 +7082,8 @@ sub globaldyndns {
     return;
 }
 
-
 my $listlock_fh;
+
 sub listlock {
     my $state = shift;
     if ( $state eq "lock" ) {
@@ -7139,7 +7096,6 @@ sub listlock {
     }
     return;
 }
-
 
 sub dirwatch {
     $SIG{CHLD} = 'IGNORE';
@@ -7302,7 +7258,6 @@ sub dirwatch {
     return;
 }
 
-
 sub dirfiles {
     if ( $skipfile{$File::Find::name} )                         { return }
     if ( $nofiles{$File::Find::name} )                          { return }
@@ -7374,7 +7329,6 @@ sub dirfiles {
     }
     return;
 }
-
 
 sub dirwatchfile {
     $SIG{CHLD} = 'IGNORE';
@@ -7472,7 +7426,6 @@ sub dirwatchfile {
     }
     return;
 }
-
 
 sub integrity {
     $SIG{CHLD} = 'IGNORE';
@@ -7586,7 +7539,6 @@ sub integrity {
     return;
 }
 
-
 sub logscanner {
     my $hour = shift;
     if   ( length $hour == 1 ) { $hour = "0$hour:00" }
@@ -7669,7 +7621,6 @@ sub logscanner {
     return;
 }
 
-
 sub exploit {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
@@ -7725,7 +7676,6 @@ sub exploit {
     }
     return;
 }
-
 
 sub getethdev {
     my $ethdev   = ConfigServer::GetEthDev->new();
@@ -7825,7 +7775,6 @@ sub cleanup {
     exit 0;
 }
 
-
 sub childcleanup {
     $SIG{INT}  = 'IGNORE';
     $SIG{TERM} = 'IGNORE';
@@ -7846,7 +7795,6 @@ sub childcleanup {
     }
     exit;
 }
-
 
 sub ignoreip {
     my $ip   = shift;
@@ -7941,7 +7889,6 @@ sub ignoreip {
 
     return 0;
 }
-
 
 sub linefilter {
     my $line     = shift;
@@ -8163,7 +8110,6 @@ sub linefilter {
     return;
 }
 
-
 sub iptablescmd {
     my $line    = shift;
     my $command = shift;
@@ -8272,7 +8218,6 @@ sub iptablescmd {
     return;
 }
 
-
 sub syscommand {
     my ( $line, @cmd ) = @_;
     my $cmdline = join( " ", @cmd );
@@ -8305,8 +8250,8 @@ sub syscommand {
     return @output;
 }
 
-
 my $iptableslock_fh;
+
 sub iptableslock {
     my $lock      = shift;
     my $iptablesx = shift;
@@ -8323,7 +8268,6 @@ sub iptableslock {
     }
     return;
 }
-
 
 sub timer {
     my $status = shift;
@@ -8342,7 +8286,6 @@ sub timer {
     return;
 }
 
-
 sub csflock {
     my $ret = 0;
     sysopen( my $CSFLOCKFILE, "/var/lib/csf/csf.lock", O_RDWR | O_CREAT ) or childcleanup("*Error* Unable to open csf lock file");
@@ -8352,13 +8295,11 @@ sub csflock {
     return $ret;
 }
 
-
 sub lockfail {
     my $section = shift;
     logfile("csf is currently restarting - section [$section] skipped");
     exit;
 }
-
 
 sub ipblock {
     my $perm    = shift;
@@ -8737,7 +8678,6 @@ sub ipblock {
     return $return;
 }
 
-
 sub ipunblock {
     if ( !-z "/var/lib/csf/csf.tempban" ) {
         $SIG{CHLD} = 'IGNORE';
@@ -8961,7 +8901,6 @@ sub ipunblock {
     return;
 }
 
-
 sub cloudflare {
     my $action  = shift;
     my $ip      = shift;
@@ -8991,7 +8930,6 @@ sub cloudflare {
     }
     return;
 }
-
 
 sub block_report {
     my @report = @_;
@@ -9028,7 +8966,6 @@ sub block_report {
     return;
 }
 
-
 sub unblock_report {
     my $ip   = shift;
     my $port = shift;
@@ -9063,7 +9000,6 @@ sub unblock_report {
     }
     return;
 }
-
 
 sub stats_report {
     my @report = @_;
@@ -9228,7 +9164,6 @@ sub stats_report {
     return;
 }
 
-
 sub checkvps {
     if ( -e "/proc/user_beancounters" and !( -e "/proc/vz/version" ) ) {
         open( my $INVPS, "<", "/proc/user_beancounters" );
@@ -9245,7 +9180,6 @@ sub checkvps {
     }
     return 0;
 }
-
 
 sub messengerrecaptcha {
     my $timer = time;
@@ -9303,7 +9237,6 @@ sub messengerrecaptcha {
     return;
 }
 
-
 sub messengerstop {
     my $version = shift;
     if ( $version == 1 ) {
@@ -9344,7 +9277,6 @@ sub messengerstop {
     return;
 }
 
-
 sub messenger {
     my $port  = shift;
     my $user  = shift;
@@ -9381,7 +9313,6 @@ sub messenger {
     return;
 }
 
-
 sub messengerv2 {
     my $timer = time;
 
@@ -9404,7 +9335,6 @@ sub messengerv2 {
     return;
 }
 
-
 sub messengerv3 {
     my $timer = time;
 
@@ -9426,7 +9356,6 @@ sub messengerv3 {
     }
     return;
 }
-
 
 sub domessenger {
     my $ip     = shift;
@@ -9526,7 +9455,6 @@ sub domessenger {
     }
     return;
 }
-
 
 sub ui {
     $SIG{CHLD} = 'IGNORE';
@@ -10420,7 +10348,6 @@ sub ui_413 {
     return;
 }
 
-
 sub lfdserver {
     $SIG{CHLD} = 'IGNORE';
     unless ( defined( $childpid = fork ) ) {
@@ -10673,7 +10600,6 @@ sub lfdserver {
     return;
 }
 
-
 sub lfdclient {
     my $perm    = shift;
     my $message = shift;
@@ -10736,7 +10662,6 @@ sub lfdclient {
     return;
 }
 
-
 sub updateconfig {
     my $chname  = shift;
     my $chvalue = shift;
@@ -10765,7 +10690,6 @@ sub updateconfig {
     close($OUT);
     return;
 }
-
 
 sub stats {
     my $line = shift;
@@ -10844,7 +10768,6 @@ sub stats {
     }
     return;
 }
-
 
 sub systemstats {
     $SIG{CHLD} = 'IGNORE';
@@ -11145,7 +11068,6 @@ sub systemstats {
     return;
 }
 
-
 sub allowip {
     my $ipmatch = shift;
 
@@ -11206,7 +11128,6 @@ sub allowip {
     return;
 }
 
-
 sub testregex {
     my $match = shift;
     eval {
@@ -11216,7 +11137,6 @@ sub testregex {
     if ($@) { return 0 }
     return 1;
 }
-
 
 sub faststart {
     my $text = shift;
@@ -11349,7 +11269,6 @@ sub faststart {
     return;
 }
 
-
 sub fastvps {
     my $size = shift;
     if ( -e "/proc/user_beancounters" and !( -e "/proc/vz/version" ) ) {
@@ -11368,7 +11287,6 @@ sub fastvps {
     return 0;
 }
 
-
 sub ipsetcreate {
     my $set    = shift;
     my $family = "inet";
@@ -11385,7 +11303,6 @@ sub ipsetcreate {
     }
     return;
 }
-
 
 sub ipsetrestore {
     my $set     = shift;
@@ -11408,7 +11325,6 @@ sub ipsetrestore {
     undef @ipset;
     return;
 }
-
 
 sub ipsetswap {
     my $from    = shift;
@@ -11447,7 +11363,6 @@ sub ipsetswap {
     return;
 }
 
-
 sub ipsetadd {
     my $set = shift;
     my $ip  = shift;
@@ -11478,7 +11393,6 @@ sub ipsetadd {
     return;
 }
 
-
 sub ipsetdel {
     my $set = shift;
     my $ip  = shift;
@@ -11499,7 +11413,6 @@ sub ipsetdel {
     }
     return;
 }
-
 
 sub ipsetflush {
     my $set = shift;

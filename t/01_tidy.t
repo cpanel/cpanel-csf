@@ -8,4 +8,4 @@
 
 use Test::PerlTidy qw( run_tests );
 
-run_tests( exclude => [qw/csf.pl auto.pl/] );
+run_tests();

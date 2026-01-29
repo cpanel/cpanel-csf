@@ -775,7 +775,7 @@ if ( not grep { $_ =~ /^lfd/ } @chkservd ) {
 
 if ( $config{TESTING} ) {
     open( my $in_fh, "<", "/etc/ssh/sshd_config" ) or die $!;
-    flock( $in_fh, LOCK_SH )                    or die $!;
+    flock( $in_fh, LOCK_SH )                       or die $!;
     my @sshconfig = <$in_fh>;
     close($in_fh);
     chomp @sshconfig;
@@ -796,12 +796,12 @@ if ( $config{TESTING} ) {
         $config{TCP_IN}  .= ",$sshport";
         $config{TCP6_IN} .= ",$sshport";
         open( my $in_fh, "<", "/etc/csf/csf.conf" ) or die $!;
-        flock( $in_fh, LOCK_SH )                 or die $!;
+        flock( $in_fh, LOCK_SH )                    or die $!;
         my @config = <$in_fh>;
         close($in_fh);
         chomp @config;
         open( my $out_fh, ">", "/etc/csf/csf.conf" ) or die $!;
-        flock( $out_fh, LOCK_EX )                 or die $!;
+        flock( $out_fh, LOCK_EX )                    or die $!;
 
         foreach my $line (@config) {
             if ( $line =~ /^TCP6_IN/ ) {
@@ -831,12 +831,12 @@ if ( $config{TESTING} ) {
         my $min = $3;
         if ( $maj == 3 and $mid > 6 ) {
             open( my $in_fh, "<", "/etc/csf/csf.conf" ) or die $!;
-            flock( $in_fh, LOCK_SH )                 or die $!;
+            flock( $in_fh, LOCK_SH )                    or die $!;
             my @config = <$in_fh>;
             close($in_fh);
             chomp @config;
             open( my $out_fh, ">", "/etc/csf/csf.conf" ) or die $!;
-            flock( $out_fh, LOCK_EX )                 or die $!;
+            flock( $out_fh, LOCK_EX )                    or die $!;
             foreach my $line (@config) {
                 if ( $line =~ /^USE_CONNTRACK =/ ) {
                     print $out_fh "USE_CONNTRACK = \"1\"\n";
@@ -859,12 +859,12 @@ if ( $config{TESTING} ) {
     foreach my $line (@data) {
         if ( $line =~ /Name\s*=\s*"Ubuntu"/i ) {
             open( my $in_fh, "<", "/etc/csf/csf.conf" ) or die $!;
-            flock( $in_fh, LOCK_SH )                 or die $!;
+            flock( $in_fh, LOCK_SH )                    or die $!;
             my @config = <$in_fh>;
             close($in_fh);
             chomp @config;
             open( my $out_fh, ">", "/etc/csf/csf.conf" ) or die $!;
-            flock( $out_fh, LOCK_EX )                 or die $!;
+            flock( $out_fh, LOCK_EX )                    or die $!;
             foreach my $line (@config) {
                 if ( $line =~ /^SSHD_LOG/ )     { $line = 'SSHD_LOG = "/var/log/auth.log"' }
                 if ( $line =~ /^SU_LOG/ )       { $line = 'SU_LOG = "/var/log/auth.log"' }
@@ -900,12 +900,12 @@ if ( $config{TESTING} ) {
         $config{IPTABLESWAIT} = "--wait";
         $config{WAITLOCK}     = 1;
         open( my $in_fh, "<", "/etc/csf/csf.conf" ) or die $!;
-        flock( $in_fh, LOCK_SH )                 or die $!;
+        flock( $in_fh, LOCK_SH )                    or die $!;
         my @config = <$in_fh>;
         close($in_fh);
         chomp @config;
         open( my $out_fh, ">", "/etc/csf/csf.conf" ) or die $!;
-        flock( $out_fh, LOCK_EX )                 or die $!;
+        flock( $out_fh, LOCK_EX )                    or die $!;
 
         foreach my $line (@config) {
             if ( $line =~ /WAITLOCK =/ ) {
@@ -946,12 +946,12 @@ if ( $config{TESTING} ) {
                 }
             }
             open( my $in_fh, "<", "/etc/csf/csf.conf" ) or die $!;
-            flock( $in_fh, LOCK_SH )                 or die $!;
+            flock( $in_fh, LOCK_SH )                    or die $!;
             my @config = <$in_fh>;
             close($in_fh);
             chomp @config;
             open( my $out_fh, ">", "/etc/csf/csf.conf" ) or die $!;
-            flock( $out_fh, LOCK_EX )                 or die $!;
+            flock( $out_fh, LOCK_EX )                    or die $!;
 
             foreach my $line (@config) {
                 if ( $line =~ /^IPV6 =/ ) {
@@ -982,12 +982,12 @@ if ( $config{TESTING} ) {
         $config{TCP_IN}     .= ",$exim";
         $config{SMTP_PORTS} .= ",$exim";
         open( my $in_fh, "<", "/etc/csf/csf.conf" ) or die $!;
-        flock( $in_fh, LOCK_SH )                 or die $!;
+        flock( $in_fh, LOCK_SH )                    or die $!;
         my @config = <$in_fh>;
         close($in_fh);
         chomp @config;
         open( my $out_fh, ">", "/etc/csf/csf.conf" ) or die $!;
-        flock( $out_fh, LOCK_EX )                 or die $!;
+        flock( $out_fh, LOCK_EX )                    or die $!;
 
         foreach my $line (@config) {
             if ( $line =~ /^TCP_IN =/ ) {
@@ -1064,12 +1064,12 @@ if ( $config{TESTING} ) {
 }
 
 open( my $in_fh, "<", "csf.conf" ) or die $!;
-flock( $in_fh, LOCK_SH )        or die $!;
+flock( $in_fh, LOCK_SH )           or die $!;
 my @config = <$in_fh>;
 close($in_fh);
 chomp @config;
 open( my $out_fh, ">", "/etc/csf/csf.conf" ) or die $!;
-flock( $out_fh, LOCK_EX )                 or die $!;
+flock( $out_fh, LOCK_EX )                    or die $!;
 foreach my $line (@config) {
     if ( $line =~ /^\#/ ) {
         print $out_fh $line . "\n";
@@ -1228,7 +1228,7 @@ exit;
 ###############################################################################
 sub loadcsfconfig {
     open( my $in_fh, "<", "/etc/csf/csf.conf" ) or die $!;
-    flock( $in_fh, LOCK_SH )                 or die $!;
+    flock( $in_fh, LOCK_SH )                    or die $!;
     my @config = <$in_fh>;
     close($in_fh);
     chomp @config;
