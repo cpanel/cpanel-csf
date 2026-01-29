@@ -37,6 +37,7 @@ subtest 'Public API functions exist' => sub {
 # We avoid testing their existence directly to prevent brittle tests tied to internals.
 
 subtest '_reset_stats() clears internal state' => sub {
+
     # Start from a clean state
     ConfigServer::ServerStats::_reset_stats();
 
@@ -59,10 +60,10 @@ subtest 'graphs_html() returns HTML structure' => sub {
     my $html = ConfigServer::ServerStats::graphs_html('/images/stats/');
 
     ok( defined $html, 'graphs_html() returns defined value' );
-    like( $html, qr/<table/,             'Output contains table element' );
-    like( $html, qr/lfd_systemhour\.gif/, 'Output references hour graph' );
-    like( $html, qr/lfd_systemday\.gif/,  'Output references day graph' );
-    like( $html, qr/lfd_systemweek\.gif/, 'Output references week graph' );
+    like( $html, qr/<table/,               'Output contains table element' );
+    like( $html, qr/lfd_systemhour\.gif/,  'Output references hour graph' );
+    like( $html, qr/lfd_systemday\.gif/,   'Output references day graph' );
+    like( $html, qr/lfd_systemweek\.gif/,  'Output references week graph' );
     like( $html, qr/lfd_systemmonth\.gif/, 'Output references month graph' );
     like( $html, qr{/images/stats/},       'Output includes provided image directory' );
 };
@@ -71,8 +72,8 @@ subtest 'charts_html() returns HTML structure' => sub {
     my $html = ConfigServer::ServerStats::charts_html( 0, '/images/stats/' );
 
     ok( defined $html, 'charts_html() returns defined value' );
-    like( $html, qr/<table/,        'Output contains table element' );
-    like( $html, qr/lfd_hour\.gif/, 'Output references hour chart' );
+    like( $html, qr/<table/,         'Output contains table element' );
+    like( $html, qr/lfd_hour\.gif/,  'Output references hour chart' );
     like( $html, qr/lfd_month\.gif/, 'Output references month chart' );
     like( $html, qr{/images/stats/}, 'Output includes provided image directory' );
 };
@@ -103,10 +104,11 @@ subtest '_minmaxavg() tracks min/max/avg correctly' => sub {
     my $html = ConfigServer::ServerStats::graphs_html('/img/');
 
     # The HTML should contain the testmetric with Min, Max, Avg values
-    like( $html, qr/testmetric/, 'graphs_html output includes test metric' );
+    like( $html, qr/testmetric/,         'graphs_html output includes test metric' );
     like( $html, qr/Min:<b>10\.00<\/b>/, 'Min value is tracked correctly' );
     like( $html, qr/Max:<b>30\.00<\/b>/, 'Max value is tracked correctly' );
     like( $html, qr/Avg:<b>60\.00<\/b>/, 'Avg value is the accumulated sum in this test path' );
+
     # Note: In this test we call _minmaxavg() directly and then graphs_html(),
     # so the AVG stored in %minmaxavg is the accumulated sum (10+20+30 == 60),
     # and graphs_html() prints that value without dividing by CNT.

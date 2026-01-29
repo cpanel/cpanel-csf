@@ -211,11 +211,11 @@ subtest 'slurpee() with wantarray => 0 returns scalar' => sub {
     close $fh;
 
     my $content = ConfigServer::Slurp::slurpee( $filename, wantarray => 0 );
-    is( ref \$content, 'SCALAR',           'Returns scalar value' );
-    like( $content,    qr/line1/,          'Contains first line' );
-    like( $content,    qr/line2/,          'Contains second line' );
-    like( $content,    qr/line3/,          'Contains third line' );
-    like( $content,    qr/line1\nline2\n/, 'Preserves line endings' );
+    is( ref \$content, 'SCALAR', 'Returns scalar value' );
+    like( $content, qr/line1/,          'Contains first line' );
+    like( $content, qr/line2/,          'Contains second line' );
+    like( $content, qr/line3/,          'Contains third line' );
+    like( $content, qr/line1\nline2\n/, 'Preserves line endings' );
 };
 
 # Test slurpee() with wantarray => 1 (explicit)
@@ -239,7 +239,7 @@ subtest 'slurpee() with warn => 0 suppresses warnings' => sub {
     };
 
     my @lines = ConfigServer::Slurp::slurpee( '/nonexistent/file.txt', warn => 0 );
-    is( \@lines,  [], 'Returns empty array for non-existent file' );
+    is( \@lines,  [],  'Returns empty array for non-existent file' );
     is( $warning, U(), 'No warning emitted when warn => 0' );
 };
 
@@ -274,7 +274,7 @@ subtest 'slurpee() with fatal => 0 does not croak' => sub {
     };
 
     my $result = lives { ConfigServer::Slurp::slurpee( '/nonexistent/file.txt', fatal => 0 ) };
-    ok( $result, 'Does not croak when fatal => 0' );
+    ok( $result,         'Does not croak when fatal => 0' );
     ok( length $warning, "Also emits warning" );
 };
 
