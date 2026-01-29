@@ -972,11 +972,11 @@ if ( $config{TESTING} ) {
     }
 
     my $exim = 0;
-    opendir( DIR, "/etc/chkserv.d" );
-    while ( my $file = readdir(DIR) ) {
+    opendir( my $DIR, "/etc/chkserv.d" );
+    while ( my $file = readdir($DIR) ) {
         if ( $file =~ /exim-(\d+)/ ) { $exim = $1 }
     }
-    closedir(DIR);
+    closedir($DIR);
 
     if ( $exim ne "0" ) {
         $config{TCP_IN}     .= ",$exim";

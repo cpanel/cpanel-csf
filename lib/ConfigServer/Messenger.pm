@@ -367,8 +367,8 @@ sub _messenger {
 
     my %images;
     if ( $type eq "HTML" ) {
-        opendir( DIR, "/etc/csf/messenger" );
-        foreach my $file ( readdir(DIR) ) {
+        opendir( my $DIR, "/etc/csf/messenger" );
+        foreach my $file ( readdir($DIR) ) {
             if ( $file =~ /\.(gif|png|jpg)$/ ) {
                 my @data = slurp("/etc/csf/messenger/$file");
                 chomp @data;
@@ -377,7 +377,7 @@ sub _messenger {
                 }
             }
         }
-        closedir(DIR);
+        closedir($DIR);
     }
     my $chldallow = $config{MESSENGER_CHILDREN};
 
