@@ -206,11 +206,12 @@ sub report {
     $sysinit = ConfigServer::Service::type();
     if ( $sysinit ne "systemd" ) { $sysinit = "init" }
 
-    opendir( PROCDIR, "/proc" );
-    while ( my $pid = readdir(PROCDIR) ) {
+    opendir( my $PROCDIR, "/proc" );
+    while ( my $pid = readdir($PROCDIR) ) {
         if ( $pid !~ /^\d+$/ ) { next }
         push @processes, readlink("/proc/$pid/exe");
     }
+    closedir($PROCDIR);
 
     my $ethdev = ConfigServer::GetEthDev->new();
     %g_ifaces = $ethdev->ifaces;

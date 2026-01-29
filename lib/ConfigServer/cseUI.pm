@@ -261,8 +261,8 @@ sub _browse {
     @months = ( "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" );
 
     my $errordir = 0;
-    opendir( DIR, "$thisdir" ) or $errordir = 1;
-    while ( my $file = readdir(DIR) ) {
+    opendir( my $DIR, "$thisdir" ) or $errordir = 1;
+    while ( my $file = readdir($DIR) ) {
         if ( -d "$thisdir/$file" ) {
             if ( $file !~ /^\.$|^\.\.$/ ) { push( @thisdirs, $file ) }
         }
@@ -271,7 +271,7 @@ sub _browse {
         }
 
     }
-    closedir(DIR);
+    closedir($DIR);
 
     @thisdirs  = sort @thisdirs;
     @thisfiles = sort @thisfiles;

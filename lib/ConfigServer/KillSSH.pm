@@ -180,8 +180,8 @@ sub find {
     opendir( my $PROCDIR, "/proc" );
     while ( my $pid = readdir($PROCDIR) ) {
         if ( $pid !~ /^\d+$/ ) { next }
-        opendir( DIR, "/proc/$pid/fd" ) or next;
-        while ( my $file = readdir(DIR) ) {
+        opendir( my $DIR, "/proc/$pid/fd" ) or next;
+        while ( my $file = readdir($DIR) ) {
             if ( $file =~ /^\./ ) { next }
             my $fd = readlink("/proc/$pid/fd/$file");
             if ( $fd =~ /^socket:\[?([0-9]+)\]?$/ ) {
@@ -191,7 +191,7 @@ sub find {
                 }
             }
         }
-        closedir(DIR);
+        closedir($DIR);
     }
     closedir($PROCDIR);
     return;

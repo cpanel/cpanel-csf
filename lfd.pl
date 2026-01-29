@@ -1122,14 +1122,14 @@ $ports{ftpd}         = $config{PORTS_ftpd};
 $ports{smtpauth}     = $config{PORTS_smtpauth};
 $ports{eximsyntax}   = $config{PORTS_eximsyntax};
 
-opendir( DIR, "/etc/chkserv.d" );
-while ( my $file = readdir(DIR) ) {
+opendir( my $DIR, "/etc/chkserv.d" );
+while ( my $file = readdir($DIR) ) {
     if ( $file =~ /exim-(\d+)/ ) {
         $ports{smtpauth}   .= ",$1";
         $ports{eximsyntax} .= ",$1";
     }
 }
-closedir(DIR);
+closedir($DIR);
 
 if ( -e "/etc/ssh/sshd_config" ) {
     foreach my $line ( slurp("/etc/ssh/sshd_config") ) {
@@ -2398,8 +2398,8 @@ sub syslog_perms {
     }
 
     if ($newpid) {
-        opendir( PROCDIR, "/proc" );
-        while ( my $pid = readdir(PROCDIR) ) {
+        opendir( my $PROCDIR, "/proc" );
+        while ( my $pid = readdir($PROCDIR) ) {
             if ( $pid !~ /^\d+$/ ) { next }
             my $exe = readlink("/proc/$pid/exe");
             if ( $exe =~ m[^(/sbin/syslog)|(/sbin/rsyslog)|(/usr/sbin/syslog)|(/usr/sbin/rsyslog)] ) {
@@ -2407,15 +2407,15 @@ sub syslog_perms {
                 last;
             }
         }
-        closedir(PROCDIR);
+        closedir($PROCDIR);
     }
 
     if ($syslogpid) {
-        opendir( DIR, "/proc/$syslogpid/fd/" );
-        while ( my $file = readdir(DIR) ) {
+        opendir( my $DIR, "/proc/$syslogpid/fd/" );
+        while ( my $file = readdir($DIR) ) {
             if ( readlink("/proc/$syslogpid/fd/$file") =~ /^socket:\[(\d*)\]$/ ) { push @socketids, $1 }
         }
-        closedir(DIR);
+        closedir($DIR);
         if (@socketids) {
             open( my $IN, "<", "/proc/net/unix" );
             flock( $IN, LOCK_SH );
@@ -3970,12 +3970,12 @@ sub processtracking {
         my %users;
         my %net;
 
-        opendir( DIR, "/var/cpanel/users" );
-        while ( my $user = readdir(DIR) ) {
+        opendir( my $DIR, "/var/cpanel/users" );
+        while ( my $user = readdir($DIR) ) {
             if ( $user =~ /^\./ ) { next }
             $users{$user} = 1;
         }
-        closedir(DIR);
+        closedir($DIR);
         $users{nobody} = 1;
 
         foreach my $proto ( "udp", "tcp", "udp6", "tcp6" ) {
@@ -4058,8 +4058,9 @@ sub processtracking {
         my %totproc;
         my %procres;
         my %sessions;
-        opendir( PROCDIR, "/proc" );
-        while ( my $pid = readdir(PROCDIR) ) {
+
+        opendir( my $PROCDIR, "/proc" );
+        while ( my $pid = readdir($PROCDIR) ) {
             if ( $pid !~ /^\d+$/ ) { next }
             open( my $IN, "<", "/proc/$pid/status" ) or next;
             flock( $IN, LOCK_SH );
@@ -4245,12 +4246,12 @@ sub processtracking {
                     my $suspect = 0;
 
                     my @fd;
-                    opendir( DIR, "/proc/$pid/fd" ) or next;
-                    while ( my $file = readdir(DIR) ) {
+                    opendir( my $DIR, "/proc/$pid/fd" ) or next;
+                    while ( my $file = readdir($DIR) ) {
                         if ( $file =~ /^\./ ) { next }
                         push( @fd, readlink("/proc/$pid/fd/$file") );
                     }
-                    closedir(DIR);
+                    closedir($DIR);
 
                     my $files;
                     my $sockets;
@@ -4328,6 +4329,8 @@ sub processtracking {
                 }
             }
         }
+        closedir($PROCDIR);
+
         if ( $config{PT_USERPROC} ) {
             $0 = "lfd - (child) (PT) checking user processes";
             foreach my $user ( keys %totproc ) {
@@ -4653,8 +4656,8 @@ sub scriptalert {
 
         $0 = "lfd - (child) identifying possible email scripts";
 
-        opendir( DIR, "$path" );
-        while ( my $file = readdir(DIR) ) {
+        opendir( my $DIR, "$path" );
+        while ( my $file = readdir($DIR) ) {
             if ( $file =~ /\.(php([\ds]?)|phtml|cgi|pl|pm|sh|py)$/ ) {
                 open( my $IN, "<", "$path/$file" );
                 flock( $IN, LOCK_SH );
@@ -4667,7 +4670,7 @@ sub scriptalert {
                 close($IN);
             }
         }
-        closedir(DIR);
+        closedir($DIR);
 
         if ( $config{LF_SCRIPT_PERM} ) {
             if ( -l $path ) {
@@ -10847,8 +10850,8 @@ sub systemstats {
         chomp $loadavg;
         my @load = split( /\s+/, $loadavg );
 
-        opendir( DIR, "/sys/class/net" );
-        while ( my $dir = readdir(DIR) ) {
+        opendir( my $DIR, "/sys/class/net" );
+        while ( my $dir = readdir($DIR) ) {
             if ( $dir eq "." or $dir eq ".." or $dir eq "lo" ) { next }
             open( my $IN, "<", "/sys/class/net/$dir/operstate" );
             flock( $IN, LOCK_SH );
@@ -10871,7 +10874,7 @@ sub systemstats {
                 $netout += $dataout;
             }
         }
-        closedir(DIR);
+        closedir($DIR);
 
         if ( -e "/proc/diskstats" ) {
             open( my $IN, "<", "/proc/diskstats" );
@@ -10902,8 +10905,8 @@ sub systemstats {
         if ( -e "/sys/devices/platform/coretemp.0/temp2_input" ) { $dotemp = 2 }
         if ( -e "/sys/devices/platform/coretemp.0/temp1_input" ) { $dotemp = 1 }
         if ($dotemp) {
-            opendir( DIR, "/sys/devices/platform" );
-            while ( my $dir = readdir(DIR) ) {
+            opendir( my $DIR, "/sys/devices/platform" );
+            while ( my $dir = readdir($DIR) ) {
                 unless ( $dir =~ /^coretemp/ ) { next }
                 open( my $IN, "<", "/sys/devices/platform/$dir/temp" . $dotemp . "_input" );
                 flock( $IN, LOCK_SH );
@@ -10912,7 +10915,7 @@ sub systemstats {
                 chomp $temp;
                 if ( $temp > $cputemp ) { $cputemp = $temp }
             }
-            closedir(DIR);
+            closedir($DIR);
             $cputemp = sprintf( "%.2f", $cputemp / 1000 );
         }
 
