@@ -51,6 +51,9 @@ The AI MUST automatically identify which instruction sets apply based on file pa
 ### Testing & Quality
 - **Perl Testing**: Test2 framework with comprehensive coverage requirements
 
+### Development Practices
+- **Temporary Files**: Use `./tmp/` directory in repository root instead of `/tmp` for all temporary files during development and testing. The `tmp/` directory is git-ignored and keeps temporary files contained within the project structure.
+
 ## Getting Help
 
 When working with any file in this repository, simply describe what you want to accomplish. The AI will automatically:
