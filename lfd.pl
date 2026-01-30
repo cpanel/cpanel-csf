@@ -192,7 +192,7 @@ else {
     $hostname = "unknown";
 }
 $hostshort   = ( split( /\./, $hostname ) )[0];
-$clock_ticks = sysconf(&POSIX::_SC_CLK_TCK) || 100;
+$clock_ticks = sysconf( POSIX::_SC_CLK_TCK() ) || 100;
 $tz          = strftime( "%z", localtime );
 
 my $pidfile_fh;
@@ -1416,7 +1416,7 @@ while (1) {
         close($IN);
     }
 
-    if ( $config{RESTRICT_SYSLOG} == 3 ) { &syslog_perms }
+    if ( $config{RESTRICT_SYSLOG} == 3 ) { syslog_perms() }
     foreach my $lgfile ( keys %logfiles ) {
         if ( $lgfile eq "" ) { next }
         my $timer = time;
@@ -4916,8 +4916,8 @@ sub blocklist {
                     }
                 }
 
-                if (&csflock) { lockfail("BLOCKLIST") }
-                if ($verbose) { logfile("Retrieved and blocking blocklist $name IP address ranges") }
+                if ( csflock() ) { lockfail("BLOCKLIST") }
+                if ($verbose)    { logfile("Retrieved and blocking blocklist $name IP address ranges") }
                 my $drop = $config{DROP};
                 if ( $config{DROP_IP_LOGGING} ) { $drop = "BLOCKDROP" }
 
@@ -5511,7 +5511,7 @@ sub countrycode {
         }
         else {
             if ( $config{CC_DENY} and $redo_deny ) {
-                if (&csflock) { lockfail("CC_DENY") }
+                if ( csflock() ) { lockfail("CC_DENY") }
                 if ( $config{SAFECHAINUPDATE} ) {
                     iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NEWCC_DENY" );
                 }
@@ -5557,7 +5557,7 @@ sub countrycode {
             }
 
             if ( $config{CC_ALLOW} and $redo_allow ) {
-                if (&csflock) { lockfail("CC_ALLOW") }
+                if ( csflock() ) { lockfail("CC_ALLOW") }
                 if ( $config{SAFECHAINUPDATE} ) {
                     iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NEWCC_ALLOW" );
                 }
@@ -5604,7 +5604,7 @@ sub countrycode {
 
             if ( $config{CC_ALLOW_FILTER} and $redo_allow_filter ) {
                 my $cnt = 0;
-                if (&csflock) { lockfail("CC_ALLOW_FILTER") }
+                if ( csflock() ) { lockfail("CC_ALLOW_FILTER") }
                 if ( $config{SAFECHAINUPDATE} ) {
                     iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NCC_ALLOWF" );
                 }
@@ -5670,7 +5670,7 @@ sub countrycode {
 
             if ( $config{CC_ALLOW_PORTS} and $redo_allow_ports ) {
                 my $cnt = 0;
-                if (&csflock) { lockfail("CC_ALLOW_PORTS") }
+                if ( csflock() ) { lockfail("CC_ALLOW_PORTS") }
                 if ( $config{SAFECHAINUPDATE} ) {
                     iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NCC_ALLOWP" );
                 }
@@ -5718,7 +5718,7 @@ sub countrycode {
 
             if ( $config{CC_DENY_PORTS} and $redo_deny_ports ) {
                 my $cnt = 0;
-                if (&csflock) { lockfail("CC_DENY_PORTS") }
+                if ( csflock() ) { lockfail("CC_DENY_PORTS") }
                 if ( $config{SAFECHAINUPDATE} ) {
                     iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NCC_DENYP" );
                 }
@@ -6320,7 +6320,7 @@ sub countrycode6 {
     }
     else {
         if ( $config{CC_DENY} and $redo_deny ) {
-            if (&csflock) { lockfail("CC_DENY") }
+            if ( csflock() ) { lockfail("CC_DENY") }
             if ( $config{SAFECHAINUPDATE} ) {
                 iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -N NEWCC_DENY" );
             }
@@ -6361,7 +6361,7 @@ sub countrycode6 {
         }
 
         if ( $config{CC_ALLOW} and $redo_allow ) {
-            if (&csflock) { lockfail("CC_ALLOW") }
+            if ( csflock() ) { lockfail("CC_ALLOW") }
             if ( $config{SAFECHAINUPDATE} ) {
                 iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -N NEWCC_ALLOW" );
             }
@@ -6403,7 +6403,7 @@ sub countrycode6 {
 
         if ( $config{CC_ALLOW_FILTER} and $redo_allow_filter ) {
             my $cnt = 0;
-            if (&csflock) { lockfail("CC_ALLOW_FILTER") }
+            if ( csflock() ) { lockfail("CC_ALLOW_FILTER") }
             if ( $config{SAFECHAINUPDATE} ) {
                 iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -N NCC_ALLOWF" );
             }
@@ -6464,7 +6464,7 @@ sub countrycode6 {
 
         if ( $config{CC_ALLOW_PORTS} and $redo_allow_ports ) {
             my $cnt = 0;
-            if (&csflock) { lockfail("CC_ALLOW_PORTS") }
+            if ( csflock() ) { lockfail("CC_ALLOW_PORTS") }
             if ( $config{SAFECHAINUPDATE} ) {
                 iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -N NCC_ALLOWP" );
             }
@@ -6507,7 +6507,7 @@ sub countrycode6 {
 
         if ( $config{CC_DENY_PORTS} and $redo_deny_ports ) {
             my $cnt = 0;
-            if (&csflock) { lockfail("CC_DENY_PORTS") }
+            if ( csflock() ) { lockfail("CC_DENY_PORTS") }
             if ( $config{SAFECHAINUPDATE} ) {
                 iptablescmd( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} -N NCC_DENYP" );
             }
@@ -6577,7 +6577,7 @@ sub global {
                 logfile("Unable to retrieve global allow list - $text");
             }
             else {
-                if (&csflock) { lockfail("GLOBAL_ALLOW") }
+                if ( csflock() ) { lockfail("GLOBAL_ALLOW") }
                 logfile("Global Allow - retrieved and allowing IP address ranges");
 
                 if ( $config{SAFECHAINUPDATE} ) {
@@ -6674,7 +6674,7 @@ sub global {
                 logfile("Unable to retrieve global deny list - $text");
             }
             else {
-                if (&csflock) { lockfail("GLOBAL_DENY") }
+                if ( csflock() ) { lockfail("GLOBAL_DENY") }
                 logfile("Global Deny - retrieved and blocking IP address ranges");
                 my $drop = $config{DROP};
                 if ( $config{DROP_IP_LOGGING} ) { $drop = "BLOCKDROP" }
@@ -6870,7 +6870,7 @@ sub dyndns {
             push @dyndns, $line;
         }
 
-        if (&csflock)              { lockfail("DYNDNS") }
+        if ( csflock() )           { lockfail("DYNDNS") }
         if ( $config{DEBUG} >= 1 ) { logfile("DynDNS - update IP addresses") }
         if ( $config{SAFECHAINUPDATE} ) {
             iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NEWALLOWDYNIN" );
@@ -6986,7 +6986,7 @@ sub globaldyndns {
         close($IN);
         chomp @dyndns;
 
-        if (&csflock) { lockfail("GLOBAL_DYNDNS_INTERVAL") }
+        if ( csflock() ) { lockfail("GLOBAL_DYNDNS_INTERVAL") }
         logfile("Global DynDNS - update IP addresses");
         if ( $config{SAFECHAINUPDATE} ) {
             iptablescmd( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} -N NEWGDYNIN" );
@@ -8159,13 +8159,13 @@ sub iptablescmd {
         exit 1;
     }
 
-    if ( $config{VPS} ) { $status = &checkvps }
+    if ( $config{VPS} ) { $status = checkvps() }
     if ($status) {
         logfile($status);
     }
     else {
         if ( $config{DEBUG} >= 2 ) { logfile("debug[$line]: Command:$command") }
-        if (&csflock) {
+        if ( csflock() ) {
             logfile("csf is currently restarting - command [$command] skipped on line $line");
             unless ( $masterpid == $$ ) { exit }
         }
@@ -8238,13 +8238,13 @@ sub syscommand {
         exit 1;
     }
 
-    if ( $config{VPS} ) { $status = &checkvps }
+    if ( $config{VPS} ) { $status = checkvps() }
     if ($status) {
         logfile($status);
     }
     else {
         if ( $config{DEBUG} >= 2 ) { logfile("debug[$line]: Command:$cmdline") }
-        if (&csflock) {
+        if ( csflock() ) {
             logfile("csf is currently restarting - command [$cmdline] skipped on line $line");
             unless ( $masterpid == $$ ) { exit }
         }
@@ -8476,7 +8476,7 @@ sub ipblock {
 
             if ( $nips > $config{LF_NETBLOCK_COUNT} ) {
                 my $status = 0;
-                if ( $config{VPS} ) { $status = &checkvps }
+                if ( $config{VPS} ) { $status = checkvps() }
                 if ($status) {
                     logfile($status);
                 }
@@ -8518,7 +8518,7 @@ sub ipblock {
             }
             elsif ( $ips > $config{LF_PERMBLOCK_COUNT} ) {
                 my $status = 0;
-                if ( $config{VPS} ) { $status = &checkvps }
+                if ( $config{VPS} ) { $status = checkvps() }
                 if ($status) {
                     logfile($status);
                 }
@@ -8566,7 +8566,7 @@ sub ipblock {
             if ($port) {
                 foreach my $dport ( split( /\,/, $port ) ) {
                     my $status = 0;
-                    if ( $config{VPS} ) { $status = &checkvps }
+                    if ( $config{VPS} ) { $status = checkvps() }
                     if ($status) {
                         logfile($status);
                     }
@@ -8588,7 +8588,7 @@ sub ipblock {
             }
             else {
                 my $status = 0;
-                if ( $config{VPS} ) { $status = &checkvps }
+                if ( $config{VPS} ) { $status = checkvps() }
                 if ($status) {
                     logfile($status);
                 }
