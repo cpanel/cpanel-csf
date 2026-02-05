@@ -1,6 +1,13 @@
-.PHONY: sandbox test man install
+# OBS Build System Integration
+OBS_PROJECT := cpanel-plugins
+OBS_PACKAGE := cpanel-csf
+DISABLE_BUILD := repository=CentOS_6.5_standard repository=xUbuntu_22.04 repository=xUbuntu_24.04
+-include $(EATOOLS_BUILD_DIR)obs.mk
+
+.PHONY: sandbox test man install tarball clean-tarball
 
 ULC=/usr/local/cpanel
+VERSION := $(shell cat etc/version.txt 2>/dev/null || echo "15.00")
 sandbox:
 	mkdir -p /usr/local/csf
 	ln -sfn $(CURDIR)/lib /usr/local/csf/lib
@@ -22,8 +29,51 @@ sandbox:
 	test -e $(ULC)/whostmgr/cgi/configserver/csf/csf_small.png && rm -f $(ULC)/whostmgr/cgi/configserver/csf/csf_small.png; /bin/true
 	ln -s $(CURDIR)/cpanel/csf_small.png $(ULC)/whostmgr/cgi/configserver/csf/csf_small.png
 
-clean:
+clean: clean-tarball
 	rm -rf csf.tar.gz
+
+clean-tarball:
+	rm -f SOURCES/csf-*.tar.gz
+
+# Generate tarball for OBS/RPM build
+tarball: clean-tarball
+	@echo "Creating tarball for version $(VERSION)..."
+	@mkdir -p SOURCES
+	@tar -czf SOURCES/csf-$(VERSION).tar.gz \
+		--transform 's,^,csf-$(VERSION)/,' \
+		--exclude='.git*' \
+		--exclude='SPECS' \
+		--exclude='SOURCES' \
+		--exclude='OBS.*' \
+		--exclude='*.tar.gz' \
+		--exclude='tmp' \
+		--exclude='cover_db' \
+		--exclude='install.sh' \
+		--exclude='bin/uninstall.sh' \
+		etc/ \
+		tpl/ \
+		bin/ \
+		lib/ \
+		csf.pl \
+		lfd.pl \
+		csfcron.sh \
+		lfdcron.sh \
+		migratedata.sh \
+		profiles/ \
+		csf.1.txt \
+		lfd.logrotate \
+		cpanel/ \
+		csf/ \
+		lfd.service \
+		csf.service \
+		lfd.sh \
+		csf.sh \
+		os.pl
+	@echo "Created SOURCES/csf-$(VERSION).tar.gz"
+
+# Ensure tarball is created before local or obs builds
+local: tarball
+obs: tarball
 
 test:
 	yath test -j8 t/*.t
@@ -64,7 +114,5 @@ install: lib/csf.help
 		lfd.service \
 		csf.service \
 		lfd.sh \
-		csf.sh \
-		csget.pl \
-		auto.pl
+		csf.sh
 	@echo "Created csf.tar.gz"
