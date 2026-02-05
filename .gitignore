@@ -6,6 +6,14 @@
 .vscode/*
 csf.tar.gz
 
+# OBS Build Artifacts
+OBS.*
+SOURCES/*.tar.gz
+RPMS/*
+SRPMS/*
+debian/*
+cpanel-csf_*
+
 # Perl development
 *.swp
 *.tmp
