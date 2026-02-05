@@ -38,6 +38,7 @@ require Whostmgr::ACLS;
 require Cpanel::Rlimit;
 require Cpanel::Template;
 require Cpanel::Version::Tiny;
+require Cpanel::Encoder::Tiny;
 
 our ( $reseller, $script, $images, %rprivs, $myv, %FORM );
 
@@ -45,8 +46,8 @@ Whostmgr::ACLS::init_acls();
 
 %FORM = Cpanel::Form::parseform();
 
-# Remove any params with HTML looking stuff (script tags, iframes, etc.)
-%FORM = map { $_ => $FORM{$_} } grep { $FORM{$_} !~ m/<\w+|%3C\w+/ } keys(%FORM);
+# Encode any params with HTML looking stuff (script tags, iframes, etc.)
+%FORM = map { $_ => Cpanel::Encoder::Tiny::safe_html_encode_str($FORM{$_}) } keys(%FORM);
 
 my $config   = ConfigServer::Config->loadconfig();
 my %config   = $config->config;
