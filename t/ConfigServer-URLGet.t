@@ -126,13 +126,10 @@ my $open3_mock = mock 'IPC::Open3' => (
                 $content = "Binary download content";
             }
 
-            # Create the filehandle in the caller's namespace
-            {
-                no strict 'refs';
-                my $fh;
-                open( $fh, '<', \$content ) or die "Failed to open scalar: $!";
-                *{$childout} = $fh;
-            }
+            my $fh;
+            open( $fh, '<', \$content ) or die "Failed to open scalar: $!";
+            $_[1] = $fh;
+            $_[2] = $fh;
 
             return 12345;    # Mock PID
         },
@@ -272,6 +269,27 @@ subtest 'urlget - binary option with curl' => sub {
 
     is( $status, 0, 'Binary download succeeded' );
     like( $text, qr/Binary download/, 'Got binary content' );
+
+    clear_config();
+};
+
+subtest 'urlget - redacts key in binary errors' => sub {
+    clear_config();
+
+    my ( $curl_fh, $curl_path ) = tempfile( DIR => $tempdir );
+    close $curl_fh;
+
+    set_config(
+        CURL => $curl_path,
+        WGET => '',
+    );
+
+    my $urlget = ConfigServer::URLGet->new( 3, "TestAgent/1.0", "" );
+    my ( $status, $text ) = $urlget->urlget('https://example.com/fail?key=SUPERSECRET');
+
+    is( $status, 1, 'Binary download fails as expected' );
+    like( $text, qr/key=REDACTED/i, 'Error text redacts key parameter' );
+    unlike( $text, qr/SUPERSECRET/, 'Error text does not leak secret key' );
 
     clear_config();
 };
