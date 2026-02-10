@@ -19,6 +19,16 @@ Source0:        csf-%{version}.tar.gz
 
 # Requires from install.sh os.pl checks and runtime dependencies
 Requires:       cpanel-perl
+Requires:       /usr/local/cpanel/3rdparty/bin/perl
+# Perl module dependencies used by CSF/lfd runtime code
+Requires:       cpanel-perl-gd-graph-bars
+Requires:       cpanel-perl-gd-graph-lines
+Requires:       cpanel-perl-gd-graph-pie
+Requires:       cpanel-perl-io-socket-inet6
+Requires:       cpanel-perl-libwww-perl
+Requires:       cpanel-perl-net-cidr-lite
+Requires:       cpanel-perl-net-ip
+Requires:       cpanel-perl-yaml-tiny
 Requires:       iptables
 Requires:       ipset
 Requires:       /usr/bin/sendmail
@@ -140,9 +150,21 @@ ln -sf /usr/local/csf/tpl %{buildroot}/etc/csf/alerts
 rm -rf %{buildroot}
 
 %pre
-# Note: RPM will only run as root, so no need to check
-# Check for required Perl modules would require os.pl in buildroot, skipping
-# Dependencies are handled via Requires: cpanel-perl and other package deps
+# Fail closed: this RPM is only supported on cPanel & WHM systems.
+if [ ! -r /usr/local/cpanel/version ]; then
+    echo "ERROR: cPanel not detected (/usr/local/cpanel/version missing)." >&2
+    exit 1
+fi
+
+if [ ! -x /usr/local/cpanel/bin/register_appconfig ]; then
+    echo "ERROR: cPanel not detected (/usr/local/cpanel/bin/register_appconfig missing)." >&2
+    exit 1
+fi
+
+if [ ! -x /usr/local/cpanel/3rdparty/bin/perl ]; then
+    echo "ERROR: cPanel Perl not detected at /usr/local/cpanel/3rdparty/bin/perl." >&2
+    exit 1
+fi
 
 %post
 # Touch to update cPanel's ConfigObj cache
