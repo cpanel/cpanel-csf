@@ -24,6 +24,7 @@ use Fcntl qw(:DEFAULT :flock);
 use File::Basename;
 use IO::Handle;
 use IPC::Open3;
+use IO::Select;
 use Net::CIDR::Lite;
 use Socket;
 use ConfigServer::Config;
@@ -798,7 +799,6 @@ sub clustersend {
             }
             else {
                 print "Sent request to $cip";
-                use IO::Select;
                 my $select = IO::Select->new($sock);
                 if ( $select->can_read(5) ) {
                     my $line;
