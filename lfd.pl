@@ -7781,7 +7781,7 @@ sub cleanup {
 
     kill( 9, -$$ );
 
-    exit 0;
+    exit 0;  ## no critic (Cpanel::NoExitsFromSubroutines) - Program cleanup termination
 }
 
 sub childcleanup {
@@ -7802,7 +7802,7 @@ sub childcleanup {
         if ( $line ne "" ) { $message .= ", at line $line" }
         logfile("$message");
     }
-    exit;
+    exit;  ## no critic (Cpanel::NoExitsFromSubroutines) - Child process termination
 }
 
 sub ignoreip {
@@ -8156,7 +8156,7 @@ sub iptablescmd {
 
     if ( -e "/etc/csf/csf.error" ) {
         cleanup( __LINE__, "*Error* csf reported an error (see /etc/csf/csf.error). *lfd stopped*" );
-        exit 1;
+        exit 1;  ## no critic (Cpanel::NoExitsFromSubroutines) - Fatal csf error termination
     }
 
     if ( $config{VPS} ) { $status = checkvps() }
@@ -8235,7 +8235,7 @@ sub syscommand {
 
     if ( -e "/etc/csf/csf.error" ) {
         cleanup( __LINE__, "*Error* csf reported an error (see /etc/csf/csf.error). *lfd stopped*" );
-        exit 1;
+        exit 1;  ## no critic (Cpanel::NoExitsFromSubroutines) - Fatal csf error termination
     }
 
     if ( $config{VPS} ) { $status = checkvps() }
@@ -8307,7 +8307,7 @@ sub csflock {
 sub lockfail {
     my $section = shift;
     logfile("csf is currently restarting - section [$section] skipped");
-    exit;
+    exit;  ## no critic (Cpanel::NoExitsFromSubroutines) - Lock failure termination
 }
 
 sub ipblock {
