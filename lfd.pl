@@ -120,7 +120,7 @@ if ( $config{UI} or $config{LF_DIRWATCH_FILE} ) {
     import Digest::MD5;
 }
 if ( $config{SYSLOG} or $config{SYSLOG_CHECK} ) {
-    eval('use Sys::Syslog;');    ##no critic
+    eval('use Sys::Syslog;');    ## no critic (BuiltinFunctions::ProhibitStringyEval) - Optional module load - syslog support not required on all systems
     unless ($@) { $sys_syslog = 1 }
 }
 if ( $config{DEBUG} ) {
@@ -173,9 +173,9 @@ open STDOUT, ">", "/dev/null";
 open STDERR, ">", "/dev/null";
 setsid();
 
-my $oldfh = select STDERR;    ##no critic
+my $oldfh = select STDERR;    ## no critic (InputOutput::ProhibitOneArgSelect) - Save current filehandle before STDERR redirection in daemon mode
 $| = 1;
-select $oldfh;                ##no critic
+select $oldfh;                ## no critic (InputOutput::ProhibitOneArgSelect) - Restore previous filehandle after setting autoflush on STDERR
 
 if ( $config{DEBUG} ) {
     open( STDERR, ">>", "/var/log/lfd.log" );
@@ -4109,7 +4109,7 @@ sub processtracking {
                 }
                 if ($pmatch) { next }
 
-                my %printable = ( ( map { chr($_), unpack( 'H2', chr($_) ) } ( 0 .. 255 ) ), "\\" => '\\', "\r" => 'r', "\n" => 'n', "\t" => 't', "\"" => '"' );    ##no critic
+                my %printable = ( ( map { chr($_), unpack( 'H2', chr($_) ) } ( 0 .. 255 ) ), "\\" => '\\', "\r" => 'r', "\n" => 'n', "\t" => 't', "\"" => '"' );
 
                 my $exe = readlink("/proc/$pid/exe");
                 my $cwd = readlink("/proc/$pid/cwd");
@@ -9567,7 +9567,7 @@ sub ui {
                         alarm(0);
                         exit;
                     }
-                    $ENV{REMOTE_ADDR} = $peeraddress;    ##no critic
+                    $ENV{REMOTE_ADDR} = $peeraddress;
 
                     if ( $ips{$peeraddress} ) {
                         logfile("UI: Login attempt from local IP address denied [$peeraddress]");
@@ -9659,7 +9659,7 @@ sub ui {
                         }
                     }
 
-                    select $client;    ##no critic
+                    select $client;    ## no critic (InputOutput::ProhibitOneArgSelect) - Direct output to client socket for UI responses
                     $| = 1;
 
                     $clientcnt = 0;
@@ -10954,7 +10954,7 @@ sub systemstats {
         close($EMAIL);
 
         if ( $config{ST_MYSQL} ) {
-            eval('use DBI;');    ##no critic
+            eval('use DBI;');    ## no critic (BuiltinFunctions::ProhibitStringyEval) - Optional module load - database support not required on all systems
             if ($@) {
                 sysopen( my $TEMPCONF, "/var/lib/csf/csf.tempconf", O_WRONLY | O_APPEND | O_CREAT ) or childcleanup( __LINE__, "*Error* Cannot append out file: $!" );
                 flock( $TEMPCONF, LOCK_EX );

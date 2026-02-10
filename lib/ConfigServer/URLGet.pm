@@ -190,13 +190,13 @@ sub new {
         return $self;
     }
     elsif ( $option == 2 ) {
-        eval('use LWP::UserAgent;');    ##no critic
+        eval('use LWP::UserAgent;');    ## no critic (BuiltinFunctions::ProhibitStringyEval) - Optional module load - falls back to HTTP::Tiny if unavailable
         if ($@) { return undef }
     }
     else {
         eval {
             local $SIG{__DIE__} = undef;
-            eval('use HTTP::Tiny;');    ##no critic
+            eval('use HTTP::Tiny;');    ## no critic (BuiltinFunctions::ProhibitStringyEval) - Optional module load - lightweight HTTP client fallback
         };
     }
 
