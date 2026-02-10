@@ -2467,7 +2467,7 @@ sub syslog_perms {
     return;
 }
 
-sub block {
+sub block {    ## no critic (Subroutines::ProhibitManyArgs) - Legacy function signature with 8 parameters for comprehensive IP blocking control
     my $ip      = shift;
     my $ipcount = shift;
     my $app     = shift;
@@ -7091,7 +7091,7 @@ sub globaldyndns {
     return;
 }
 
-my $listlock_fh;
+my $listlock_fh;    ## no critic (ControlStructures::ProhibitUnreachableCode) - Package-level variable, not unreachable code
 
 sub listlock {
     my $state = shift;
@@ -7727,7 +7727,7 @@ sub getethdev {
 }
 
 sub hex2ip {
-    my $bin = pack "C*" => map hex, $_[0] =~ /../g;
+    my $bin = pack "C*" => map { hex($_) } $_[0] =~ /../g;
     my @l   = unpack "L*", $bin;
     if ( @l == 4 ) {
         return join ':', map { sprintf "%x:%x", $_ >> 16, $_ & 0xffff } @l;
@@ -7738,7 +7738,7 @@ sub hex2ip {
 }
 
 sub ipv4in6 {
-    my $in   = $_[0];
+    my ($in) = @_;
     my @ipv6 = split( ":", $in );
 
     my $v6part1 = hex( $ipv6[6] );
@@ -8259,7 +8259,7 @@ sub syscommand {
     return @output;
 }
 
-my $iptableslock_fh;
+my $iptableslock_fh;    ## no critic (ControlStructures::ProhibitUnreachableCode) - Package-level variable, not unreachable code
 
 sub iptableslock {
     my $lock      = shift;
@@ -8310,7 +8310,7 @@ sub lockfail {
     exit;
 }
 
-sub ipblock {
+sub ipblock {    ## no critic (Subroutines::ProhibitManyArgs) - Legacy function signature with 6 parameters for IP/port blocking configuration
     my $perm    = shift;
     my $message = shift;
     my $ip      = shift;
@@ -10609,7 +10609,7 @@ sub lfdserver {
     return;
 }
 
-sub lfdclient {
+sub lfdclient {    ## no critic (Subroutines::ProhibitManyArgs) - Legacy function signature with 6 parameters for cluster communication
     my $perm    = shift;
     my $message = shift;
     my $ip      = shift;

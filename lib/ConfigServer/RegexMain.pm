@@ -112,6 +112,7 @@ sub _eth_info {
     my $ethdev = ConfigServer::GetEthDev->new();
     %brd = $ethdev->brd;
     %ips = $ethdev->ipv4;
+    return;
 }
 
 if ( -e "/usr/local/csf/bin/regex.custom.pm" ) {
@@ -876,6 +877,7 @@ sub scriptlinecheck {
             return $fulldir if ( length $homematch and $dir =~ /$homematch/ );
         }
     }
+    return;
 }
 
 =head2 relaycheck

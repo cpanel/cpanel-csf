@@ -446,7 +446,7 @@ sub geo_binary {
         my %country_name;
         open( my $CC, "<", "/var/lib/csf/Geo/countryInfo.txt" );
         flock( $CC, Fcntl::LOCK_SH );
-        foreach my $line (<$CC>) {
+        while ( my $line = <$CC> ) {
             if ( $line eq "" or $line =~ /^\#/ or $line =~ /^\s/ ) { next }
             my ( $cc, undef, undef, undef, $country, undef ) = split( /\t/, $line );
             if ( $cc ne "" and $country ne "" ) { $country_name{$cc} = $country }
