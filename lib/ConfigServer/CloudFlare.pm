@@ -101,7 +101,6 @@ sub action {
     my $allowany   = shift;
 
     my $status;
-    my $return;
 
     my $DEBUG = ConfigServer::Config->get_config('DEBUG');
 

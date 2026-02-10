@@ -1474,7 +1474,7 @@ EOD
                 my $line = $iptables[$x];
                 $divcnt++;
                 my ( $text, $log ) = split( /\|/, $line );
-                my ( $time, $desc, $in, $out, $src, $dst, $spt, $dpt, $proto, $inout );
+                my ( $time, $in, $out, $src, $dst, $spt, $dpt, $proto, $inout );
                 if ( $log =~ /IN=(\S+)/ )    { $in    = $1 }
                 if ( $log =~ /OUT=(\S+)/ )   { $out   = $1 }
                 if ( $log =~ /SRC=(\S+)/ )   { $src   = $1 }

@@ -187,8 +187,6 @@ sub listening {
             }
         }
 
-        my $files;
-        my $sockets;
         foreach my $file (@fd) {
             if ( $file =~ /^socket:\[?([0-9]+)\]?$/ ) {
                 my $ino = $1;
