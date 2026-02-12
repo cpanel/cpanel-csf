@@ -18,7 +18,8 @@
 # this program; if not, see <https://www.gnu.org/licenses>.
 ###############################################################################
 
-use strict;
+use cPstrict;
+
 use lib '/usr/local/csf/lib';
 use Fcntl qw(:DEFAULT :flock);
 use File::Basename;

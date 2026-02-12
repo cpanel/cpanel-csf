@@ -18,7 +18,7 @@
 # this program; if not, see <https://www.gnu.org/licenses>.
 ###############################################################################
 
-use strict;
+use cPstrict;
 use IPC::Open3;
 
 umask(0177);
