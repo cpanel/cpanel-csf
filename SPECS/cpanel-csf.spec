@@ -2,7 +2,7 @@
 # RPM spec file
 
 %define release_prefix 1
-%define csf_version 15.00
+%define csf_version 16.00
 
 Name:           cpanel-csf
 Version:        %{csf_version}
@@ -15,11 +15,10 @@ Vendor:         ConfigServer Services
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root
 BuildArch:      noarch
 
-Source0:        csf-%{version}.tar.gz
+Source0:        cpanel-csf-%{version}.tar.gz
 
 # Requires from install.sh os.pl checks and runtime dependencies
 Requires:       cpanel-perl
-Requires:       /usr/local/cpanel/3rdparty/bin/perl
 # Perl module dependencies used by CSF/lfd runtime code
 Requires:       cpanel-perl-gd-graph-bars
 Requires:       cpanel-perl-gd-graph-lines
@@ -31,9 +30,6 @@ Requires:       cpanel-perl-net-ip
 Requires:       cpanel-perl-yaml-tiny
 Requires:       iptables
 Requires:       ipset
-Requires:       /usr/bin/sendmail
-Requires:       /usr/sbin/groupadd
-Requires:       /usr/sbin/useradd
 Requires(post): systemd
 Requires(preun): systemd
 Requires(postun): systemd
@@ -49,7 +45,7 @@ CSF includes Login Failure Daemon (lfd) which scans log files for login attempts
 against your server that continually fail within a short period of time.
 
 %prep
-%setup -q -n csf-%{version}
+%setup -q -n cpanel-csf-%{version}
 
 %build
 # No build required - all scripts
@@ -182,6 +178,7 @@ if [ $1 -eq 2 ]; then
     fi
     # Remove auto-update cron job if it exists
     rm -f /etc/cron.d/csf_update
+    rm -f /etc/cron.daily/csget
 fi
 
 # Disable and mask firewalld if present
@@ -286,6 +283,6 @@ fi
 /usr/local/cpanel/bin/csf.conf.appconfig
 
 %changelog
-* Wed Feb 05 2025 Thomas "Andy" Baugh <andy.baugh@webpros.com> - 15.00-1
+* Wed Feb 05 2025 Thomas "Andy" Baugh <andy.baugh@webpros.com> - 16.00-1
 - Initial RPM packaging of CSF for cPanel OBS build system
 - Converted from install.sh to RPM spec file

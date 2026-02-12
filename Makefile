@@ -1,13 +1,17 @@
 # OBS Build System Integration
 OBS_PROJECT := cpanel-plugins
 OBS_PACKAGE := cpanel-csf
-DISABLE_BUILD := repository=CentOS_6.5_standard repository=xUbuntu_22.04 repository=xUbuntu_24.04
+DISABLE_BUILD := repository=CentOS_6.5_standard
+
+# Export OBS_PROJECT so debify can find the RPM to query for file lists
+export OBS_PROJECT
+
 -include $(EATOOLS_BUILD_DIR)obs.mk
 
 .PHONY: sandbox test man install tarball clean-tarball
 
 ULC=/usr/local/cpanel
-VERSION := $(shell cat etc/version.txt 2>/dev/null || echo "15.00")
+VERSION := $(shell cat etc/version.txt 2>/dev/null || echo "16.00")
 sandbox:
 	mkdir -p /usr/local/csf
 	ln -sfn $(CURDIR)/lib /usr/local/csf/lib
@@ -33,14 +37,14 @@ clean: clean-tarball
 	rm -rf csf.tar.gz
 
 clean-tarball:
-	rm -f SOURCES/csf-*.tar.gz
+	rm -f SOURCES/cpanel-csf-*.tar.gz
 
 # Generate tarball for OBS/RPM build
 tarball: clean-tarball
 	@echo "Creating tarball for version $(VERSION)..."
 	@mkdir -p SOURCES
-	@tar -czf SOURCES/csf-$(VERSION).tar.gz \
-		--transform 's,^,csf-$(VERSION)/,' \
+	@tar -czf SOURCES/cpanel-csf-$(VERSION).tar.gz \
+		--transform 's,^,cpanel-csf-$(VERSION)/,' \
 		--exclude='.git*' \
 		--exclude='SPECS' \
 		--exclude='SOURCES' \
@@ -48,8 +52,7 @@ tarball: clean-tarball
 		--exclude='*.tar.gz' \
 		--exclude='tmp' \
 		--exclude='cover_db' \
-		--exclude='install.sh' \
-		--exclude='bin/uninstall.sh' \
+		--exclude='debify' \
 		etc/ \
 		tpl/ \
 		bin/ \
@@ -69,7 +72,7 @@ tarball: clean-tarball
 		lfd.sh \
 		csf.sh \
 		os.pl
-	@echo "Created SOURCES/csf-$(VERSION).tar.gz"
+	@echo "Created SOURCES/cpanel-csf-$(VERSION).tar.gz"
 
 # Ensure tarball is created before local or obs builds
 local: tarball
@@ -95,7 +98,6 @@ install: lib/csf.help
 	@echo "Version updated to $$(cat etc/version.txt)"
 	@# Create tarball with files needed by install.sh
 	tar -czf csf.tar.gz \
-		install.sh \
 		os.pl \
 		etc/ \
 		tpl/ \

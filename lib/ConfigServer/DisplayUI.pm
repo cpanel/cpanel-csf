@@ -172,23 +172,6 @@ sub main {
     elsif ( ( $FORM{template} ne "" ) and ( $FORM{template} =~ /[^\w\.]/ ) ) {
         print "[$FORM{template}] is not a valid file";
     }
-    elsif ( $FORM{action} eq "manualcheck" ) {
-        print "<div><p>Checking version...</p>\n\n";
-        my ( $upgrade, $actv ) = _manualversion($myv);
-        if ($upgrade) {
-            print "<form action='$script' method='post'><button name='action' value='upgrade' type='submit' class='btn btn-default'>Upgrade csf</button> A new version of csf (v$actv) is available. Upgrading will retain your settings. <a href='https://$config{DOWNLOADSERVER}/csf/changelog.txt' target='_blank'>View ChangeLog</a></form>\n";
-        }
-        else {
-            if ( $actv ne "" ) {
-                print "<div class='bs-callout bs-callout-danger'>$actv</div>\n";
-            }
-            else {
-                print "<div class='bs-callout bs-callout-info'>You are running the latest version of csf (v$myv). An Upgrade button will appear here if a new version becomes available</div>\n";
-            }
-        }
-        print "</div>\n";
-        _printreturn();
-    }
     elsif ( $FORM{action} eq "lfdstatus" ) {
         print "<div><p>Show lfd status...</p>\n<pre class='comment' style='white-space: pre-wrap;'>\n";
         ConfigServer::Service::statuslfd();
@@ -2150,7 +2133,6 @@ EOF
         print $status;
 
         print "<div class='normalcontainer'>\n";
-        print "<div class='bs-callout bs-callout-info text-center collapse' id='upgradebs'><h4>A new version of csf is <a href='#upgradetable'>available</a></h4></div>";
 
         print "<ul class='nav nav-tabs' id='myTabs' style='font-weight:bold'>\n";
         print "<li class='active'><a data-toggle='tab' href='#' id='tabAll'>All</a></li>\n";
@@ -2189,20 +2171,6 @@ EOF
 
         print "<form action='$script' method='post'>\n";
         print "<table class='table table-bordered table-striped' id='upgradetable'>\n";
-        print "<thead><tr><th colspan='2'>Upgrade</th></tr></thead>";
-        my ( $upgrade, $actv ) = _csgetversion( "csf", $myv );
-        if ($upgrade) {
-            print "<tr><td><button name='action' value='upgrade' type='submit' class='btn btn-default'>Upgrade csf</button></td><td style='width:100%'><b>A new version of csf (v$actv) is available. Upgrading will retain your settings<br><a href='https://$config{DOWNLOADSERVER}/csf/changelog.txt' target='_blank'>View ChangeLog</a></b></td></tr>\n";
-        }
-        else {
-            print "<tr><td><button name='action' value='manualcheck' type='submit' class='btn btn-default'>Manual Check</button></td><td>";
-            if ( $actv ne "" ) {
-                print "(csget cron check) $actv</td></tr>\n";
-            }
-            else {
-                print "You are running the latest version of csf. An Upgrade button will appear here if a new version becomes available. New version checking is performed automatically by a daily cron job (csget)</td></tr>\n";
-            }
-        }
         if ( -e "/etc/apf" or -e "/usr/local/bfd" ) {
             print "<tr><td><button name='action' value='remapf' type='submit' class='btn btn-default'>Remove APF/BFD</button></td><td style='width:100%'>Remove APF/BFD from the server. You must not run both APF or BFD with csf on the same server</td></tr>\n";
         }
@@ -2229,7 +2197,6 @@ EOF
         }
         print "</table>\n";
         print "</form>\n";
-        if ($upgrade) { print "<script>\$('\#upgradebs').show();</script>\n" }
         print "</div>\n";
 
         print "<div id='csf' class='tab-pane active'>\n";
@@ -2913,71 +2880,6 @@ sub _confirmmodal {
     print "});\n";
     print "</script>\n";
     return;
-}
-
-sub _csgetversion {
-    my $product = shift;
-    my $current = shift;
-    my $upgrade = 0;
-    my $newversion;
-    if ( -e "/var/lib/configserver/" . $product . ".txt.error" ) {
-        open( my $VERSION, "<", "/var/lib/configserver/" . $product . ".txt.error" );
-        flock( $VERSION, Fcntl::LOCK_SH );
-        $newversion = <$VERSION>;
-        close($VERSION);
-        chomp $newversion;
-        if ( $newversion eq "" ) {
-            $newversion = "Failed to retrieve latest version from ConfigServer";
-        }
-        else {
-            $newversion = "Failed to retrieve latest version from ConfigServer: $newversion";
-        }
-    }
-    elsif ( -e "/var/lib/configserver/" . $product . ".txt" ) {
-        open( my $VERSION, "<", "/var/lib/configserver/" . $product . ".txt" );
-        flock( $VERSION, Fcntl::LOCK_SH );
-        $newversion = <$VERSION>;
-        close($VERSION);
-        chomp $newversion;
-        if ( $newversion eq "" ) {
-            $newversion = "Failed to retrieve latest version from ConfigServer";
-        }
-        else {
-            if ( $newversion =~ /^[\d\.]*$/ ) {
-                if   ( $newversion > $current ) { $upgrade    = 1 }
-                else                            { $newversion = "" }
-            }
-            else { $newversion = "" }
-        }
-    }
-    elsif ( -e "/var/lib/configserver/error" ) {
-        open( my $VERSION, "<", "/var/lib/configserver/error" );
-        flock( $VERSION, Fcntl::LOCK_SH );
-        $newversion = <$VERSION>;
-        close($VERSION);
-        chomp $newversion;
-        if ( $newversion eq "" ) {
-            $newversion = "Failed to retrieve latest version from ConfigServer";
-        }
-        else {
-            $newversion = "Failed to retrieve latest version from ConfigServer: $newversion";
-        }
-    }
-    else {
-        $newversion = "Failed to retrieve latest version from ConfigServer";
-    }
-    return ( $upgrade, $newversion );
-}
-
-sub _manualversion {
-    my $current = shift;
-    my $upgrade = 0;
-    my $url     = "https://$config{DOWNLOADSERVER}/csf/version.txt";
-    if ( $config{URLGET} == 1 ) { $url = "http://$config{DOWNLOADSERVER}/csf/version.txt"; }
-    my ( $status, $newversion ) = $urlget->urlget($url);
-    if   ( !$status and $newversion ne "" and $newversion =~ /^[\d\.]*$/ and $newversion > $current ) { $upgrade    = 1 }
-    else                                                                                              { $newversion = "" }
-    return ( $upgrade, $newversion );
 }
 
 1;
