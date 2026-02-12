@@ -18,7 +18,7 @@
 # this program; if not, see <https://www.gnu.org/licenses>.
 ###############################################################################
 # Example PT_DELETED_ACTION script
-use strict;
+use cPstrict;
 
 my $exe  = $ARGV[0];
 my $pid  = $ARGV[1];

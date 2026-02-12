@@ -476,10 +476,9 @@ severity = 4
 severity = 3
 
 # Use `local $/ = undef' or Path::Tiny instead of joined readline.
-[InputOutput::ProhibitJoinedReadline]
+[-InputOutput::ProhibitJoinedReadline]
 # Upgraded severity. Default severity: 3.
-# Enforced by cPLint.
-severity = 4
+# Disabled per project preference
 
 # Never write `select($fh)'.
 [InputOutput::ProhibitOneArgSelect]
@@ -658,11 +657,9 @@ severity = 4
 severity = 3
 
 # Provide custom package recommendations
-[PreferredModules]
+[-PreferredModules]
 # Upgraded severity. Default severity: 3.
-# Enforced by cPLint.
-severity = 4
-config = /usr/local/cpanel/build-tools/perlcriticrc-preferred-modules.cfg
+# Disabled per project preference
 
 # Write `@{ $array_ref }' instead of `@$array_ref'.
 [References::ProhibitDoubleSigils]
@@ -683,10 +680,9 @@ severity = 3
 severity = 3
 
 # Use named character classes instead of explicit character lists.
-[RegularExpressions::ProhibitEnumeratedClasses]
+[-RegularExpressions::ProhibitEnumeratedClasses]
 # Default severity: 1.
-# Not enforced by cPlint
-severity = 1
+# Disabled per project preference
 
 # Use character classes for literal meta-characters instead of escapes.
 [RegularExpressions::ProhibitEscapedMetacharacters]
@@ -954,10 +950,9 @@ severity = 2
 severity = 3
 
 # Write ` !$foo && $bar || $baz ' instead of ` not $foo && $bar or $baz'.
-[ValuesAndExpressions::ProhibitMixedBooleanOperators]
+[-ValuesAndExpressions::ProhibitMixedBooleanOperators]
 # Default severity: 4.
-# Enforced by cPlint
-severity = 4
+# Disabled per project preference
 
 # Use `q{}' or `qq{}' instead of quotes for awkward-looking strings.
 [ValuesAndExpressions::ProhibitNoisyQuotes]
