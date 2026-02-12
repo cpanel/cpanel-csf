@@ -265,7 +265,6 @@ sub _wraptext {
         $loop++;
         if ( $loop > 1000 ) {
             return $original;
-            last;
         }
     }
     if ( length($return) < length($original) ) { $return = $original }

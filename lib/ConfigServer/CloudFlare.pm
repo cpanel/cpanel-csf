@@ -92,7 +92,7 @@ Returns status message or array of results depending on action.
 
 =cut
 
-sub action {
+sub action {    ## no critic (Subroutines::ProhibitManyArgs) - CloudFlare API requires all 6 parameters for firewall rule management
     my $action     = shift;
     my $ip         = shift;
     my $mode       = shift;

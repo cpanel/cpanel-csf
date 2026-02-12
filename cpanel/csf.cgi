@@ -129,7 +129,7 @@ unless ( $FORM{action} eq "tailcmd" or $FORM{action} =~ /^cf/ or $FORM{action} e
 
     #	open(STDERR, ">&STDOUT");
     open( $SCRIPTOUT, '>', \$templatehtml );
-    select $SCRIPTOUT;
+    my $old_fh = select $SCRIPTOUT;    ## no critic (InputOutput::ProhibitOneArgSelect) - Temporarily redirect default output to capture template content
 
     print <<EOF;
 	<link href='$images/configserver.css' rel='stylesheet' type='text/css'>
@@ -183,7 +183,7 @@ unless ( $FORM{action} eq "tailcmd" or $FORM{action} =~ /^cf/ or $FORM{action} e
 }
 unless ( $FORM{action} eq "tailcmd" or $FORM{action} =~ /^cf/ or $FORM{action} eq "logtailcmd" or $FORM{action} eq "loggrepcmd" ) {
     close($SCRIPTOUT);
-    select STDOUT;
+    select $old_fh;    ## no critic (InputOutput::ProhibitOneArgSelect) - Restore previously saved default output filehandle
     Cpanel::Template::process_template(
         'whostmgr',
         {

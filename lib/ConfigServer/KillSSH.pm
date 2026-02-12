@@ -254,7 +254,7 @@ Returns C<undef> if the input doesn't match expected IPv4 or IPv6 format.
 =cut
 
 sub hex2ip {
-    my $bin = pack "C*" => map hex, $_[0] =~ /../g;
+    my $bin = pack "C*" => map { hex($_) } $_[0] =~ /../g;
     my @l   = unpack "L*", $bin;
     if ( @l == 4 ) {
         return join ':', map { sprintf "%x:%x", $_ >> 16, $_ & 0xffff } @l;
