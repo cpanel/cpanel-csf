@@ -173,6 +173,17 @@ touch /usr/local/cpanel/Cpanel/Config/ConfigObj/Driver
 # Register cPanel app config
 /usr/local/cpanel/bin/register_appconfig /usr/local/cpanel/bin/csf.conf.appconfig
 
+# On upgrade, remove deprecated AUTO_UPDATES configuration
+if [ $1 -eq 2 ]; then
+    # Remove AUTO_UPDATES from existing config if present
+    if [ -f /etc/csf/csf.conf ]; then
+        sed -i '/^AUTO_UPDATES\s*=/d' /etc/csf/csf.conf
+        sed -i '/^# Enabling auto updates creates a cron job/,/^# You should check for new version announcements/d' /etc/csf/csf.conf
+    fi
+    # Remove auto-update cron job if it exists
+    rm -f /etc/cron.d/csf_update
+fi
+
 # Disable and mask firewalld if present
 systemctl daemon-reload
 systemctl disable firewalld 2>/dev/null || true

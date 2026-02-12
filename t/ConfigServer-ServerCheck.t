@@ -141,7 +141,6 @@ subtest 'Check functions are callable' => sub {
     set_config(
         TESTING         => 0,
         RESTRICT_SYSLOG => 1,
-        AUTO_UPDATES    => 1,
         LF_DAEMON       => 1,
         TCP_IN          => '22,80,443',
         DNSONLY         => 1,

@@ -189,11 +189,6 @@ OPTIONS
        -c,  --check
 	      Check for updates to csf but do not upgrade
 
-       -u,  --update
-	      Check for updates to csf and upgrade if available
-
-       -uf    Force an update of csf whether and upgrade is required or not
-
        -x,  --disable
 	      Disable csf and lfd completely
 

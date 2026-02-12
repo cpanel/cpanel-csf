@@ -17,7 +17,7 @@ use ConfigServer::Sanity ();
 # Create a temporary sanity.txt file for testing
 my $test_sanity_data = <<'EOF';
 AT_INTERVAL=10-3600=60
-AUTO_UPDATES=0|1=1
+DROP=DROP|TARPIT|REJECT=DROP
 CT_LIMIT=0|10-1000=0
 DENY_IP_LIMIT=10-1000=200
 EOF
@@ -111,20 +111,20 @@ subtest 'Discrete validation' => sub {
     my ( $insane, $acceptable, $default );
 
     # Test valid discrete values
-    ( $insane, $acceptable, $default ) = ConfigServer::Sanity::sanity( 'AUTO_UPDATES', '0' );
-    is( $insane,     0,        'Value 0 is valid' );
-    is( $acceptable, '0 or 1', 'Acceptable values formatted with or' );
-    is( $default,    '1',      'Default value is 1' );
+    ( $insane, $acceptable, $default ) = ConfigServer::Sanity::sanity( 'DROP', 'DROP' );
+    is( $insane,     0,                          'Value DROP is valid' );
+    is( $acceptable, 'DROP or TARPIT or REJECT', 'Acceptable values formatted with or' );
+    is( $default,    'DROP',                     'Default value is DROP' );
 
-    ( $insane, $acceptable, $default ) = ConfigServer::Sanity::sanity( 'AUTO_UPDATES', '1' );
-    is( $insane, 0, 'Value 1 is valid' );
+    ( $insane, $acceptable, $default ) = ConfigServer::Sanity::sanity( 'DROP', 'TARPIT' );
+    is( $insane, 0, 'Value TARPIT is valid' );
 
     # Test invalid discrete values
-    ( $insane, $acceptable, $default ) = ConfigServer::Sanity::sanity( 'AUTO_UPDATES', '2' );
-    is( $insane, 1, 'Value 2 is invalid' );
+    ( $insane, $acceptable, $default ) = ConfigServer::Sanity::sanity( 'DROP', 'INVALID' );
+    is( $insane, 1, 'Value INVALID is invalid' );
 
-    ( $insane, $acceptable, $default ) = ConfigServer::Sanity::sanity( 'AUTO_UPDATES', 'yes' );
-    is( $insane, 1, 'String value yes is invalid' );
+    ( $insane, $acceptable, $default ) = ConfigServer::Sanity::sanity( 'DROP', '123' );
+    is( $insane, 1, 'Numeric value 123 is invalid' );
 };
 
 # =============================================================================

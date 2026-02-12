@@ -252,14 +252,6 @@ Add a temporary block for CF_TEMP seconds to both csf and the CloudFlare Firewal
 Check for updates to csf but do not upgrade
 .TP
 .B
--u,  --update
-Check for updates to csf and upgrade if available
-.TP
-.B
--uf
-Force an update of csf whether and upgrade is required or not
-.TP
-.B
 -x,  --disable
 Disable csf and lfd completely
 .TP

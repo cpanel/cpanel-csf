@@ -34,7 +34,7 @@ ConfigServer::Sanity - Configuration value validation against acceptable ranges
     }
 
     # Check multiple values
-    foreach my $item (qw(AT_ALERT AUTO_UPDATES CC_LOOKUPS)) {
+    foreach my $item (qw(AT_ALERT CC_LOOKUPS)) {
         my ($insane, $acceptable, $default) = ConfigServer::Sanity::sanity($item, $config{$item});
         if ($insane) {
             print "$item validation failed\n";

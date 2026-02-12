@@ -1586,24 +1586,7 @@ EOD
         _printreturn();
     }
     elsif ( $FORM{action} eq "upgrade" ) {
-        if ( $config{THIS_UI} ) {
-            print "<div>You cannot upgrade through the UI as restarting lfd will interrupt this session. You must login to the root shell to upgrade csf using:\n<p><b>csf -u</b></div>\n";
-        }
-        else {
-            print "<div><p>Upgrading csf...</p>\n";
-            _resize("top");
-            print "<pre class='comment' style='white-space: pre-wrap; height: 500px; overflow: auto; resize:both; clear:both' id='output'>\n";
-            _printcmd( "/usr/sbin/csf", "-u" );
-            print "</pre>\n<p>...<b>Done</b>.</p></div>\n";
-            _resize( "bot", 1 );
-
-            open( my $IN, "<", "/etc/csf/version.txt" ) or die $!;
-            flock( $IN, Fcntl::LOCK_SH );
-            $myv = <$IN>;
-            close($IN);
-            chomp $myv;
-        }
-
+        print "<div>You cannot upgrade CSF through the UI. Please use your system's package manager to upgrade csf+lfd:\n<p><b>yum update cpanel-csf</b> or <b>dnf update cpanel-csf</b></div>\n";
         _printreturn();
     }
     elsif ( $FORM{action} eq "denyf" ) {

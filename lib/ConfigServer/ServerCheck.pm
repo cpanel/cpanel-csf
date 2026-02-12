@@ -391,10 +391,6 @@ sub _firewallcheck {
     _addline( $status, "RESTRICT_SYSLOG option check", "Due to issues with syslog/rsyslog you should consider enabling this option. See the Firewall Configuration (/etc/csf/csf.conf) for more information" );
 
     $status = 0;
-    unless ( $config{AUTO_UPDATES} ) { $status = 1 }
-    _addline( $status, "AUTO_UPDATES option check", "To keep csf up to date and secure you should enable AUTO_UPDATES. You should also monitor our <a href='http://blog.configserver.com' target='_blank'>blog</a>" );
-
-    $status = 0;
     unless ( $config{LF_DAEMON} ) { $status = 1 }
     _addline( $status, "lfd enabled check", "lfd is disabled in the csf configuration which limits the effectiveness of this application" );
 
