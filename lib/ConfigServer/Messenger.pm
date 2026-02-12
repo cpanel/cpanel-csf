@@ -446,7 +446,7 @@ sub _messenger {
                                     my $char;
                                     $client->read( $char, 1 );
                                     $firstline .= $char;
-                                    if ( $char eq "" )              { exit; }    ## no critic (Cpanel::NoExitsFromSubroutines) - Child process socket read termination
+                                    if ( $char eq "" )              { exit; }
                                     if ( length $firstline > 2048 ) { last }
                                 }
                                 chomp $firstline;
@@ -556,7 +556,7 @@ sub _messenger {
                         shutdown( $client, 2 );
                         $client->close();
                         alarm(0);
-                        exit;    ## no critic (Cpanel::NoExitsFromSubroutines) - Child process request completion
+                        exit;
                     }
                     if ( $oldtype eq "HTTPS" ) {
                         $client->close( SSL_no_shutdown => 1 );

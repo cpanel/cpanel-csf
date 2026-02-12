@@ -469,7 +469,7 @@ sub doinitup {
         else {
             dostop(1);
             dostart();
-            exit 0;
+            exit 0;    ## no critic (Cpanel::NoExitsFromSubroutines) - CLI command completion after restart
         }
         if ( $config{IPV6} ) {
             if ( -e "/var/lib/csf/csf.6.saved" ) {
@@ -891,7 +891,7 @@ sub dostart {
         chomp @reply;
         if ( $reply[0] eq "active" or $reply[0] eq "activating" ) {
             error( __LINE__, "*Error* firewalld found to be running. You must stop and disable firewalld when using csf" );
-            exit 1;
+            exit 1;    ## no critic (Cpanel::NoExitsFromSubroutines) - Fatal configuration error - conflicting firewall service
         }
     }
 
@@ -4256,7 +4256,7 @@ sub dotempdeny {
     chomp @deny;
     if ( grep { $_ =~ /\b$ip\|$port\|\b/ } @deny ) {
         print "csf: $ip is already temporarily blocked\n";
-        exit 0;    ## no critic (Cpanel::NoExitsFromSubroutines) - CLI command early termination
+        exit 0;
     }
 
     my $dropin  = $config{DROP};
@@ -4387,7 +4387,7 @@ sub dotempallow {
     chomp @allow;
     if ( grep { $_ =~ /\b$ip\|$port\|\b/ } @allow ) {
         print "csf: $ip is already temporarily allowed\n";
-        exit 0;    ## no critic (Cpanel::NoExitsFromSubroutines) - CLI command early termination
+        exit 0;
     }
 
     if ( $timeout < 2 )  { $timeout = 3600 }
@@ -5435,7 +5435,7 @@ sub docloudflare {
     if ( $cmd eq "list" ) {
         unless ( $setting eq "all" or $setting eq "block" or $setting eq "challenge" or $setting eq "whitelist" ) {
             print "Invalid list type, must be: [block], [challenge], [whitelist] or [all]\n";
-            exit 1;    ## no critic (Cpanel::NoExitsFromSubroutines) - CLI command argument validation
+            exit 1;
         }
         my ( $ip, $domain, $mode, $date, $comment );
         format CLOUDFLARE =
@@ -5532,7 +5532,7 @@ sub dographs {
     }
     unless ( $config{ST_SYSTEM} ) {
         print "ST_SYSTEM is disabled\n";
-        exit 1;    ## no critic (Cpanel::NoExitsFromSubroutines) - CLI command precondition failure
+        exit 1;
     }
 
     # GD::Graph availability is now verified at ServerStats compile time
