@@ -1,0 +1,11 @@
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+jobs:
+  build:
+    uses: webpros-cpanel/ea-tools/.github/workflows/reusable-obs-build.yml@ghes
+    secrets: inherit
