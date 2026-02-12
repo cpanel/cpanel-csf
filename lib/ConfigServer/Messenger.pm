@@ -406,7 +406,7 @@ sub _messenger {
             local $> = local $< = $uid;
             if ( ( $) != $gid ) or ( $> != $uid ) or ( $( != $gid ) or ( $< != $uid ) ) {
                 logfile("MESSENGER_USER unable to drop privileges - stopping $oldtype Messenger");
-                exit;
+                exit;    ## no critic (Cpanel::NoExitsFromSubroutines) - Child process termination
             }
             my %children;
             while (1) {
@@ -446,7 +446,7 @@ sub _messenger {
                                     my $char;
                                     $client->read( $char, 1 );
                                     $firstline .= $char;
-                                    if ( $char eq "" )              { exit }
+                                    if ( $char eq "" )              { exit; }    ## no critic (Cpanel::NoExitsFromSubroutines) - Child process socket read termination
                                     if ( length $firstline > 2048 ) { last }
                                 }
                                 chomp $firstline;
@@ -556,7 +556,7 @@ sub _messenger {
                         shutdown( $client, 2 );
                         $client->close();
                         alarm(0);
-                        exit;
+                        exit;    ## no critic (Cpanel::NoExitsFromSubroutines) - Child process request completion
                     }
                     if ( $oldtype eq "HTTPS" ) {
                         $client->close( SSL_no_shutdown => 1 );
@@ -1180,7 +1180,7 @@ sub _childcleanup {
         if ( $line ne "" ) { $message .= ", at line $line" }
         logfile("$message");
     }
-    exit;
+    exit;    ## no critic (Cpanel::NoExitsFromSubroutines) - Child process cleanup
 }
 
 sub _getethdev {
@@ -1209,7 +1209,7 @@ sub _getethdev {
 sub _error {
     my $error = shift;
     logfile($error);
-    exit;
+    exit;    ## no critic (Cpanel::NoExitsFromSubroutines) - Child process error termination
 }
 
 =head2 messengerv2

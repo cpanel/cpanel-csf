@@ -3290,7 +3290,7 @@ sub dodisable {
 sub doenable {
     unless ( -e "/etc/csf/csf.disable" ) {
         print "csf and lfd are not disabled!\n";
-        exit 0;
+        exit 0;    ## no critic (Cpanel::NoExitsFromSubroutines) - CLI command early termination
     }
     unlink("/etc/csf/csf.disable");
     dostart();
@@ -3410,7 +3410,7 @@ sub error {
     print $OUT "Error: $error, at line $line in /usr/sbin/csf\n";
     close($OUT);
     if ( $config{TESTING} ) { crontab("remove") }
-    exit 1;
+    exit 1;    ## no critic (Cpanel::NoExitsFromSubroutines) - Fatal error termination
 }
 
 sub version {
@@ -3731,7 +3731,7 @@ sub doupdate {
         my $url = "https://$config{DOWNLOADSERVER}/csf/version.txt";
         if ( $config{URLGET} == 1 ) { $url = "http://$config{DOWNLOADSERVER}/csf/version.txt"; }
         my ( $status, $text ) = $urlget->urlget($url);
-        if ($status) { print "Oops: $text\n"; exit 1 }
+        if ($status) { print "Oops: $text\n"; exit 1; }    ## no critic (Cpanel::NoExitsFromSubroutines) - Network error termination
         $actv = $text;
     }
 
@@ -3772,7 +3772,7 @@ sub docheck {
     my $url = "https://$config{DOWNLOADSERVER}/csf/version.txt";
     if ( $config{URLGET} == 1 ) { $url = "http://$config{DOWNLOADSERVER}/csf/version.txt"; }
     my ( $status, $text ) = $urlget->urlget($url);
-    if ($status) { print "Oops: $text\n"; exit 1 }
+    if ($status) { print "Oops: $text\n"; exit 1; }    ## no critic (Cpanel::NoExitsFromSubroutines) - Network error termination
 
     my $actv = $text;
     my $up   = 0;
@@ -4250,13 +4250,13 @@ sub dotempdeny {
     my $ipstring = quotemeta($ip);
     if ( grep { $_ =~ /^$ipstring\b/ } @deny ) {
         print "csf: $ip is already permanently blocked\n";
-        exit 0;
+        exit 0;    ## no critic (Cpanel::NoExitsFromSubroutines) - CLI command early termination
     }
     @deny = slurpee( "/var/lib/csf/csf.tempban", 'fatal' => 1 );
     chomp @deny;
     if ( grep { $_ =~ /\b$ip\|$port\|\b/ } @deny ) {
         print "csf: $ip is already temporarily blocked\n";
-        exit 0;
+        exit 0;    ## no critic (Cpanel::NoExitsFromSubroutines) - CLI command early termination
     }
 
     my $dropin  = $config{DROP};
@@ -4381,13 +4381,13 @@ sub dotempallow {
     }
     if ( grep { $_ =~ /^$ip\b/ } @allow ) {
         print "csf: $ip is already permanently allowed\n";
-        exit 0;
+        exit 0;    ## no critic (Cpanel::NoExitsFromSubroutines) - CLI command early termination
     }
     @allow = slurpee( "/var/lib/csf/csf.tempallow", 'fatal' => 1 );
     chomp @allow;
     if ( grep { $_ =~ /\b$ip\|$port\|\b/ } @allow ) {
         print "csf: $ip is already temporarily allowed\n";
-        exit 0;
+        exit 0;    ## no critic (Cpanel::NoExitsFromSubroutines) - CLI command early termination
     }
 
     if ( $timeout < 2 )  { $timeout = 3600 }
@@ -5429,13 +5429,13 @@ sub docloudflare {
 
     unless ( $config{CF_ENABLE} ) {
         print "csf - CF_ENABLE must be enabled and CloudFlare access details configured to use these commands\n";
-        exit 1;
+        exit 1;    ## no critic (Cpanel::NoExitsFromSubroutines) - CLI command precondition failure
     }
 
     if ( $cmd eq "list" ) {
         unless ( $setting eq "all" or $setting eq "block" or $setting eq "challenge" or $setting eq "whitelist" ) {
             print "Invalid list type, must be: [block], [challenge], [whitelist] or [all]\n";
-            exit 1;
+            exit 1;    ## no critic (Cpanel::NoExitsFromSubroutines) - CLI command argument validation
         }
         my ( $ip, $domain, $mode, $date, $comment );
         format CLOUDFLARE =
@@ -5528,11 +5528,11 @@ sub dographs {
 
     unless ( $config{ST_ENABLE} ) {
         print "ST_ENABLE is disabled\n";
-        exit 1;
+        exit 1;    ## no critic (Cpanel::NoExitsFromSubroutines) - CLI command precondition failure
     }
     unless ( $config{ST_SYSTEM} ) {
         print "ST_SYSTEM is disabled\n";
-        exit 1;
+        exit 1;    ## no critic (Cpanel::NoExitsFromSubroutines) - CLI command precondition failure
     }
 
     # GD::Graph availability is now verified at ServerStats compile time
