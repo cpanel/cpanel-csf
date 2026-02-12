@@ -54,6 +54,117 @@ The AI MUST automatically identify which instruction sets apply based on file pa
 ### Development Practices
 - **Temporary Files**: Use `./tmp/` directory in repository root instead of `/tmp` for all temporary files during development and testing. The `tmp/` directory is git-ignored and keeps temporary files contained within the project structure.
 
+## Development Tools
+
+### JIRA Command-Line Tool
+
+The cPanel repository includes a comprehensive JIRA CLI tool for interacting with WebPros JIRA.
+
+**Location**: `/usr/local/cpanel/build-tools/jira`
+
+#### Setup Authentication
+
+First-time setup (one-time):
+```bash
+cd /usr/local/cpanel
+build-tools/setup-jira
+```
+
+This will guide you through authenticating to `webpros.atlassian.net` using your JIRA credentials. Authentication is stored in `/root/.config/cPanel/oauth-webpros` and shared with other build-tools that access JIRA.
+
+#### Available Operations
+
+The tool accepts JSON-RPC commands via stdin. Here are the key operations:
+
+**Get Issue Details**:
+```bash
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"getJiraIssue","arguments":{"issueKey":"CPANEL-12345"}}}' | /usr/local/cpanel/build-tools/jira
+```
+
+**Add Comment** (supports markdown):
+```bash
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"addJiraComment","arguments":{"issueKey":"CPANEL-12345","comment":"## Analysis\n\nRoot cause identified..."}}}' | /usr/local/cpanel/build-tools/jira
+```
+
+**Search Issues** (JQL):
+```bash
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"searchJiraIssues","arguments":{"jql":"project = CPANEL AND status = \"In Progress\"","maxResults":10}}}' | /usr/local/cpanel/build-tools/jira
+```
+
+**Update Issue Fields**:
+```bash
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"updateJiraIssue","arguments":{"issueKey":"CPANEL-12345","fields":{"customfield_10825":["AI-Resolved"]}}}}' | /usr/local/cpanel/build-tools/jira
+```
+
+**Get Available Transitions**:
+```bash
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"getJiraTransitions","arguments":{"issueKey":"CPANEL-12345"}}}' | /usr/local/cpanel/build-tools/jira
+```
+
+**Transition Issue**:
+```bash
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"transitionJiraIssue","arguments":{"issueKey":"CPANEL-12345","transitionName":"In Progress"}}}' | /usr/local/cpanel/build-tools/jira
+```
+
+#### Complete Tool List
+
+View all available tools:
+```bash
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | /usr/local/cpanel/build-tools/jira | jq -r '.tools[] | .name'
+```
+
+Available operations include:
+- `getJiraIssue` - Get full issue details (description, comments, links, attachments, status)
+- `addJiraComment` - Add comment with markdown support
+- `updateJiraIssue` - Update any issue field
+- `updateJiraDescription` - Update description with markdown
+- `addCommentReply` - Reply to specific comment (threaded)
+- `searchJiraIssues` - Search via JQL queries
+- `getJiraIssueLinks` - Get all linked issues, subtasks, and parent (if applicable)
+- `addJiraIssueLink` - Create issue relationship (Relates, Blocks, Duplicate, etc.)
+- `removeJiraIssueLink` - Remove issue link
+- `transitionJiraIssue` - Change issue status
+- `getJiraTransitions` - Get available status transitions
+- `getJiraWatchers` - Get watchers list
+- `addJiraWatcher` - Add watcher
+- `getJiraAttachments` - Get attachments list
+
+#### Practical Examples
+
+**Get issue with comments**:
+```bash
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"getJiraIssue","arguments":{"issueKey":"CPANEL-47033"}}}' | /usr/local/cpanel/build-tools/jira | jq -r '.content[0].text' | jq '.fields | {summary, status: .status.name, comments: .comment.comments | length}'
+```
+
+**Add root cause analysis comment**:
+```bash
+cat > ./tmp/jira-comment.json << 'EOF'
+{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"addJiraComment","arguments":{"issueKey":"CPANEL-47033","comment":"## Root Cause\n\nThe issue was caused by...\n\n```perl\nuse constant foo => 'bar';\n```\n\n**Fix**: Changed X to Y"}}}
+EOF
+cat ./tmp/jira-comment.json | /usr/local/cpanel/build-tools/jira
+```
+
+**Search for your in-progress tickets**:
+```bash
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"searchJiraIssues","arguments":{"jql":"assignee = currentUser() AND status = \"In Progress\""}}}' | /usr/local/cpanel/build-tools/jira | jq -r '.content[0].text' | jq '.issues[] | {key, summary: .fields.summary}'
+```
+
+**Add AI-Resolved keyword** (for human review):
+```bash
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"updateJiraIssue","arguments":{"issueKey":"CPANEL-47033","fields":{"customfield_10825":["AI-Resolved"]}}}}' | /usr/local/cpanel/build-tools/jira
+```
+
+#### Integration with AI Workflows
+
+The JIRA tool can be used by AI agents for:
+- Fetching ticket details and context
+- Posting resolution comments
+- Linking related cases
+- Updating ticket status
+- Adding AI-Resolved keywords for human review
+
+For complete documentation, see `/usr/local/cpanel/.github/QUICK-REFERENCE.md`.
+
 ## Getting Help
 
 When working with any file in this repository, simply describe what you want to accomplish. The AI will automatically:
