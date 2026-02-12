@@ -94,7 +94,6 @@ if ( $config{STYLE_CUSTOM} ) {
 
 my $thisapp = "csf";
 my $reregister;
-my $modalstyle;
 if ( $Cpanel::Version::Tiny::major_version >= 65 ) {
     if ( -e "/usr/local/cpanel/whostmgr/docroot/cgi/configserver/${thisapp}/${thisapp}.conf" ) {
         sysopen( my $CONF, "/usr/local/cpanel/whostmgr/docroot/cgi/configserver/${thisapp}/${thisapp}.conf", O_RDWR | O_CREAT );

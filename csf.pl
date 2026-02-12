@@ -5433,7 +5433,6 @@ sub docloudflare {
     }
 
     if ( $cmd eq "list" ) {
-        my %modes;
         unless ( $setting eq "all" or $setting eq "block" or $setting eq "challenge" or $setting eq "whitelist" ) {
             print "Invalid list type, must be: [block], [challenge], [whitelist] or [all]\n";
             exit 1;
