@@ -19,7 +19,8 @@
 # this program; if not, see <https://www.gnu.org/licenses>.
 ###############################################################################
 
-use strict;
+use cPstrict;
+
 use File::Find;
 use Fcntl         qw(:DEFAULT :flock);
 use Sys::Hostname qw(hostname);
@@ -47,7 +48,7 @@ Whostmgr::ACLS::init_acls();
 %FORM = Cpanel::Form::parseform();
 
 # Encode any params with HTML looking stuff (script tags, iframes, etc.)
-%FORM = map { $_ => Cpanel::Encoder::Tiny::safe_html_encode_str($FORM{$_}) } keys(%FORM);
+%FORM = map { $_ => Cpanel::Encoder::Tiny::safe_html_encode_str( $FORM{$_} ) } keys(%FORM);
 
 my $config   = ConfigServer::Config->loadconfig();
 my %config   = $config->config;
@@ -125,11 +126,12 @@ print "Content-type: text/html\r\n\r\n";
 
 my $templatehtml;
 my $SCRIPTOUT;
+my $old_fh;
 unless ( $FORM{action} eq "tailcmd" or $FORM{action} =~ /^cf/ or $FORM{action} eq "logtailcmd" or $FORM{action} eq "loggrepcmd" ) {
 
     #	open(STDERR, ">&STDOUT");
     open( $SCRIPTOUT, '>', \$templatehtml );
-    my $old_fh = select $SCRIPTOUT;    ## no critic (InputOutput::ProhibitOneArgSelect) - Temporarily redirect default output to capture template content
+    $old_fh = select $SCRIPTOUT;    ## no critic (InputOutput::ProhibitOneArgSelect) - Temporarily redirect default output to capture template content
 
     print <<EOF;
 	<link href='$images/configserver.css' rel='stylesheet' type='text/css'>
