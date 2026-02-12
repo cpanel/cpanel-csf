@@ -572,7 +572,7 @@ sub doclustertempdeny {
     my $inout = "in";
     my $ports = "";
     my $perm  = 0;
-    if ( $timeout =~ /^(\d*)(m|h|d)/i ) {
+    if ( $timeout =~ /^(\d*)([mhd])/i ) {
         my $secs = $1;
         my $dur  = $2;
         if    ( $dur eq "m" ) { $timeout = $secs * 60 }
@@ -662,7 +662,7 @@ sub doclustertempallow {
     my $inout = "in";
     my $ports = "";
     my $perm  = 0;
-    if ( $timeout =~ /^(\d*)(m|h|d)/i ) {
+    if ( $timeout =~ /^(\d*)([mhd])/i ) {
         my $secs = $1;
         my $dur  = $2;
         if    ( $dur eq "m" ) { $timeout = $secs * 60 }
@@ -1424,7 +1424,7 @@ sub doadd {
         return;
     }
 
-    if ( !$checkip and !( ( $ip =~ /:|\|/ ) and ( $ip =~ /=/ ) ) ) {
+    if ( !$checkip and !( ( $ip =~ /[:|]/ ) and ( $ip =~ /=/ ) ) ) {
         print "add failed: [$ip] is not a valid PUBLIC IP/CIDR\n";
         return;
     }
@@ -1510,7 +1510,7 @@ sub dodeny {
         return;
     }
 
-    if ( !$checkip and !( ( $ip =~ /:|\|/ ) and ( $ip =~ /=/ ) ) ) {
+    if ( !$checkip and !( ( $ip =~ /[:|]/ ) and ( $ip =~ /=/ ) ) ) {
         print "deny failed: [$ip] is not a valid PUBLIC IP/CIDR\n";
         return;
     }
@@ -1670,7 +1670,7 @@ sub dokill {
     my $is_ip = 0;
     if ( checkip( \$ip ) ) { $is_ip = 1 }
 
-    if ( !$is_ip and !( ( $ip =~ /:|\|/ ) and ( $ip =~ /=/ ) ) ) {
+    if ( !$is_ip and !( ( $ip =~ /[:|]/ ) and ( $ip =~ /=/ ) ) ) {
         print "[$ip] is not a valid PUBLIC IP/CIDR\n";
         return;
     }
@@ -1747,7 +1747,7 @@ sub dokillall {
 
     foreach my $line (@deny) {
         $line =~ s/$cleanreg//g;
-        if ( $line =~ /^(\#|\n|Include)/ ) {
+        if ( $line =~ /^([#\n]|Include)/ ) {
             print $DENY $line . "\n";
         }
         elsif ( $line =~ /do not delete/i ) {
@@ -1767,7 +1767,7 @@ sub dokillall {
 sub doakill {
     my $ip = $input{argument}[0];
 
-    if ( !checkip( \$ip ) and !( ( $ip =~ /:|\|/ ) and ( $ip =~ /=/ ) ) ) {
+    if ( !checkip( \$ip ) and !( ( $ip =~ /[:|]/ ) and ( $ip =~ /=/ ) ) ) {
         print "[$ip] is not a valid PUBLIC IP/CIDR\n";
         return;
     }
@@ -3483,7 +3483,7 @@ sub linefilter {
     my $chainin  = $chain . "IN";
     my $chainout = $chain . "OUT";
 
-    $line =~ s/\n|\r//g;
+    $line =~ s/[\n\r]//g;
     $line = lc $line;
     if ( $line =~ /^\#/ )      { return }
     if ( $line =~ /^Include/ ) { return }
@@ -3544,7 +3544,7 @@ sub linefilter {
             }
         }
     }
-    elsif ( $line =~ /\:|\|/ ) {
+    elsif ( $line =~ /[:|]/ ) {
         if ( $line !~ /\|/ ) { $line =~ s/\:/\|/g }
         my $sip;
         my $dip;
@@ -4199,7 +4199,7 @@ sub dotempdeny {
     my ( $ip, $timeout, $portdir ) = @{ $input{argument} }[ 0 .. 2 ];
     my $inout = "in";
     my $port  = "";
-    if ( $timeout =~ /^(\d*)(m|h|d)/i ) {
+    if ( $timeout =~ /^(\d*)([mhd])/i ) {
         my $secs = $1;
         my $dur  = $2;
         if    ( $dur eq "m" ) { $timeout = $secs * 60 }
@@ -4338,7 +4338,7 @@ sub dotempallow {
     my ( $ip, $timeout, $portdir ) = @{ $input{argument} }[ 0 .. 2 ];
     my $inout = "inout";
     my $port  = "";
-    if ( $timeout =~ /^(\d*)(m|h|d)/i ) {
+    if ( $timeout =~ /^(\d*)([mhd])/i ) {
         my $secs = $1;
         my $dur  = $2;
         if    ( $dur eq "m" ) { $timeout = $secs * 60 }

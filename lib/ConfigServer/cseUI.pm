@@ -319,7 +319,7 @@ sub _browse {
         }
         my $class = "tdshade2";
         foreach my $dir (@thisdirs) {
-            if ( $dir =~ /'|"|\||\`/ ) {
+            if ( $dir =~ /['"|`]/ ) {
                 print "<td colspan='7'>" . quotemeta($dir) . "Invalid directory name - ignored</td>";
                 next;
             }
@@ -494,7 +494,7 @@ sub _browse {
         }
         $class = "tdshade2";
         foreach my $file (@thisfiles) {
-            if ( $file =~ /'|"|\||\`/ ) {
+            if ( $file =~ /['"|`]/ ) {
                 print "<td colspan='7'>" . quotemeta($file) . "Invalid file name - ignored</td>";
                 next;
             }

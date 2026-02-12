@@ -447,10 +447,10 @@ sub _urlgetLWP {
 }
 
 sub _binget {
-    my $url      = shift;
-    my $file     = shift;
-    my $quiet    = shift;
-    my $errormsg = shift;
+    my $url            = shift;
+    my $file           = shift;
+    my $quiet          = shift;
+    my $errormsg       = shift;
     my $url_for_output = _redact_key_from_text($url);
     $url = "'$url'";
     my $quoted_url_for_output = "'$url_for_output'";

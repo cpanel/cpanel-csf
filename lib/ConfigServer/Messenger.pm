@@ -251,7 +251,7 @@ sub _messenger {
         foreach my $file        ( glob( $config{MESSENGER_HTTPS_CONF} ) ) {
             if ( -e $file ) {
                 foreach my $line ( slurp($file) ) {
-                    $line =~ s/\'|\"//g;
+                    $line =~ s/['"]//g;
                     if ( $line =~ /^\s*<VirtualHost\s+[^\>]+>/ ) {
                         $start = 1;
                     }
@@ -683,7 +683,7 @@ sub messengerv2 {
         foreach my $file ( glob( $config{MESSENGER_HTTPS_CONF} ) ) {
             if ( -e $file ) {
                 foreach my $line ( slurp($file) ) {
-                    $line =~ s/\'|\"//g;
+                    $line =~ s/['"]//g;
                     if ( $line =~ /^\s*<VirtualHost\s+[^\>]+>/ ) {
                         $start = 1;
                     }
@@ -1258,7 +1258,7 @@ sub _conftree {
             my $start = 0;
             foreach my $line ( slurp($file) ) {
                 if ( $webserver eq "apache" ) {
-                    $line =~ s/\'|\"//g;
+                    $line =~ s/['"]//g;
                     if ( $line =~ /^\s*ServerRoot\s+\"?(\S+)\"?/ ) {
                         $serverroot = $1;
                         unless ( -d $serverroot ) { $serverroot = "" }
@@ -1338,7 +1338,7 @@ sub _conftree {
                     }
                 }
                 elsif ( $webserver eq "litespeed" ) {
-                    $line =~ s/\'|\"//g;
+                    $line =~ s/['"]//g;
                     if ( $line =~ /^\s*include\s+(\S+)/ ) {
                         my $include = $1;
                         $include =~ s/\$SERVER_ROOT/$serverroot/;
