@@ -3623,7 +3623,6 @@ sub connectiontracking {
         flock( $THISLOCK, LOCK_EX | LOCK_NB )                                        or childcleanup("*Lock Error* [$lockstr] still active - section skipped");
         print $THISLOCK time;
 
-        my @connections;
         my %ipcnt;
         my %iptext;
         my %subcnt;
@@ -7781,7 +7780,7 @@ sub cleanup {
 
     kill( 9, -$$ );
 
-    exit 0;  ## no critic (Cpanel::NoExitsFromSubroutines) - Program cleanup termination
+    exit 0;    ## no critic (Cpanel::NoExitsFromSubroutines) - Program cleanup termination
 }
 
 sub childcleanup {
@@ -7802,7 +7801,7 @@ sub childcleanup {
         if ( $line ne "" ) { $message .= ", at line $line" }
         logfile("$message");
     }
-    exit;  ## no critic (Cpanel::NoExitsFromSubroutines) - Child process termination
+    exit;    ## no critic (Cpanel::NoExitsFromSubroutines) - Child process termination
 }
 
 sub ignoreip {
@@ -8156,7 +8155,7 @@ sub iptablescmd {
 
     if ( -e "/etc/csf/csf.error" ) {
         cleanup( __LINE__, "*Error* csf reported an error (see /etc/csf/csf.error). *lfd stopped*" );
-        exit 1;  ## no critic (Cpanel::NoExitsFromSubroutines) - Fatal csf error termination
+        exit 1;    ## no critic (Cpanel::NoExitsFromSubroutines) - Fatal csf error termination
     }
 
     if ( $config{VPS} ) { $status = checkvps() }
@@ -8235,7 +8234,7 @@ sub syscommand {
 
     if ( -e "/etc/csf/csf.error" ) {
         cleanup( __LINE__, "*Error* csf reported an error (see /etc/csf/csf.error). *lfd stopped*" );
-        exit 1;  ## no critic (Cpanel::NoExitsFromSubroutines) - Fatal csf error termination
+        exit 1;    ## no critic (Cpanel::NoExitsFromSubroutines) - Fatal csf error termination
     }
 
     if ( $config{VPS} ) { $status = checkvps() }
@@ -8307,7 +8306,7 @@ sub csflock {
 sub lockfail {
     my $section = shift;
     logfile("csf is currently restarting - section [$section] skipped");
-    exit;  ## no critic (Cpanel::NoExitsFromSubroutines) - Lock failure termination
+    exit;    ## no critic (Cpanel::NoExitsFromSubroutines) - Lock failure termination
 }
 
 sub ipblock {    ## no critic (Subroutines::ProhibitManyArgs) - Legacy function signature with 6 parameters for IP/port blocking configuration
@@ -9544,7 +9543,6 @@ sub ui {
                     our $images;
                     our $fileinc;
 
-                    my $input;
                     my $session;
                     my $file;
                     my $cookie;
