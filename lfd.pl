@@ -504,7 +504,7 @@ if ( $config{LOGSCANNER} ) {
         $file =~ s/$cleanreg//g;
         if ( $file eq "" ) { next }
         if ( $file =~ /^\s*\#|Include/ ) { next }
-        if ( $file =~ /\*|\?|\[/ ) {
+        if ( $file =~ /[*?\[]/ ) {
             foreach my $log ( glob $file ) {
                 if ( -e $log ) {
                     $logfiles{$log}        = 1;
@@ -818,7 +818,7 @@ if ( $config{LF_DIRWATCH} ) {
             $line =~ s/$cleanreg//g;
             if ( $line eq "" ) { next }
             if ( $line =~ /^\s*\#|Include/ ) { next }
-            if ( $line =~ /\*|\\/ ) {
+            if ( $line =~ /[*\\]/ ) {
                 if ( testregex($line) ) { push @matchfile, $line }
                 else                    { logfile("*Error* Invalid regex [$line] in csf.fignore") }
             }
@@ -1024,7 +1024,7 @@ if ( $config{PT_LIMIT} ) {
             if ( $line eq "" )               { next }
             if ( $line =~ /^\s*\#|Include/ ) { next }
             my ( $item, $rule ) = split( /:/, $line, 2 );
-            $rule =~ s/\r|\n//g;
+            $rule =~ s/[\r\n]//g;
             $rule =~ s/\s*$//g;
             $item =~ s/\s//g;
             $item = lc $item;
@@ -1362,7 +1362,7 @@ while (1) {
 
         while ( my $line = <$IN> ) {
             chomp $line;
-            if ( $line =~ /^(\#|\n|\r|\s)/ or $line eq "" ) { next }
+            if ( $line =~ /^([#\n\r\s])/ or $line eq "" ) { next }
             my ( $ip, undef ) = split( /\s/, $line );
             my ( undef, $iscidr ) = split( /\//, $ip );
             my $v = checkip( \$ip );
@@ -2292,7 +2292,7 @@ sub openlogfile {
 
 sub globlog {
     my $setting = shift;
-    if ( $config{$setting} =~ /\*|\?|\[/ ) {
+    if ( $config{$setting} =~ /[*?\[]/ ) {
         foreach my $log ( glob $config{$setting} ) {
             $globlogs{$setting}{$log} = 1;
             $logfiles{$log} = 1;
@@ -6905,7 +6905,7 @@ sub dyndns {
         foreach my $line (@dyndns) {
             my $adport;
             my ( $fqdn, undef ) = split( /\s/, $line, 2 );
-            if ( $fqdn =~ /^(.*(s|d)=)(.*)$/ ) { $adport = $1; $fqdn = $3 }
+            if ( $fqdn =~ /^(.*([sd])=)(.*)$/ ) { $adport = $1; $fqdn = $3 }
             my @results = getips($fqdn);
             if (@results) {
                 foreach my $ip (@results) {
@@ -7035,7 +7035,7 @@ sub globaldyndns {
             my $ip;
             my $adport;
             my ( $fqdn, undef ) = split( /\s/, $line, 2 );
-            if ( $fqdn =~ /(.*:(s|d)=)(.*)$/ ) { $adport = $1; $fqdn = $3 }
+            if ( $fqdn =~ /(.*:([sd])=)(.*)$/ ) { $adport = $1; $fqdn = $3 }
             my @results = getips($fqdn);
 
             if (@results) {
@@ -7923,7 +7923,7 @@ sub linefilter {
     my $chainin  = $chain . "IN";
     my $chainout = $chain . "OUT";
 
-    $line =~ s/\n|\r//g;
+    $line =~ s/[\n\r]//g;
     $line = lc $line;
     if ( $line =~ /^\#/ )      { return }
     if ( $line =~ /^Include/ ) { return }
@@ -7984,7 +7984,7 @@ sub linefilter {
             }
         }
     }
-    elsif ( $line =~ /\:|\|/ ) {
+    elsif ( $line =~ /[:|]/ ) {
         if ( $line !~ /\|/ ) { $line =~ s/\:/\|/g }
         my $sip;
         my $dip;
@@ -9593,7 +9593,7 @@ sub ui {
                         chomp @records;
                         close($UIBAN);
                         foreach my $record (@records) {
-                            if ( $record =~ /^(\#|\s|\r|\n)/ ) { next }
+                            if ( $record =~ /^([#\s\r\n])/ ) { next }
                             my ( $rip, undef ) = split( /\s/, $record );
                             if ( $rip eq $peeraddress ) {
                                 logfile("UI: Access attempt from a banned IP address in /etc/csf/ui/ui.ban - denied [$peeraddress]");
@@ -9623,7 +9623,7 @@ sub ui {
                         chomp @records;
                         close($UIALLOW);
                         foreach my $record (@records) {
-                            if ( $record =~ /^(\#|\s|\r|\n)/ ) { next }
+                            if ( $record =~ /^([#\s\r\n])/ ) { next }
                             my ( $rip, undef ) = split( /\s/, $record );
                             if ( $rip eq $peeraddress ) {
                                 $allow = 1;
@@ -10524,7 +10524,7 @@ sub lfdserver {
                             elsif ( $command eq "C" ) {
                                 my ( undef, $name, $value ) = split( /\s/, $decrypted, 3 );
                                 if ( $config{CLUSTER_MASTER} and ( $config{CLUSTER_MASTER} eq $peeraddress ) ) {
-                                    $value =~ s/\"|\=//g;
+                                    $value =~ s/["=]//g;
                                     $value =~ s/(^\s*)|(\s*$)//g;
                                     if ( $config{CLUSTER_CONFIG} ) {
                                         logfile("Cluster member $pip said set [$name = \"$value\"]");

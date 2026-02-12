@@ -426,7 +426,7 @@ sub main {
             if ( $file eq "" )               { next }
             if ( $file =~ /^\s*\#|Include/ ) { next }
             my @globfiles;
-            if ( $file =~ /\*|\?|\[/ ) {
+            if ( $file =~ /[*?\[]/ ) {
                 foreach my $log ( glob $file ) { push @globfiles, $log }
             }
             else { push @globfiles, $file }
@@ -495,7 +495,7 @@ EOF
             if ( $file eq "" )               { next }
             if ( $file =~ /^\s*\#|Include/ ) { next }
             my @globfiles;
-            if ( $file =~ /\*|\?|\[/ ) {
+            if ( $file =~ /[*?\[]/ ) {
                 foreach my $log ( glob $file ) { push @globfiles, $log }
             }
             else { push @globfiles, $file }
@@ -563,7 +563,7 @@ EOF
             if ( $file eq "" )               { next }
             if ( $file =~ /^\s*\#|Include/ ) { next }
             my @globfiles;
-            if ( $file =~ /\*|\?|\[/ ) {
+            if ( $file =~ /[*?\[]/ ) {
                 foreach my $log ( glob $file ) { push @globfiles, $log }
             }
             else { push @globfiles, $file }
@@ -643,7 +643,7 @@ EOF
             if ( $file eq "" )               { next }
             if ( $file =~ /^\s*\#|Include/ ) { next }
             my @globfiles;
-            if ( $file =~ /\*|\?|\[/ ) {
+            if ( $file =~ /[*?\[]/ ) {
                 foreach my $log ( glob $file ) { push @globfiles, $log }
             }
             else { push @globfiles, $file }
@@ -1755,7 +1755,7 @@ EOD
         my ( $childin, $childout );
         my $pid = IPC::Open3::open3( $childin, $childout, $childout, "/usr/sbin/csf", "--profile", "diff", $profile1, $profile2 );
         while (<$childout>) {
-            $_ =~ s/\[|\]//g;
+            $_ =~ s/[\[\]]//g;
             my ( $var, $p1, $p2 ) = split( /\s+/, $_ );
             if ( $var eq "" ) {
                 next;
@@ -2144,7 +2144,7 @@ EOF
             flock( $IN, Fcntl::LOCK_SH );
             while ( my $line = <$IN> ) {
                 chomp $line;
-                if ( $line =~ /^(\#|\n|\r)/ )       { next }
+                if ( $line =~ /^[#\n\r]/ )          { next }
                 if ( $line =~ /$ipv4reg|$ipv6reg/ ) { $permcnt++ }
             }
             close($IN);
@@ -2157,7 +2157,7 @@ EOF
             flock( $IN, Fcntl::LOCK_SH );
             while ( my $line = <$IN> ) {
                 chomp $line;
-                if ( $line =~ /^(\#|\n|\r)/ )       { next }
+                if ( $line =~ /^[#\n\r]/ )          { next }
                 if ( $line =~ /$ipv4reg|$ipv6reg/ ) { $permcnt++ }
             }
             close($IN);

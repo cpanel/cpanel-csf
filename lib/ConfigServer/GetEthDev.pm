@@ -210,7 +210,7 @@ sub new {
         flock( $NAT, Fcntl::LOCK_SH );
         while ( my $line = <$NAT> ) {
             chomp $line;
-            if ( $line =~ /^(\#|\n|\r)/ ) { next }
+            if ( $line =~ /^([#\n\r])/ ) { next }
             my ( $internal, $external ) = split( /\s+/, $line );
             if ( checkip( \$internal ) and checkip( \$external ) ) {
                 $ipv4{$external} = 1;

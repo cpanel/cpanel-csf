@@ -252,21 +252,21 @@ sub iplookup {
             if ($cconly) { return ( $result[0], $asn ) }
             my $return = "$ip ($result[0]/$result[1]/$result[2]/$result[3]/$host/$result[4])";
             if ( $result[0] eq "-" ) { $return = "$ip ($host)" }
-            $return =~ s/'|"//g;
+            $return =~ s/['"]//g;
             return $return;
         }
         elsif ( $cc_lookups == 2 or $cc_lookups == 4 ) {
             if ($cconly) { return $result[0] }
             my $return = "$ip ($result[0]/$result[1]/$result[2]/$result[3]/$host)";
             if ( $result[0] eq "-" ) { $return = "$ip ($host)" }
-            $return =~ s/'|"//g;
+            $return =~ s/['"]//g;
             return $return;
         }
         else {
             if ($cconly) { return $result[0] }
             my $return = "$ip ($result[0]/$result[1]/$host)";
             if ( $result[0] eq "-" ) { $return = "$ip ($host)" }
-            $return =~ s/'|"//g;
+            $return =~ s/['"]//g;
             return $return;
         }
     }

@@ -898,7 +898,7 @@ sub _whmcheck {
         my $error;
         if ( my @ls = grep { $_ =~ /^\s*TLSCipherSuite/ } @conf ) {
             if ( $ls[0] =~ /TLSCipherSuite\s+(.*)$/ ) { $ciphers = $1 }
-            $ciphers =~ s/\s*|\"|\'//g;
+            $ciphers =~ s/[\s"']//g;
             if ( $ciphers eq "" ) {
                 $status = 1;
             }
@@ -950,7 +950,7 @@ sub _whmcheck {
         my $error;
         if ( my @ls = grep { $_ =~ /^\s*TLSCipherSuite/ } @conf ) {
             if ( $ls[0] =~ /TLSCipherSuite\:\s+(.*)$/ ) { $ciphers = $1 }
-            $ciphers =~ s/\s*|\"|\'//g;
+            $ciphers =~ s/[\s"']//g;
             if ( $ciphers eq "" ) {
                 $status = 1;
             }
@@ -1234,7 +1234,7 @@ sub _mailcheck {
         my $error;
         if ( my @ls = grep { $_ =~ /^\s*tls_require_ciphers/ } @eximconf ) {
             ( undef, $ciphers ) = split( /\=/, $ls[0] );
-            $ciphers =~ s/\s*|\"|\'//g;
+            $ciphers =~ s/[\s"']//g;
             if ( $ciphers eq "" ) {
                 $status = 1;
             }
@@ -1311,7 +1311,7 @@ sub _mailcheck {
         my $error;
         if ( my @ls = grep { $_ =~ /^ssl_cipher_list/ } @conf ) {
             ( undef, $ciphers ) = split( /\=/, $ls[0] );
-            $ciphers =~ s/\s*|\"|\'//g;
+            $ciphers =~ s/[\s"']//g;
             if ( $ciphers eq "" ) {
                 $status = 1;
             }
@@ -1352,7 +1352,7 @@ sub _mailcheck {
 
         if ( my @ls = grep { $_ =~ /^TLS_CIPHER_LIST/ } @conf ) {
             ( undef, $ciphers ) = split( /\=/, $ls[0] );
-            $ciphers =~ s/\s*|\"|\'//g;
+            $ciphers =~ s/[\s"']//g;
             if ( $ciphers eq "" ) {
                 $status = 1;
             }
@@ -1393,7 +1393,7 @@ sub _mailcheck {
 
         if ( my @ls = grep { $_ =~ /^TLS_CIPHER_LIST/ } @conf ) {
             ( undef, $ciphers ) = split( /\=/, $ls[0] );
-            $ciphers =~ s/\s*|\"|\'//g;
+            $ciphers =~ s/[\s"']//g;
             if ( $ciphers eq "" ) {
                 $status = 1;
             }
@@ -1740,7 +1740,7 @@ sub _apachecheck {
         if ( my @ls = grep { $_ =~ /^\s*SSLCipherSuite/ } @conf ) {
             $ls[0] =~ s/^\s+//g;
             ( undef, $ciphers ) = split( /\ /, $ls[0] );
-            $ciphers =~ s/\s*|\"|\'//g;
+            $ciphers =~ s/[\s"']//g;
             if ( $ciphers eq "" ) {
                 $status = 1;
             }

@@ -13,7 +13,7 @@ elsif ( $cmd[0] eq "-d" or $cmd[0] eq "--deny" ) {
     system( "csf", @cmd );
 }
 elsif ( $cmd[0] eq "-u" or $cmd[0] eq "--remove" or $cmd[0] eq "--unban" ) {
-    $cmd[1] =~ s/\^|\$//g;
+    $cmd[1] =~ s/[\^\$]//g;
     $cmd[0] = "--addrm";
     system( "csf", @cmd );
     $cmd[0] = "--denyrm";
