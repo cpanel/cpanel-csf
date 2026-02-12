@@ -217,7 +217,7 @@ sub iplookup {
                         local $SIG{__DIE__} = undef;
                         local $SIG{'ALRM'}  = sub { die };
                         alarm(10);
-                        eval('use Socket6;');    ##no critic
+                        eval('use Socket6;');    ## no critic (BuiltinFunctions::ProhibitStringyEval) - Optional module load - IPv6 support not required on all systems
                         my $ipaddr = Socket::inet_pton( Socket::AF_INET6, $ip );
                         $host = gethostbyaddr( $ipaddr, Socket::AF_INET6 );
                         alarm(0);

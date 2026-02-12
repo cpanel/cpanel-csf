@@ -3759,7 +3759,7 @@ sub doupdate {
             }
         }
         else {
-            if ( -t STDOUT ) { print "csf is already at the latest version: v$version\n" }    ##no critic
+            if ( -t STDOUT ) { print "csf is already at the latest version: v$version\n" }
         }
     }
     else {

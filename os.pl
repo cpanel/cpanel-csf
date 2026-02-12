@@ -46,7 +46,7 @@ foreach my $module (@modules) {
 
     #	print STDERR "Checking for $module\n";
     local $SIG{__DIE__} = undef;
-    eval("use $module");    ##no critic
+    eval("use $module");    ## no critic (BuiltinFunctions::ProhibitStringyEval) - Dynamic module load for prerequisite checks
     if ($@) {
         print STDERR "\n" . $@;
         $return = 1;
