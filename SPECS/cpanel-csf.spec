@@ -170,13 +170,8 @@ rm -rf %{buildroot}
 /usr/local/csf/tpl/*
 /usr/local/csf/profiles/*
 # Config files - actual user-modifiable configuration
-%config(noreplace) /etc/csf/cpanel.allow
-%config(noreplace) /etc/csf/cpanel.comodo.allow
-%config(noreplace) /etc/csf/cpanel.comodo.ignore
-%config(noreplace) /etc/csf/cpanel.ignore
 %config(noreplace) /etc/csf/csf.allow
 %config(noreplace) /etc/csf/csf.blocklists
-%config(noreplace) /etc/csf/csf.cloudflare
 %config(noreplace) /etc/csf/csf.conf
 %config(noreplace) /etc/csf/csf.deny
 %config(noreplace) /etc/csf/csf.dirwatch
@@ -206,6 +201,12 @@ rm -rf %{buildroot}
 /etc/csf/install.txt
 /etc/csf/readme.txt
 /etc/csf/version.txt
+# Config-ish but with no reason for modification
+/etc/csf/cpanel.allow
+/etc/csf/cpanel.comodo.allow
+/etc/csf/cpanel.comodo.ignore
+/etc/csf/cpanel.ignore
+/etc/csf/csf.cloudflare
 # Template files for messenger feature (blocked IP pages)
 /etc/csf/messenger/*
 # UI files (web interface assets)
