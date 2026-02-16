@@ -23,15 +23,6 @@ Source4:        pkg.postrm
 
 # Requires from install.sh os.pl checks and runtime dependencies
 Requires:       cpanel-perl
-# Perl module dependencies used by CSF/lfd runtime code
-Requires:       cpanel-perl-gd-graph-bars
-Requires:       cpanel-perl-gd-graph-lines
-Requires:       cpanel-perl-gd-graph-pie
-Requires:       cpanel-perl-io-socket-inet6
-Requires:       cpanel-perl-libwww-perl
-Requires:       cpanel-perl-net-cidr-lite
-Requires:       cpanel-perl-net-ip
-Requires:       cpanel-perl-yaml-tiny
 Requires:       iptables
 Requires:       ipset
 Requires(post): systemd
