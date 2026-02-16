@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# Only run this if it is being removed (not upgraded).
+# RPM: $1 = 0 for uninstall, 1 for upgrade
+# Debian: $1 = "remove" or "purge" for uninstall, "upgrade" for upgrade
+if [[ "$1" == "0" || "$1" == "remove" || "$1" == "purge" ]]; then
+    # Uninstall - reload systemd
+    systemctl daemon-reload ||:
+fi

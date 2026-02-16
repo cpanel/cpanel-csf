@@ -16,6 +16,10 @@ BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root
 BuildArch:      noarch
 
 Source0:        cpanel-csf-%{version}.tar.gz
+Source1:        pkg.preinst
+Source2:        pkg.postinst
+Source3:        pkg.prerm
+Source4:        pkg.postrm
 
 # Requires from install.sh os.pl checks and runtime dependencies
 Requires:       cpanel-perl
@@ -146,68 +150,16 @@ ln -sf /usr/local/csf/tpl %{buildroot}/etc/csf/alerts
 rm -rf %{buildroot}
 
 %pre
-# Fail closed: this RPM is only supported on cPanel & WHM systems.
-if [ ! -r /usr/local/cpanel/version ]; then
-    echo "ERROR: cPanel not detected (/usr/local/cpanel/version missing)." >&2
-    exit 1
-fi
-
-if [ ! -x /usr/local/cpanel/bin/register_appconfig ]; then
-    echo "ERROR: cPanel not detected (/usr/local/cpanel/bin/register_appconfig missing)." >&2
-    exit 1
-fi
-
-if [ ! -x /usr/local/cpanel/3rdparty/bin/perl ]; then
-    echo "ERROR: cPanel Perl not detected at /usr/local/cpanel/3rdparty/bin/perl." >&2
-    exit 1
-fi
+%include %{SOURCE1}
 
 %post
-# Touch to update cPanel's ConfigObj cache
-touch /usr/local/cpanel/Cpanel/Config/ConfigObj/Driver
-
-# Register cPanel app config
-/usr/local/cpanel/bin/register_appconfig /usr/local/cpanel/bin/csf.conf.appconfig
-
-# On upgrade, remove deprecated AUTO_UPDATES configuration
-if [ $1 -eq 2 ]; then
-    # Remove AUTO_UPDATES from existing config if present
-    if [ -f /etc/csf/csf.conf ]; then
-        sed -i '/^AUTO_UPDATES\s*=/d' /etc/csf/csf.conf
-        sed -i '/^# Enabling auto updates creates a cron job/,/^# You should check for new version announcements/d' /etc/csf/csf.conf
-    fi
-    # Remove auto-update cron job if it exists
-    rm -f /etc/cron.d/csf_update
-    rm -f /etc/cron.daily/csget
-fi
-
-# Disable and mask firewalld if present
-systemctl daemon-reload
-systemctl disable firewalld 2>/dev/null || true
-systemctl stop firewalld 2>/dev/null || true
-systemctl mask firewalld 2>/dev/null || true
-
-# Enable CSF services
-systemctl enable csf.service
-systemctl enable lfd.service
-
-echo "CSF installation completed successfully"
-echo "Please configure /etc/csf/csf.conf and restart services"
+%include %{SOURCE2}
 
 %preun
-if [ $1 -eq 0 ]; then
-    # Uninstall - stop services
-    systemctl stop csf.service 2>/dev/null || true
-    systemctl stop lfd.service 2>/dev/null || true
-    systemctl disable csf.service 2>/dev/null || true
-    systemctl disable lfd.service 2>/dev/null || true
-fi
+%include %{SOURCE3}
 
 %postun
-if [ $1 -eq 0 ]; then
-    # Uninstall - reload systemd
-    systemctl daemon-reload
-fi
+%include %{SOURCE4}
 
 %files
 %defattr(-,root,root,-)

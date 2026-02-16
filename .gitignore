@@ -13,6 +13,7 @@ RPMS/*
 SRPMS/*
 debian/*
 cpanel-csf_*
+BUILD/
 
 # Perl development
 *.swp

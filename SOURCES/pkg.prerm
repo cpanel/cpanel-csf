@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# Only run this if it is being removed (not upgraded).
+# RPM: $1 = 0 for uninstall, 1 for upgrade
+# Debian: $1 = "remove" or "purge" for uninstall, "upgrade" for upgrade
+if [[ "$1" == "0" || "$1" == "remove" || "$1" == "purge" ]]; then
+    # Uninstall - stop services
+    systemctl stop csf.service 2>/dev/null || true
+    systemctl stop lfd.service 2>/dev/null || true
+    systemctl disable csf.service 2>/dev/null || true
+    systemctl disable lfd.service 2>/dev/null || true
+fi
