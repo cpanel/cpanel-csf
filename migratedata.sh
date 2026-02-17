@@ -79,7 +79,6 @@ cp -avf /etc/csf/nocheck /var/lib/csf/
 cp -avf /etc/csf/sanity.txt /usr/local/csf/lib/
 cp -avf /etc/csf/stats/ /var/lib/csf/
 cp -avf /etc/csf/suspicious.tar /var/lib/csf/
-cp -avf /etc/csf/ui/ui.session /var/lib/csf/ui/
 cp -avf /etc/csf/zone/ /var/lib/csf/
 
 rm -fv /etc/csf/csf.4.saved
@@ -136,7 +135,6 @@ rm -fv /etc/csf/nocheck
 rm -fv /etc/csf/sanity.txt
 rm -Rfv /etc/csf/stats/
 rm -fv /etc/csf/suspicious.tar
-rm -fv /etc/csf/ui/ui.session
 rm -Rfv /etc/csf/zone/
 
 # email alert templates:

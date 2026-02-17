@@ -1293,7 +1293,7 @@ EOF
                     if ( $end ne $default ) { $class = "value-other" }
                 }
                 if ($status) { $class = "value-warning"; $showrange = " Recommended range: $range (Default: $default)" }
-                if ( $config{RESTRICT_UI} and ( $cleanname eq "CLUSTER_KEY" or $cleanname eq "UI_PASS" or $cleanname eq "UI_USER" ) ) {
+                if ( $config{RESTRICT_UI} and $cleanname eq "CLUSTER_KEY" ) {
                     print "<div class='$class'><b>$start</b> = <input type='text' value='********' size='14' disabled> (hidden restricted UI item)</div>\n";
                 }
                 elsif ( $restricted{$cleanname} ) {

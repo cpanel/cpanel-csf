@@ -32,7 +32,6 @@ my %mock_config = (
     LF_IPSET         => 0,
     PACKET_FILTER    => 1,
     DROP_NOLOG       => '',
-    UI               => 0,                   # Disable UI to avoid loading extra modules
     LF_DIRWATCH      => 0,                   # Disable to avoid loading File::Find
     LF_DIRWATCH_FILE => 0,
     DEBUG            => 0,

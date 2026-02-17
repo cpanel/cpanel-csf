@@ -53,7 +53,6 @@ install -d -m 0700 %{buildroot}/etc/csf
 install -d -m 0700 %{buildroot}/var/lib/csf
 install -d -m 0700 %{buildroot}/var/lib/csf/backup
 install -d -m 0700 %{buildroot}/var/lib/csf/Geo
-install -d -m 0700 %{buildroot}/var/lib/csf/ui
 install -d -m 0700 %{buildroot}/var/lib/csf/stats
 install -d -m 0700 %{buildroot}/var/lib/csf/lock
 install -d -m 0700 %{buildroot}/var/lib/csf/zone
@@ -112,7 +111,7 @@ install -m 0700 cpanel/csf.cgi %{buildroot}/usr/local/cpanel/whostmgr/docroot/cg
 cp -a csf/ %{buildroot}/usr/local/cpanel/whostmgr/docroot/cgi/configserver/
 
 install -d -m 0755 %{buildroot}/usr/local/cpanel/whostmgr/docroot/addon_plugins
-install -m 0644 etc/ui/images/csf_small.png %{buildroot}/usr/local/cpanel/whostmgr/docroot/addon_plugins/
+install -m 0644 cpanel/csf_small.png %{buildroot}/usr/local/cpanel/whostmgr/docroot/addon_plugins/
 
 install -d -m 0755 %{buildroot}/usr/local/cpanel/whostmgr/docroot/themes/x/icons
 # Use csf_small.png as referenced in cpanel/csf.conf appconfig icon= setting
@@ -156,10 +155,19 @@ rm -rf %{buildroot}
 %defattr(-,root,root,-)
 /usr/sbin/csf
 /usr/sbin/lfd
-/usr/local/csf/bin/*
+# Bin files - most are code, some are user-customizable
+/usr/local/csf/bin/csftest.pl
+/usr/local/csf/bin/remove_apf_bfd.sh
 /usr/local/csf/lib/*
-/usr/local/csf/tpl/*
 /usr/local/csf/profiles/*
+
+# 
+%config(noreplace) /usr/local/csf/bin/pt_deleted_action.pl
+%config(noreplace) /usr/local/csf/bin/regex.custom.pm
+
+# Templates in /usr/local/csf/tpl are 
+%config /usr/local/csf/tpl/*.txt
+
 # Config files - actual user-modifiable configuration
 %config(noreplace) /etc/csf/csf.allow
 %config(noreplace) /etc/csf/csf.blocklists
@@ -184,9 +192,7 @@ rm -rf %{buildroot}
 %config(noreplace) /etc/csf/csf.syslogs
 %config(noreplace) /etc/csf/csf.syslogusers
 %config(noreplace) /etc/csf/csf.uidignore
-# UI config files that users may modify
-%config(noreplace) /etc/csf/ui/ui.allow
-%config(noreplace) /etc/csf/ui/ui.ban
+
 # Documentation and metadata files (not config)
 /etc/csf/changelog.txt
 /etc/csf/install.txt
@@ -200,10 +206,6 @@ rm -rf %{buildroot}
 /etc/csf/csf.cloudflare
 # Template files for messenger feature (blocked IP pages)
 /etc/csf/messenger/*
-# UI files (web interface assets)
-/etc/csf/ui/server.crt
-/etc/csf/ui/server.key
-/etc/csf/ui/images/*
 # Symlinks owned by the package
 /etc/csf/csf.pl
 /etc/csf/lfd.pl

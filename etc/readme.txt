@@ -1242,81 +1242,6 @@ work. csf will set this where it can, but if the kernel value cannot be set
 then the DNAT redirection many not work.
 
 
-22. Integrated User Interface Feature
-#####################################
-
-Integrated User Interface. This feature provides a HTML UI to the features of
-csf and lfd, without requiring a control panel or web server. The UI runs as a
-sub process to the lfd daemon.
-
-As it runs under the root account and successful login provides root access
-to the server, great care should be taken when configuring and using this
-feature. There are additional restrictions to enhance secure access to the
-UI:
-
-  1. An SSL connection is required
-  2. Separate ban and allow files are provided to only allow access to listed
-     IP addresses
-  3. Local IP addresses cannot connect to the UI (i.e. all IP addresses
-     configured on the server NICs)
-  4. Unique sessions, session timeouts, session cookies and browser headers are
-     used to identify and restrict active sessions
-
-Requirements:
-
-  1. openssl
-  2. Perl modules: Net::SSLeay, IO::Socket::SSL and dependent modules
-  4. SSL keys
-  5. Entries in /etc/csf/ui/ui.allow
-
-The SSL server uses the following files:
-
-  SSL Key goes into /etc/csf/ui/server.key
-  SSL Certificate goes into /etc/csf/ui/server.crt
-
-Preferably, real CA signed certificates should be used. You can use an
-existing domain and cert for accessing the UI by populating the two files
-mentioned. If the cert has a ca bundle, it should be appended to the server.crt
-file. lfd must be restarted after making any changes:
-http://httpd.apache.org/docs/current/ssl/ssl_faq.html#realcert
-
-Alternatively, you could generate your own self-signed certificate:
-http://httpd.apache.org/docs/current/ssl/ssl_faq.html#selfcert
-
-Any keys used must have their pass-phrase removed:
-http://httpd.apache.org/docs/current/ssl/ssl_faq.html#removepassphrase
-
-The login URL should use the domain you have listed in the self-signed cert:
-https://<yourdomain>:<port>
-
-For example: https://www.somedomain.com:6666
-
-Your browser must accept session cookies to gain access.
-
-UI_ALLOW is enabled by default, so IP addresses (or CIDRs) allowed to use this
-UI must be listed in /etc/csf/ui/ui.allow before trying to connect to the UI.
-
-Only IP addresses can be listed/used in /etc/csf/ui/ui.ban - this file should
-only be used by the UI to prevent login. Use csf blocks to prevent access to
-the configured port and only use Advanced Allow/Deny Filters for access, i.e.
-do not list the port in TCP_IN.
-
-Logging for UI events are logged to the lfd /var/log/lfd.log file. Check this
-file if you are unable to access the UI.
-
-Required Perl Modules:
-
-  For example, on Debian v6 the perl modules can be installed using:
-
-    apt-get install libio-socket-ssl-perl libcrypt-ssleay-perl \
-                    libnet-libidn-perl libio-socket-inet6-perl libsocket6-perl
-
-  For example, on CentOS v6 the perl modules can be installed using:
-
-    yum install perl-IO-Socket-SSL.noarch perl-Net-SSLeay perl-Net-LibIDN \
-                perl-IO-Socket-INET6 perl-Socket6
-
-
 23. IP Block Lists
 ##################
 
@@ -1510,9 +1435,8 @@ auth_advertise_hosts = ${if match_ip{$sender_host_address}{iplsearch;/etc/exim.s
 26. UI Skinning and Mobile View
 ###############################
 
-The csf UI provided through cPanel and the integrated UI
-via lfd, all user the Bootstrap and jQuery frameworks. Additional styling is
-added to complement the frameworks and the UI flow.
+The csf UI provided through cPanel uses the Bootstrap and jQuery frameworks.
+Additional styling is added to complement the frameworks and the UI flow.
 
 If you want to make changes to the styling or add jQuery or JavaScript code you
 can create:
