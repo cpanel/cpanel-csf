@@ -204,6 +204,9 @@ FILES
        /etc/csf/readme.txt
 	      Detailed information about csf and lfd
 
+BUGS
+       Report bugs at https://github.com/cpanel/cpanel-csf/issues
+
 AUTHOR
        (c)2006-2023, Jonathan Michaelson (http://www.configserver.com)
 
