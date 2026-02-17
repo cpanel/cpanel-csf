@@ -217,7 +217,7 @@ sub load_config {
     my %configsetting = $config->configsetting;
     $ipv4reg = $config->ipv4reg;
     $ipv6reg = $config->ipv6reg;
-    $warning .= $config->{warning};
+    $warning .= $config->{warning} // "";
 
     if ( $config{CLUSTER_SENDTO} or $config{CLUSTER_RECVFROM} ) {
         require Crypt::CBC;
@@ -3568,8 +3568,8 @@ sub linefilter {
         my $protocol = "-p tcp";
         my $inout;
         my $from = 0;
-        my $uid;
-        my $gid;
+        my $uid = "";
+        my $gid = "";
         my $iptype;
 
         my @ll = split( /\|/, $line );
@@ -3586,6 +3586,7 @@ sub linefilter {
             $from     = 1;
         }
         for ( my $x = $from; $x < 2; $x++ ) {
+            next unless defined $ll[$x];
             if ( ( $ll[$x] eq "out" ) ) {
                 $inout = "out";
                 $from  = $x + 1;
@@ -3598,6 +3599,7 @@ sub linefilter {
             }
         }
         for ( my $x = $from; $x < 3; $x++ ) {
+            next unless defined $ll[$x];
             if ( ( $ll[$x] =~ /d=(.*)/ ) ) {
                 $dport = "--dport $1";
                 $dport =~ s/_/:/g;
@@ -3616,6 +3618,7 @@ sub linefilter {
             }
         }
         for ( my $x = $from; $x < 4; $x++ ) {
+            next unless defined $ll[$x];
             if ( ( $ll[$x] =~ /d=(.*)/ ) ) {
                 my $ip     = $1;
                 my $status = checkip( \$ip );
@@ -3636,6 +3639,7 @@ sub linefilter {
             }
         }
         for ( my $x = $from; $x < 5; $x++ ) {
+            next unless defined $ll[$x];
             if ( ( $ll[$x] =~ /u=(.*)/ ) ) {
                 $uid = "--uid-owner $1";
                 last;

@@ -10,6 +10,7 @@ use cPstrict;
 use Test2::V0;
 use Test2::Plugin::NoWarnings;
 use Test::MockModule;
+use File::Temp ();
 
 use FindBin::libs;
 
@@ -17,11 +18,12 @@ use FindBin::libs;
 # the -l argument without actually modifying firewall state. It uses Test::MockModule
 # to mock all external dependencies.
 
-# Create tmp directory with version.txt
-foreach my $dir (qw{/opt/repos /opt/repos/app-csf /opt/repos/app-csf/tmp}) {
-    mkdir $dir unless -d $dir;
-}
-open my $vfh, '>', '/opt/repos/app-csf/tmp/version.txt' or die $!;
+# Create temporary directory for test artifacts
+my $tempdir = File::Temp->newdir( CLEANUP => 1 );
+my $temp_path = $tempdir->dirname;
+
+# Create version.txt in temp directory
+open my $vfh, '>', "$temp_path/version.txt" or die "Failed to create version.txt: $!";
 print $vfh "1.0.0-test\n";
 close $vfh;
 
@@ -33,9 +35,9 @@ $slurp_mock->redefine(
     'slurp',
     sub {
         my ( $file, %opts ) = @_;
-        $file =~ s{^/etc/csf/}{/opt/repos/app-csf/tmp/};
+        $file =~ s{^/etc/csf/}{$temp_path/};
         return unless -e $file;
-        open my $fh, '<', $file or die;
+        open my $fh, '<', $file or die "Failed to open $file: $!";
         my @lines = <$fh>;
         close $fh;
         return @lines;
@@ -45,12 +47,12 @@ $slurp_mock->redefine(
     'slurpee',
     sub {
         my ( $file, %opts ) = @_;
-        $file =~ s{^/etc/csf/}{/opt/repos/app-csf/tmp/};
+        $file =~ s{^/etc/csf/}{$temp_path/};
         if ( !-e $file && $opts{fatal} ) {
             die "*Error* File does not exist: [$file]\n";
         }
         return '' unless -e $file;
-        open my $fh, '<', $file or die;
+        open my $fh, '<', $file or die "Failed to open $file: $!";
         my $content = do { local $/; <$fh> };
         close $fh;
         return $content;
