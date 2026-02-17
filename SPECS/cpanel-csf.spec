@@ -2,7 +2,7 @@
 # RPM spec file
 
 %define release_prefix 1
-%define csf_version 15.00
+%define csf_version 16.00
 
 Name:           cpanel-csf
 Version:        %{csf_version}
@@ -15,25 +15,16 @@ Vendor:         ConfigServer Services
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root
 BuildArch:      noarch
 
-Source0:        csf-%{version}.tar.gz
+Source0:        cpanel-csf-%{version}.tar.gz
+Source1:        pkg.preinst
+Source2:        pkg.postinst
+Source3:        pkg.prerm
+Source4:        pkg.postrm
 
 # Requires from install.sh os.pl checks and runtime dependencies
 Requires:       cpanel-perl
-Requires:       /usr/local/cpanel/3rdparty/bin/perl
-# Perl module dependencies used by CSF/lfd runtime code
-Requires:       cpanel-perl-gd-graph-bars
-Requires:       cpanel-perl-gd-graph-lines
-Requires:       cpanel-perl-gd-graph-pie
-Requires:       cpanel-perl-io-socket-inet6
-Requires:       cpanel-perl-libwww-perl
-Requires:       cpanel-perl-net-cidr-lite
-Requires:       cpanel-perl-net-ip
-Requires:       cpanel-perl-yaml-tiny
 Requires:       iptables
 Requires:       ipset
-Requires:       /usr/bin/sendmail
-Requires:       /usr/sbin/groupadd
-Requires:       /usr/sbin/useradd
 Requires(post): systemd
 Requires(preun): systemd
 Requires(postun): systemd
@@ -49,7 +40,7 @@ CSF includes Login Failure Daemon (lfd) which scans log files for login attempts
 against your server that continually fail within a short period of time.
 
 %prep
-%setup -q -n csf-%{version}
+%setup -q -n cpanel-csf-%{version}
 
 %build
 # No build required - all scripts
@@ -150,56 +141,16 @@ ln -sf /usr/local/csf/tpl %{buildroot}/etc/csf/alerts
 rm -rf %{buildroot}
 
 %pre
-# Fail closed: this RPM is only supported on cPanel & WHM systems.
-if [ ! -r /usr/local/cpanel/version ]; then
-    echo "ERROR: cPanel not detected (/usr/local/cpanel/version missing)." >&2
-    exit 1
-fi
-
-if [ ! -x /usr/local/cpanel/bin/register_appconfig ]; then
-    echo "ERROR: cPanel not detected (/usr/local/cpanel/bin/register_appconfig missing)." >&2
-    exit 1
-fi
-
-if [ ! -x /usr/local/cpanel/3rdparty/bin/perl ]; then
-    echo "ERROR: cPanel Perl not detected at /usr/local/cpanel/3rdparty/bin/perl." >&2
-    exit 1
-fi
+%include %{SOURCE1}
 
 %post
-# Touch to update cPanel's ConfigObj cache
-touch /usr/local/cpanel/Cpanel/Config/ConfigObj/Driver
-
-# Register cPanel app config
-/usr/local/cpanel/bin/register_appconfig /usr/local/cpanel/bin/csf.conf.appconfig
-
-# Disable and mask firewalld if present
-systemctl daemon-reload
-systemctl disable firewalld 2>/dev/null || true
-systemctl stop firewalld 2>/dev/null || true
-systemctl mask firewalld 2>/dev/null || true
-
-# Enable CSF services
-systemctl enable csf.service
-systemctl enable lfd.service
-
-echo "CSF installation completed successfully"
-echo "Please configure /etc/csf/csf.conf and restart services"
+%include %{SOURCE2}
 
 %preun
-if [ $1 -eq 0 ]; then
-    # Uninstall - stop services
-    systemctl stop csf.service 2>/dev/null || true
-    systemctl stop lfd.service 2>/dev/null || true
-    systemctl disable csf.service 2>/dev/null || true
-    systemctl disable lfd.service 2>/dev/null || true
-fi
+%include %{SOURCE3}
 
 %postun
-if [ $1 -eq 0 ]; then
-    # Uninstall - reload systemd
-    systemctl daemon-reload
-fi
+%include %{SOURCE4}
 
 %files
 %defattr(-,root,root,-)
@@ -210,13 +161,8 @@ fi
 /usr/local/csf/tpl/*
 /usr/local/csf/profiles/*
 # Config files - actual user-modifiable configuration
-%config(noreplace) /etc/csf/cpanel.allow
-%config(noreplace) /etc/csf/cpanel.comodo.allow
-%config(noreplace) /etc/csf/cpanel.comodo.ignore
-%config(noreplace) /etc/csf/cpanel.ignore
 %config(noreplace) /etc/csf/csf.allow
 %config(noreplace) /etc/csf/csf.blocklists
-%config(noreplace) /etc/csf/csf.cloudflare
 %config(noreplace) /etc/csf/csf.conf
 %config(noreplace) /etc/csf/csf.deny
 %config(noreplace) /etc/csf/csf.dirwatch
@@ -246,6 +192,12 @@ fi
 /etc/csf/install.txt
 /etc/csf/readme.txt
 /etc/csf/version.txt
+# Config-ish but with no reason for modification
+/etc/csf/cpanel.allow
+/etc/csf/cpanel.comodo.allow
+/etc/csf/cpanel.comodo.ignore
+/etc/csf/cpanel.ignore
+/etc/csf/csf.cloudflare
 # Template files for messenger feature (blocked IP pages)
 /etc/csf/messenger/*
 # UI files (web interface assets)
@@ -275,6 +227,6 @@ fi
 /usr/local/cpanel/bin/csf.conf.appconfig
 
 %changelog
-* Wed Feb 05 2025 Thomas "Andy" Baugh <andy.baugh@webpros.com> - 15.00-1
+* Wed Feb 05 2025 Thomas "Andy" Baugh <andy.baugh@webpros.com> - 16.00-1
 - Initial RPM packaging of CSF for cPanel OBS build system
 - Converted from install.sh to RPM spec file

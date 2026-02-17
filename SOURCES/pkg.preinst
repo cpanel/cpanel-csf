@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# For Debian: NOTE! Debian sets -e here without you setting it.
+# Make sure nothing here ever ever ever exits nonzero!
+
+# Fail closed: this package is only supported on cPanel & WHM systems.
+# For RPM this will exit 1 and fail the install.
+# For Debian we can't exit non-zero, so we just warn.
+if [ ! -r /usr/local/cpanel/version ]; then
+    if [[ "$1" == "install" || "$1" == "upgrade" ]]; then
+        # Debian - just warn
+        echo "WARNING: cPanel not detected (/usr/local/cpanel/version missing)." >&2
+    else
+        # RPM - fail installation
+        echo "ERROR: cPanel not detected (/usr/local/cpanel/version missing)." >&2
+        exit 1
+    fi
+fi
+
+if [ ! -x /usr/local/cpanel/bin/register_appconfig ]; then
+    if [[ "$1" == "install" || "$1" == "upgrade" ]]; then
+        echo "WARNING: cPanel not detected (/usr/local/cpanel/bin/register_appconfig missing)." >&2
+    else
+        echo "ERROR: cPanel not detected (/usr/local/cpanel/bin/register_appconfig missing)." >&2
+        exit 1
+    fi
+fi
+
+if [ ! -x /usr/local/cpanel/3rdparty/bin/perl ]; then
+    if [[ "$1" == "install" || "$1" == "upgrade" ]]; then
+        echo "WARNING: cPanel Perl not detected at /usr/local/cpanel/3rdparty/bin/perl." >&2
+    else
+        echo "ERROR: cPanel Perl not detected at /usr/local/cpanel/3rdparty/bin/perl." >&2
+        exit 1
+    fi
+fi

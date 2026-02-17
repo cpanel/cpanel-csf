@@ -1,0 +1,50 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on:
+      group: org/cpanel-arc-image-build
+    container:
+      image: ghcr.io/webpros-cpanel/misc-ci-containers:cpanel-perl542
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate a token to checkout cpanel-whm
+        id: generate-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.CPANEL_WHM_ACTIONS_APPID }}
+          private-key: ${{ secrets.CPANEL_WHM_ACTIONS_PRIVATE_KEY }}
+          owner: webpros-cpanel
+          repositories: cpanel-whm
+
+      - name: Checkout cpanel-whm dependency
+        uses: actions/checkout@v4
+        with:
+          repository: webpros-cpanel/cpanel-whm
+          path: cpanel-whm
+          fetch-depth: 1
+          token: ${{ steps.generate-token.outputs.token }}
+
+      - name: Move cpanel-whm to /usr/local/cpanel
+        run: |
+          cd cpanel-whm
+          find . -maxdepth 1 ! -name '.' ! -name '3rdparty' -exec mv {} /usr/local/cpanel/ \;
+
+      - run: perl -V
+
+      - name: which prove
+        run: ls -l $(which prove)
+
+      - name: Run tests
+        run: prove -lvw t/*.t

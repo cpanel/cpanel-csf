@@ -1,0 +1,30 @@
+#!/usr/bin/make -f
+
+include debian/vars.mk
+
+%:
+	echo "EXECING $@"
+	dh $@
+
+override_dh_auto_install:
+	/bin/bash debian/override_dh_auto_install.sh
+
+override_dh_auto_build:
+	echo 'Ignoring build'
+	/bin/true
+
+override_dh_auto_clean:
+	echo 'Ignoring clean'
+	/bin/true
+
+override_dh_auto_test:
+	echo "Ignoring Tests"
+	/bin/true
+
+override_dh_usrlocal:
+	echo "Ignoring UsrLocal"
+	/bin/true
+
+override_dh_link:
+	echo "Ignoring dh_link"
+	/bin/true

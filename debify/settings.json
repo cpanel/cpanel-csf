@@ -1,0 +1,8 @@
+{
+    "dont_override_install": false,
+    "dont_override_config": true,
+    "ignore_override_dh_auto_configure": false,
+    "ignore_override_dh_auto_build": true,
+    "ignore_override_dh_auto_clean": true,
+    "fix_dh_usrlocal": true
+}
