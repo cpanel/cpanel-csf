@@ -80,7 +80,7 @@ cp -a lib/* %{buildroot}/usr/local/csf/lib/
 cp -a tpl/* %{buildroot}/usr/local/csf/tpl/
 
 # Add the license file
-cp LICENSE.txt %{buildroot}/etc/license.txt
+cp LICENSE.txt %{buildroot}/etc/csf/license.txt
 
 # Install config files from etc/ directory (recursively)
 cp -a etc/* %{buildroot}/etc/csf/
