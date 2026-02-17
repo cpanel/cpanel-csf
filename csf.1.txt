@@ -271,6 +271,6 @@ The system wide configuration file
 .RS
 Detailed information about csf and lfd
 .SH BUGS
-Report bugs on the forums at http://forum.configserver.com
+Report bugs at https://github.com/cpanel/cpanel-csf/issues
 .SH AUTHOR
 (c)2006-2023, Jonathan Michaelson (http://www.configserver.com)
