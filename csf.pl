@@ -926,7 +926,7 @@ sub dostart {
     }
 
     my $path = "PATH=\$PATH:/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin";
-    my $csfpre;
+    my $csfpre = "";
     my $csfpost = "";
     if    ( -e "/usr/local/csf/bin/csfpre.sh" )  { $csfpre  = "/usr/local/csf/bin/csfpre.sh" }
     elsif ( -e "/etc/csf/csfpre.sh" )            { $csfpre  = "/etc/csf/csfpre.sh" }
@@ -1043,7 +1043,7 @@ sub dostart {
     }
 
     if ( $config{DROP_LOGGING} ) {
-        my $dports;
+        my $dports = "";
         if ( $config{DROP_ONLYRES} ) { $dports = "--dport 0:1023" }
         $config{DROP_NOLOG} =~ s/\s//g;
         if ( $config{DROP_NOLOG} ne "" ) {
@@ -2146,6 +2146,7 @@ sub doportfilters {
         }
     }
 
+    $config{CC_ALLOW} //= "";
     $config{CC_ALLOW} =~ s/\s//g;
     if ( $config{CC_ALLOW} ) {
         foreach my $cc ( split( /\,/, $config{CC_ALLOW} ) ) {
@@ -2375,6 +2376,7 @@ sub doportfilters {
         }
     }
 
+    $config{CC_ALLOW_SMTPAUTH} //= "";
     $config{CC_ALLOW_SMTPAUTH} =~ s/\s//g;
     if ( $config{SMTPAUTH_RESTRICT} ) {
         if ($verbose) { print "csf: Generating /etc/exim.smtpauth\n" }
@@ -2440,6 +2442,7 @@ sub doportfilters {
         chmod( 0644, "/etc/exim.smtpauth" );
     }
 
+    $config{CC_DENY} //= "";
     $config{CC_DENY} =~ s/\s//g;
     if ( $config{CC_DENY} ) {
         foreach my $cc ( split( /\,/, $config{CC_DENY} ) ) {
@@ -2519,6 +2522,7 @@ sub doportfilters {
         }
     }
 
+    $config{CC_ALLOW_FILTER} //= "";
     $config{CC_ALLOW_FILTER} =~ s/\s//g;
     if ( $config{CC_ALLOW_FILTER} ) {
         my $cnt  = 0;
@@ -2631,9 +2635,12 @@ sub doportfilters {
         }
     }
 
+    $config{CC_ALLOW_PORTS} //= "";
     $config{CC_ALLOW_PORTS} =~ s/\s//g;
     if ( $config{CC_ALLOW_PORTS} ) {
+        $config{CC_ALLOW_PORTS_TCP} //= "";
         $config{CC_ALLOW_PORTS_TCP} =~ s/\s//g;
+        $config{CC_ALLOW_PORTS_UDP} //= "";
         $config{CC_ALLOW_PORTS_UDP} =~ s/\s//g;
         if ( $config{CC_ALLOW_PORTS_TCP} ne "" ) {
             foreach my $port ( split( /\,/, $config{CC_ALLOW_PORTS_TCP} ) ) {
@@ -2733,9 +2740,12 @@ sub doportfilters {
         }
     }
 
+    $config{CC_DENY_PORTS} //= "";
     $config{CC_DENY_PORTS} =~ s/\s//g;
     if ( $config{CC_DENY_PORTS} ) {
+        $config{CC_DENY_PORTS_TCP} //= "";
         $config{CC_DENY_PORTS_TCP} =~ s/\s//g;
+        $config{CC_DENY_PORTS_UDP} //= "";
         $config{CC_DENY_PORTS_UDP} =~ s/\s//g;
         if ( $config{CC_DENY_PORTS_TCP} ne "" ) {
             foreach my $port ( split( /\,/, $config{CC_DENY_PORTS_TCP} ) ) {
@@ -3444,6 +3454,7 @@ sub getethdev {
         }
     }
 
+    $config{ETH_DEVICE} //= "";
     ( $config{ETH_DEVICE}, undef ) = split( /:/, $config{ETH_DEVICE}, 2 );
     if ( $config{ETH_DEVICE} eq "" ) {
         $ethdevin  = "! -i lo";
@@ -3467,7 +3478,7 @@ sub getethdev {
 sub linefilter {
     my $line     = shift;
     my $ad       = shift;
-    my $chain    = shift;
+    my $chain    = shift // "";
     my $delete   = shift;
     my $pktin    = "$accept";
     my $pktout   = "$accept";
@@ -3550,10 +3561,10 @@ sub linefilter {
     }
     elsif ( $line =~ /[:|]/ ) {
         if ( $line !~ /\|/ ) { $line =~ s/\:/\|/g }
-        my $sip;
-        my $dip;
-        my $sport;
-        my $dport;
+        my $sip = "";
+        my $dip = "";
+        my $sport = "";
+        my $dport = "";
         my $protocol = "-p tcp";
         my $inout;
         my $from = 0;
@@ -5743,9 +5754,9 @@ sub faststart {
         my @results = <$childout>;
         waitpid( $cmdpid, 0 );
         chomp @results;
-        if ( $results[0] =~ /# Warning: iptables-legacy tables present/ ) { shift @results }
+        if ( length $results[0] && $results[0] =~ /# Warning: iptables-legacy tables present/ ) { shift @results }
 
-        if ( $results[0] =~ /^(iptables|ip6tables|xtables|Bad|Another)/ ) {
+        if ( length $results[0] && $results[0] =~ /^(iptables|ip6tables|xtables|Bad|Another)/ ) {
             my $cmd;
             if ( $results[1] =~ /^Error occurred at line: (\d+)$/ ) { $cmd = $faststart4[ $1 - 1 ] }
             error( __LINE__, "FASTSTART: ($text IPv4) [$cmd] [$results[0]]. Try restarting csf with FASTSTART disabled" );
@@ -5766,9 +5777,9 @@ sub faststart {
         my @results = <$childout>;
         waitpid( $cmdpid, 0 );
         chomp @results;
-        if ( $results[0] =~ /# Warning: iptables-legacy tables present/ ) { shift @results }
+        if ( length $results[0] && $results[0] =~ /# Warning: iptables-legacy tables present/ ) { shift @results }
 
-        if ( $results[0] =~ /^(iptables|ip6tables|xtables|Bad|Another)/ ) {
+        if ( length $results[0] && $results[0] =~ /^(iptables|ip6tables|xtables|Bad|Another)/ ) {
             my $cmd;
             if ( $results[1] =~ /^Error occurred at line: (\d+)$/ ) { $cmd = $faststart4[ $1 - 1 ] }
             error( __LINE__, "FASTSTART: ($text IPv4nat) [$cmd] [$results[0]]. Try restarting csf with FASTSTART disabled" );
@@ -5789,9 +5800,9 @@ sub faststart {
         my @results = <$childout>;
         waitpid( $cmdpid, 0 );
         chomp @results;
-        if ( $results[0] =~ /# Warning: iptables-legacy tables present/ ) { shift @results }
+        if ( length $results[0] && $results[0] =~ /# Warning: iptables-legacy tables present/ ) { shift @results }
 
-        if ( $results[0] =~ /^(iptables|ip6tables|xtables|Bad|Another)/ ) {
+        if ( length $results[0] && $results[0] =~ /^(iptables|ip6tables|xtables|Bad|Another)/ ) {
             my $cmd;
             if ( $results[1] =~ /^Error occurred at line: (\d+)$/ ) { $cmd = $faststart4[ $1 - 1 ] }
             error( __LINE__, "FASTSTART: ($text IPv6) [$cmd] [$results[0]]. Try restarting csf with FASTSTART disabled" );
@@ -5812,9 +5823,9 @@ sub faststart {
         my @results = <$childout>;
         waitpid( $cmdpid, 0 );
         chomp @results;
-        if ( $results[0] =~ /# Warning: iptables-legacy tables present/ ) { shift @results }
+        if ( length $results[0] && $results[0] =~ /# Warning: iptables-legacy tables present/ ) { shift @results }
 
-        if ( $results[0] =~ /^(iptables|ip6tables|xtables|Bad|Another)/ ) {
+        if ( length $results[0] && $results[0] =~ /^(iptables|ip6tables|xtables|Bad|Another)/ ) {
             my $cmd;
             if ( $results[1] =~ /^Error occurred at line: (\d+)$/ ) { $cmd = $faststart6[ $1 - 1 ] }
             error( __LINE__, "FASTSTART: ($text IPv6nat) [$cmd] [$results[0]]. Try restarting csf with FASTSTART disabled" );
@@ -5831,7 +5842,7 @@ sub faststart {
         waitpid( $cmdpid, 0 );
         chomp @results;
 
-        if ( $results[0] =~ /^ipset/ ) {
+        if ( length $results[0] && $results[0] =~ /^ipset/ ) {
             print "FASTSTART: (IPSET) Error:[$results[0]]. Try restarting csf with FASTSTART disabled";
         }
     }
@@ -5872,7 +5883,7 @@ sub ipsetcreate {
     waitpid( $cmdpid, 0 );
     chomp @results;
 
-    if ( $results[0] =~ /^ipset/ ) {
+    if ( length $results[0] && $results[0] =~ /^ipset/ ) {
         print "IPSET: [$results[0]]\n";
         $warning .= "*ERROR* IPSET: [$results[0]]\n";
     }
@@ -5891,7 +5902,7 @@ sub ipsetrestore {
     waitpid( $cmdpid, 0 );
     chomp @results;
 
-    if ( $results[0] =~ /^ipset/ ) {
+    if ( length $results[0] && $results[0] =~ /^ipset/ ) {
         print "IPSET: [$results[0]]\n";
         $warning .= "*ERROR* IPSET: [$results[0]]\n";
     }
@@ -5919,7 +5930,7 @@ sub ipsetadd {
     waitpid( $cmdpid, 0 );
     chomp @results;
 
-    if ( $results[0] =~ /^ipset/ ) {
+    if ( length $results[0] && $results[0] =~ /^ipset/ ) {
         print "IPSET: [$results[0]]\n";
         $warning .= "*ERROR* IPSET: [$results[0]]\n";
     }
@@ -5942,7 +5953,7 @@ sub ipsetdel {
     waitpid( $cmdpid, 0 );
     chomp @results;
 
-    if ( $results[0] =~ /^ipset/ ) {
+    if ( length $results[0] && $results[0] =~ /^ipset/ ) {
         print "IPSET: [$results[0]]\n";
         $warning .= "*ERROR* IPSET: [$results[0]]\n";
     }

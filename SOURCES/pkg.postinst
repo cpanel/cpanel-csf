@@ -8,19 +8,13 @@ touch /usr/local/cpanel/Cpanel/Config/ConfigObj/Driver ||:
 
 # Remove deprecated AUTO_UPDATES configuration if present
 # This runs on all installs (fresh and upgrade) because config may exist from tarball
-if [ -f /etc/csf/csf.conf ] && grep -q '^AUTO_UPDATES\s*=' /etc/csf/csf.conf 2>/dev/null; then
-    echo "Checking for deprecated AUTO_UPDATES setting and removing it..."
 
-    # Remove AUTO_UPDATES from existing config if present
-    sed -i '/^AUTO_UPDATES\s*=/d' /etc/csf/csf.conf ||:
-    sed -i '/^# Enabling auto updates creates a cron job/,/^# You should check for new version announcements/d' /etc/csf/csf.conf ||:
+# Remove AUTO_UPDATES from existing config if present
+sed -i '/^AUTO_UPDATES\s*=/d' /etc/csf/csf.conf ||:
 
-    # Remove auto-update cron job if it exists
-    rm -f /etc/cron.d/csf_update ||:
-    rm -f /etc/cron.daily/csget ||:
-
-    echo "Removed deprecated AUTO_UPDATES configuration"
-fi
+# Remove auto-update cron job if it exists
+rm -f /etc/cron.d/csf_update ||:
+rm -f /etc/cron.daily/csget ||:
 
 # Disable and mask firewalld if present
 systemctl daemon-reload ||:
@@ -31,6 +25,7 @@ systemctl mask firewalld 2>/dev/null || true
 # Enable CSF services
 systemctl enable csf.service ||:
 systemctl enable lfd.service ||:
+systemctl restart csf.service ||:
+systemctl restart lfd.service ||:
 
 echo "CSF installation completed successfully"
-echo "Please configure /etc/csf/csf.conf and restart services"
