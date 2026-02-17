@@ -127,6 +127,9 @@ sub sanity {
     my $sanity_item  = shift;
     my $sanity_value = shift;
 
+    # Return early if value is undefined
+    return 0 unless defined $sanity_value;
+
     # Lazy-load sanity.txt data on first call (T015-T023)
 
     if ( !$loaded ) {
