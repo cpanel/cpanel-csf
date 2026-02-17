@@ -3568,8 +3568,8 @@ sub linefilter {
         my $protocol = "-p tcp";
         my $inout;
         my $from = 0;
-        my $uid;
-        my $gid;
+        my $uid = "";
+        my $gid = "";
         my $iptype;
 
         my @ll = split( /\|/, $line );
