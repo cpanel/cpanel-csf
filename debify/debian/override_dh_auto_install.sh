@@ -12,7 +12,6 @@ install -d -m 0700 $buildroot/etc/csf
 install -d -m 0700 $buildroot/var/lib/csf
 install -d -m 0700 $buildroot/var/lib/csf/backup
 install -d -m 0700 $buildroot/var/lib/csf/Geo
-install -d -m 0700 $buildroot/var/lib/csf/ui
 install -d -m 0700 $buildroot/var/lib/csf/stats
 install -d -m 0700 $buildroot/var/lib/csf/lock
 install -d -m 0700 $buildroot/var/lib/csf/zone
