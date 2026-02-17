@@ -20,18 +20,18 @@ sandbox:
 	ln -sfn $(CURDIR)/csf.1.txt /usr/local/man/man1/csf.1
 	mkdir -p $(ULC)/whostmgr/cgi/configserver/csf
 	test -e $(ULC)/whostmgr/cgi/configserver/csf.cgi && rm -f $(ULC)/whostmgr/cgi/configserver/csf.cgi; /bin/true
-	ln -s $(CURDIR)/cpanel/csf.cgi $(ULC)/whostmgr/cgi/configserver/csf.cgi
+	ln -sfn $(CURDIR)/cpanel/csf.cgi $(ULC)/whostmgr/cgi/configserver/csf.cgi
 	test -e $(ULC)/whostmgr/docroot/templates/csf.tmpl && rm -f $(ULC)/whostmgr/docroot/templates/csf.tmpl; /bin/true
-	ln -s $(CURDIR)/cpanel/csf.tmpl $(ULC)/whostmgr/docroot/templates/csf.tmpl
+	ln -sfn $(CURDIR)/cpanel/csf.tmpl $(ULC)/whostmgr/docroot/templates/csf.tmpl
 	$(ULC)/bin/register_appconfig cpanel/csf.conf
 	test -e $(ULC)/whostmgr/cgi/configserver/csf/configserver.css && rm -f $(ULC)/whostmgr/cgi/configserver/csf/configserver.css; /bin/true
-	ln -s $(CURDIR)/csf/configserver.css $(ULC)/whostmgr/cgi/configserver/csf/configserver.css
+	ln -sfn $(CURDIR)/csf/configserver.css $(ULC)/whostmgr/cgi/configserver/csf/configserver.css
 	test -e $(ULC)/whostmgr/docroot/libraries/jquery-ui && rm -f $(ULC)/whostmgr/docroot/libraries/jquery-ui; /bin/true
-	ln -s $(ULC)/3rdparty/share/jquery-ui $(ULC)/whostmgr/docroot/libraries/jquery-ui
+	ln -sfn $(ULC)/3rdparty/share/jquery-ui $(ULC)/whostmgr/docroot/libraries/jquery-ui
 	test -e $(ULC)/whostmgr/docroot/themes/x/icons/csf_small.png && rm -f $(ULC)/whostmgr/docroot/themes/x/icons/csf_small.png; /bin/true
-	ln -s $(CURDIR)/cpanel/csf_small.png $(ULC)/whostmgr/docroot/themes/x/icons/csf_small.png
+	ln -sfn $(CURDIR)/cpanel/csf_small.png $(ULC)/whostmgr/docroot/themes/x/icons/csf_small.png
 	test -e $(ULC)/whostmgr/cgi/configserver/csf/csf_small.png && rm -f $(ULC)/whostmgr/cgi/configserver/csf/csf_small.png; /bin/true
-	ln -s $(CURDIR)/cpanel/csf_small.png $(ULC)/whostmgr/cgi/configserver/csf/csf_small.png
+	ln -sfn $(CURDIR)/cpanel/csf_small.png $(ULC)/whostmgr/cgi/configserver/csf/csf_small.png
 
 clean: clean-tarball
 	rm -rf csf.tar.gz

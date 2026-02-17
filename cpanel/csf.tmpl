@@ -6,6 +6,8 @@ USE Whostmgr;
 SET JQUERY = Whostmgr.find_file_url('libraries/jquery/current/jquery.min.js');
 # Also, this uses JQuery UI, but never loaded it??? Maybe it was bundled before?
 SET JQ_UI  = Whostmgr.find_file_url('libraries/jquery-ui/current/jquery-ui.min.js');
+# Bootstrap JS is needed for tabs and toggle buttons
+SET BOOTSTRAP_JS = Whostmgr.find_file_url('libraries/bootstrap/optimized/js/bootstrap.js');
 
 WRAPPER 'master_templates/master.tmpl'
 	header = 'ConfigServer Security &amp; Firewall',
@@ -22,6 +24,7 @@ WRAPPER 'master_templates/master.tmpl'
 
 <script type="text/javascript" src="[% JQUERY %]"></script>
 <script type="text/javascript" src="[% JQ_UI  %]"></script>
+<script type="text/javascript" src="[% BOOTSTRAP_JS %]"></script>
 <script type="text/javascript">
 function getCookie(cname) {
 	var name = cname + "=";
@@ -50,13 +53,6 @@ $(document).ready(function() {
         var window_height = $(window).height();
         var document_height = $(document).height();
         $('html,body').animate({ scrollTop: window_height + document_height }, 'slow', function () {});
-    });
-    $('#tabAll').click(function(){
-        $('#tabAll').addClass('active');  
-        $('.tab-pane').each(function(i,t){
-            $('#myTabs li').removeClass('active'); 
-            $(this).addClass('active');  
-        });
     });
 
 	$('[data-tooltip="tooltip"]').tooltip();
