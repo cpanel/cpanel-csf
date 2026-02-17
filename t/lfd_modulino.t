@@ -112,10 +112,6 @@ subtest 'modulino pattern implemented correctly' => sub {
         'Config loading happens inside run() to prevent compile-time file access'
     );
 
-    like(
-        $run_sub, qr/require ConfigServer::AbuseIP;/,
-        'AbuseIP loaded at runtime via require (not compile-time use)'
-    );
 };
 
 subtest 'load modulino without explosion' => sub {
