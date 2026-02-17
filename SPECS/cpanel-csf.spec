@@ -198,7 +198,6 @@ rm -rf %{buildroot}
 
 # Documentation and metadata files (not config)
 /etc/csf/changelog.txt
-/etc/csf/install.txt
 /etc/csf/license.txt
 /etc/csf/readme.txt
 /etc/csf/version.txt

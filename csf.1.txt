@@ -270,7 +270,5 @@ The system wide configuration file
 .I /etc/csf/readme.txt
 .RS
 Detailed information about csf and lfd
-.SH BUGS
-Report bugs on the forums at http://forum.configserver.com
 .SH AUTHOR
 (c)2006-2023, Jonathan Michaelson (http://www.configserver.com)

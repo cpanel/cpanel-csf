@@ -204,9 +204,6 @@ FILES
        /etc/csf/readme.txt
 	      Detailed information about csf and lfd
 
-BUGS
-       Report bugs on the forums at http://forum.configserver.com
-
 AUTHOR
        (c)2006-2023, Jonathan Michaelson (http://www.configserver.com)
 
