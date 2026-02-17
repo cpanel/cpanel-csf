@@ -53,6 +53,7 @@ tarball: clean-tarball
 		--exclude='tmp' \
 		--exclude='cover_db' \
 		--exclude='debify' \
+		LICENSE.txt \
 		etc/ \
 		tpl/ \
 		bin/ \
@@ -91,30 +92,3 @@ lib/csf.help: all
 		exit 1; \
 	fi
 
-install: lib/csf.help
-	@# Increment version by 0.01
-	@awk '{print $$1 + 0.01}' etc/version.txt > etc/version.txt.new
-	@mv etc/version.txt.new etc/version.txt
-	@echo "Version updated to $$(cat etc/version.txt)"
-	@# Create tarball with files needed by install.sh
-	tar -czf csf.tar.gz \
-		os.pl \
-		etc/ \
-		tpl/ \
-		bin/ \
-		lib/ \
-		csf.pl \
-		lfd.pl \
-		csfcron.sh \
-		lfdcron.sh \
-		migratedata.sh \
-		profiles/ \
-		csf.1.txt \
-		lfd.logrotate \
-		cpanel/ \
-		csf/ \
-		lfd.service \
-		csf.service \
-		lfd.sh \
-		csf.sh
-	@echo "Created csf.tar.gz"
