@@ -63,16 +63,23 @@ our (
     @faststart6nat
 );
 
-$version = version();
+# Run main script logic only when executed directly, not when loaded as module
+__PACKAGE__->run() unless caller;
 
-$ipscidr6 = Net::CIDR::Lite->new;
-$ipscidr  = Net::CIDR::Lite->new;
-eval { local $SIG{__DIE__} = undef; $ipscidr6->add("::1/128") };
-eval { local $SIG{__DIE__} = undef; $ipscidr->add("127.0.0.0/8") };
-
-$slurpreg  = ConfigServer::Slurp->slurpreg;
-$cleanreg  = ConfigServer::Slurp->cleanreg;
-$faststart = 0;
+sub run {
+    my $class = shift;
+    
+    # Initialize package variables
+    $version = version();
+    
+    $ipscidr6 = Net::CIDR::Lite->new;
+    $ipscidr  = Net::CIDR::Lite->new;
+    eval { local $SIG{__DIE__} = undef; $ipscidr6->add("::1/128") };
+    eval { local $SIG{__DIE__} = undef; $ipscidr->add("127.0.0.0/8") };
+    
+    $slurpreg  = ConfigServer::Slurp->slurpreg;
+    $cleanreg  = ConfigServer::Slurp->cleanreg;
+    $faststart = 0;
 
 process_input();
 load_config();
@@ -102,7 +109,7 @@ if ( ( -e "/etc/csf/csf.disable" ) and ( $input{command} ne "--enable" ) and ( $
             last;
         }
     }
-    unless ($ok) { exit 1 }
+    unless ($ok) { return 1 }
 }
 unless ( -e $config{IPTABLES} )                         { error( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} (iptables binary location) does not exist!" ) }
 if     ( $config{IPV6} and !( -e $config{IP6TABLES} ) ) { error( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} (ip6tables binary location) does not exist!" ) }
@@ -111,7 +118,7 @@ if ( ( -e "/etc/csf/csf.error" ) and ( $input{command} ne "--startf" ) and ( $in
     my ($error) = slurpee( "/etc/csf/csf.error", 'fatal' => 1 );
     chomp $error;
     print "You have an unresolved error when starting csf:\n$error\n\nYou need to restart csf successfully to remove this warning, or delete /etc/csf/csf.error\n";
-    exit 1;
+    return 1;
 }
 
 unless ( $input{command} =~ /^--(stop|initdown|initup)$/ ) {
@@ -187,7 +194,10 @@ if ( ( $input{command} eq "--start" ) or ( $input{command} eq "-s" ) or ( $input
     unless ( $config{RESTRICT_SYSLOG} ) { print "\n*WARNING* RESTRICT_SYSLOG is disabled. See SECURITY WARNING in /etc/csf/csf.conf.\n" }
 }
 
-exit 0;
+return 0;
+}
+
+# End of run() subroutine - all other subroutines follow below
 
 sub csflock {
     my $lock = shift;
@@ -5608,12 +5618,12 @@ sub syscommand {
         if ($iptableslock) { iptableslock("unlock") }
 
         chomp @output;
-        if ( $output[0] =~ /# Warning: iptables-legacy tables present/ ) { shift @output }
+        if (@output && $output[0] =~ /# Warning: iptables-legacy tables present/ ) { shift @output }
         foreach my $line (@output) {
             if ( $line =~ /^Using intrapositioned negation/ ) { next }
             print $line. "\n";
         }
-        if ( $output[0] =~ /(^iptables: Unknown error 4294967295)|(xtables lock)/ and !$config{WAITLOCK} ) {
+        if (@output && $output[0] =~ /(^iptables: Unknown error 4294967295)|(xtables lock)/ and !$config{WAITLOCK} ) {
             my $cnt    = 0;
             my $repeat = 6;
             while ( $cnt < $repeat ) {
@@ -5626,13 +5636,13 @@ sub syscommand {
                 waitpid( $cmdpid, 0 );
                 if ($iptableslock) { iptableslock("unlock") }
                 chomp @output;
-                if ( $output[0] =~ /# Warning: iptables-legacy tables present/ ) { shift @output }
+                if (@output && $output[0] =~ /# Warning: iptables-legacy tables present/ ) { shift @output }
                 $cnt++;
-                if     ( $output[0] =~ /(^iptables: Unknown error 4294967295)|(xtables lock)/ and $cnt == $repeat ) { error( $line, "Error processing command for line [$line] ($repeat times): [$output[0]]" ); }
-                unless ( $output[0] =~ /(^iptables: Unknown error 4294967295)|(xtables lock)/ )                     { $cnt = $repeat }
+                if     (@output && $output[0] =~ /(^iptables: Unknown error 4294967295)|(xtables lock)/ and $cnt == $repeat ) { error( $line, "Error processing command for line [$line] ($repeat times): [$output[0]]" ); }
+                unless (@output && $output[0] =~ /(^iptables: Unknown error 4294967295)|(xtables lock)/ )                     { $cnt = $repeat }
             }
         }
-        if ( $output[0] =~ /^(iptables|xtables|Bad|Another)/ and ( $config{TESTING} or $force ) ) {
+        if (@output && $output[0] =~ /^(iptables|xtables|Bad|Another)/ and ( $config{TESTING} or $force ) ) {
             if ( $output[0] =~ /iptables: No chain\/target\/match by that name/ ) {
                 error( $line, "iptables command [$command] failed, you appear to be missing a required iptables module" );
             }
@@ -5640,7 +5650,7 @@ sub syscommand {
                 error( $line, "iptables command [$command] failed" );
             }
         }
-        if ( $output[0] =~ /^(ip6tables|Bad|Another)/ and ( $config{TESTING} or $force ) ) {
+        if (@output && $output[0] =~ /^(ip6tables|Bad|Another)/ and ( $config{TESTING} or $force ) ) {
             if ( $output[0] =~ /ip6tables: No chain\/target\/match by that name/ ) {
                 error( $line, "ip6tables command [$command] failed, you appear to be missing a required ip6tables module" );
             }
