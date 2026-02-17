@@ -33,6 +33,7 @@ use ConfigServer::CheckIP qw(checkip cccheckip);
 use ConfigServer::URLGet;
 use ConfigServer::GetIPs qw(getips);
 use ConfigServer::Service;
+
 # ConfigServer::AbuseIP loaded at runtime in run() to avoid compile-time config loading
 use ConfigServer::GetEthDev;
 use ConfigServer::Sendmail;
@@ -83,7 +84,7 @@ __PACKAGE__->run() unless caller;
 
 sub run {
     my $class = shift;
-    
+
     # Initialize package variables
     $pidfile = "/var/run/lfd.pid";
 
@@ -104,7 +105,7 @@ sub run {
     $ipv6reg  = $config->ipv6reg;
     $slurpreg = ConfigServer::Slurp->slurpreg;
     $cleanreg = ConfigServer::Slurp->cleanreg;
-    
+
     # Load AbuseIP module after config is loaded (it needs config at compile time)
     require ConfigServer::AbuseIP;
     ConfigServer::AbuseIP->import();
@@ -112,684 +113,223 @@ sub run {
     unless ( $config{LF_DAEMON} ) { cleanup( __LINE__, "*Error* LF_DAEMON not enabled in /etc/csf/csf.conf" ) }
     if     ( $config{TESTING} )   { cleanup( __LINE__, "*Error* lfd will not run with TESTING enabled in /etc/csf/csf.conf" ) }
 
-if ( $config{UI} ) {
-    require ConfigServer::DisplayUI;
-    import ConfigServer::DisplayUI;
-    require ConfigServer::cseUI;
-    import ConfigServer::cseUI;
+    if ( $config{UI} ) {
+        require ConfigServer::DisplayUI;
+        import ConfigServer::DisplayUI;
+        require ConfigServer::cseUI;
+        import ConfigServer::cseUI;
+        eval {
+            local $SIG{__DIE__} = undef;
+            require IO::Socket::SSL;
+            import IO::Socket::SSL;
+        };
+    }
+    if ( $config{LF_DIRWATCH} ) {
+        require File::Find;
+        import File::Find;
+    }
+    if ( $config{UI} or $config{LF_DIRWATCH_FILE} ) {
+        require Digest::MD5;
+        import Digest::MD5;
+    }
+    if ( $config{SYSLOG} or $config{SYSLOG_CHECK} ) {
+        eval('use Sys::Syslog;');    ## no critic (BuiltinFunctions::ProhibitStringyEval) - Optional module load - syslog support not required on all systems
+        unless ($@) { $sys_syslog = 1 }
+    }
+    if ( $config{DEBUG} ) {
+        require Time::HiRes;
+        import Time::HiRes;
+    }
+    if ( $config{CLUSTER_SENDTO} or $config{CLUSTER_RECVFROM} ) {
+        require Crypt::CBC;
+        import Crypt::CBC;
+        require File::Basename;
+        import File::Basename;
+    }
+    if ( $config{CLUSTER_SENDTO} or $config{CLUSTER_RECVFROM} ) {
+        require IO::Socket::INET;
+        import IO::Socket::INET;
+    }
+    if ( $config{MESSENGER} ) {
+        require ConfigServer::Messenger;
+        import ConfigServer::Messenger;
+    }
+    if ( $config{CF_ENABLE} ) {
+        require ConfigServer::CloudFlare;
+        import ConfigServer::CloudFlare;
+    }
+    if ( -e "/etc/cxs/cxs.reputation" and -e "/usr/local/csf/lib/ConfigServer/cxs.pm" ) {
+        require ConfigServer::cxs;
+        import ConfigServer::cxs;
+        $cxsreputation = 1;
+        %cxsports      = ConfigServer::cxs::Rports();
+    }
+    $SIG{CHLD} = 'IGNORE';
+
+    if ( $pid = fork ) {
+        exit 0;
+    }
+    elsif ( defined($pid) ) {
+        $pid = $$;
+    }
+    else {
+        die "*Error* Unable to fork: $!";
+    }
+
+    chdir("/etc/csf");
+
+    close(STDIN);
+    close(STDOUT);
+    close(STDERR);
+    open STDIN,  "<", "/dev/null";
+    open STDOUT, ">", "/dev/null";
+    open STDERR, ">", "/dev/null";
+    setsid();
+
+    my $oldfh = select STDERR;    ## no critic (InputOutput::ProhibitOneArgSelect) - Save current filehandle before STDERR redirection in daemon mode
+    $| = 1;
+    select $oldfh;                ## no critic (InputOutput::ProhibitOneArgSelect) - Restore previous filehandle after setting autoflush on STDERR
+
+    if ( $config{DEBUG} ) {
+        open( STDERR, ">>", "/var/log/lfd.log" );
+    }
+
+    if ( -e "/proc/sys/kernel/hostname" ) {
+        open( my $IN, "<", "/proc/sys/kernel/hostname" );
+        flock( $IN, LOCK_SH );
+        $hostname = <$IN>;
+        chomp $hostname;
+        close($IN);
+    }
+    else {
+        $hostname = "unknown";
+    }
+    $hostshort   = ( split( /\./, $hostname ) )[0];
+    $clock_ticks = sysconf( POSIX::_SC_CLK_TCK() ) || 100;
+    $tz          = strftime( "%z", localtime );
+
+    my $pidfile_fh;
+    sysopen( $pidfile_fh, $pidfile, O_RDWR | O_CREAT ) or childcleanup( __LINE__, "*Error* unable to create lfd PID file [$pidfile] $!" );
+    flock( $pidfile_fh, LOCK_EX | LOCK_NB )            or childcleanup( __LINE__, "*Error* attempt to start lfd when it is already running" );
+    autoflush $pidfile_fh 1;
+    seek( $pidfile_fh, 0, 0 );
+    truncate( $pidfile_fh, 0 );
+    print $pidfile_fh "$pid\n";
+    $pidino    = ( stat($pidfile) )[1];
+    $masterpid = $pid;
+
+    $0 = "lfd - starting";
+
+    $SIG{INT}     = \&cleanup;
+    $SIG{TERM}    = \&cleanup;
+    $SIG{HUP}     = \&cleanup;
+    $SIG{__DIE__} = sub { cleanup(@_); };
+    $SIG{CHLD}    = 'IGNORE';
+    $SIG{PIPE}    = 'IGNORE';
+
+    $ipscidr  = Net::CIDR::Lite->new;
+    $ipscidr6 = Net::CIDR::Lite->new;
+    $cidr     = Net::CIDR::Lite->new;
+    $cidr6    = Net::CIDR::Lite->new;
+    $gcidr    = Net::CIDR::Lite->new;
+    $gcidr6   = Net::CIDR::Lite->new;
+    eval { local $SIG{__DIE__} = undef; $ipscidr6->add("::1/128") };
+    eval { local $SIG{__DIE__} = undef; $ipscidr->add("127.0.0.0/8") };
+
+    $faststart = 0;
+
     eval {
         local $SIG{__DIE__} = undef;
-        require IO::Socket::SSL;
-        import IO::Socket::SSL;
+        $urlget = ConfigServer::URLGet->new( $config{URLGET}, "csf/$version", $config{URLPROXY} );
     };
-}
-if ( $config{LF_DIRWATCH} ) {
-    require File::Find;
-    import File::Find;
-}
-if ( $config{UI} or $config{LF_DIRWATCH_FILE} ) {
-    require Digest::MD5;
-    import Digest::MD5;
-}
-if ( $config{SYSLOG} or $config{SYSLOG_CHECK} ) {
-    eval('use Sys::Syslog;');    ## no critic (BuiltinFunctions::ProhibitStringyEval) - Optional module load - syslog support not required on all systems
-    unless ($@) { $sys_syslog = 1 }
-}
-if ( $config{DEBUG} ) {
-    require Time::HiRes;
-    import Time::HiRes;
-}
-if ( $config{CLUSTER_SENDTO} or $config{CLUSTER_RECVFROM} ) {
-    require Crypt::CBC;
-    import Crypt::CBC;
-    require File::Basename;
-    import File::Basename;
-}
-if ( $config{CLUSTER_SENDTO} or $config{CLUSTER_RECVFROM} ) {
-    require IO::Socket::INET;
-    import IO::Socket::INET;
-}
-if ( $config{MESSENGER} ) {
-    require ConfigServer::Messenger;
-    import ConfigServer::Messenger;
-}
-if ( $config{CF_ENABLE} ) {
-    require ConfigServer::CloudFlare;
-    import ConfigServer::CloudFlare;
-}
-if ( -e "/etc/cxs/cxs.reputation" and -e "/usr/local/csf/lib/ConfigServer/cxs.pm" ) {
-    require ConfigServer::cxs;
-    import ConfigServer::cxs;
-    $cxsreputation = 1;
-    %cxsports      = ConfigServer::cxs::Rports();
-}
-$SIG{CHLD} = 'IGNORE';
-
-if ( $pid = fork ) {
-    exit 0;
-}
-elsif ( defined($pid) ) {
-    $pid = $$;
-}
-else {
-    die "*Error* Unable to fork: $!";
-}
-
-chdir("/etc/csf");
-
-close(STDIN);
-close(STDOUT);
-close(STDERR);
-open STDIN,  "<", "/dev/null";
-open STDOUT, ">", "/dev/null";
-open STDERR, ">", "/dev/null";
-setsid();
-
-my $oldfh = select STDERR;    ## no critic (InputOutput::ProhibitOneArgSelect) - Save current filehandle before STDERR redirection in daemon mode
-$| = 1;
-select $oldfh;                ## no critic (InputOutput::ProhibitOneArgSelect) - Restore previous filehandle after setting autoflush on STDERR
-
-if ( $config{DEBUG} ) {
-    open( STDERR, ">>", "/var/log/lfd.log" );
-}
-
-if ( -e "/proc/sys/kernel/hostname" ) {
-    open( my $IN, "<", "/proc/sys/kernel/hostname" );
-    flock( $IN, LOCK_SH );
-    $hostname = <$IN>;
-    chomp $hostname;
-    close($IN);
-}
-else {
-    $hostname = "unknown";
-}
-$hostshort   = ( split( /\./, $hostname ) )[0];
-$clock_ticks = sysconf( POSIX::_SC_CLK_TCK() ) || 100;
-$tz          = strftime( "%z", localtime );
-
-my $pidfile_fh;
-sysopen( $pidfile_fh, $pidfile, O_RDWR | O_CREAT ) or childcleanup( __LINE__, "*Error* unable to create lfd PID file [$pidfile] $!" );
-flock( $pidfile_fh, LOCK_EX | LOCK_NB )            or childcleanup( __LINE__, "*Error* attempt to start lfd when it is already running" );
-autoflush $pidfile_fh 1;
-seek( $pidfile_fh, 0, 0 );
-truncate( $pidfile_fh, 0 );
-print $pidfile_fh "$pid\n";
-$pidino    = ( stat($pidfile) )[1];
-$masterpid = $pid;
-
-$0 = "lfd - starting";
-
-$SIG{INT}     = \&cleanup;
-$SIG{TERM}    = \&cleanup;
-$SIG{HUP}     = \&cleanup;
-$SIG{__DIE__} = sub { cleanup(@_); };
-$SIG{CHLD}    = 'IGNORE';
-$SIG{PIPE}    = 'IGNORE';
-
-$ipscidr  = Net::CIDR::Lite->new;
-$ipscidr6 = Net::CIDR::Lite->new;
-$cidr     = Net::CIDR::Lite->new;
-$cidr6    = Net::CIDR::Lite->new;
-$gcidr    = Net::CIDR::Lite->new;
-$gcidr6   = Net::CIDR::Lite->new;
-eval { local $SIG{__DIE__} = undef; $ipscidr6->add("::1/128") };
-eval { local $SIG{__DIE__} = undef; $ipscidr->add("127.0.0.0/8") };
-
-$faststart = 0;
-
-eval {
-    local $SIG{__DIE__} = undef;
-    $urlget = ConfigServer::URLGet->new( $config{URLGET}, "csf/$version", $config{URLPROXY} );
-};
-unless ( defined $urlget ) {
-    if ( -e $config{CURL} or -e $config{WGET} ) {
-        $config{URLGET} = 3;
-        $urlget = ConfigServer::URLGet->new( $config{URLGET}, "csf/$version", $config{URLPROXY} );
-        logfile("*WARNING* URLGET set to use LWP but perl module is not installed, fallback to using CURL/WGET");
-    }
-    else {
-        $config{URLGET} = 1;
-        $urlget = ConfigServer::URLGet->new( $config{URLGET}, "csf/$version", $config{URLPROXY} );
-        logfile("*WARNING* URLGET set to use LWP but perl module is not installed, CURL and WGET not installed - reverting to HTTP::Tiny");
-    }
-}
-
-if ( -e "/etc/wwwacct.conf" ) {
-    foreach my $line ( slurp("/etc/wwwacct.conf") ) {
-        $line =~ s/$cleanreg//g;
-        if ( $line =~ /^(\s|\#|$)/ ) { next }
-        my ( $name, $value ) = split( / /, $line, 2 );
-        $cpconfig{$name} = $value;
-    }
-}
-if ( -e "/usr/local/cpanel/version" ) {
-    foreach my $line ( slurp("/usr/local/cpanel/version") ) {
-        $line =~ s/$cleanreg//g;
-        if ( $line =~ /\d/ ) { $cpconfig{version} = $line }
-    }
-}
-
-if ( -e "/var/lib/csf/csf.tempconf" ) { unlink("/var/lib/csf/csf.tempconf") }
-if ( -e "/var/lib/csf/lfd.enable" )   { unlink "/var/lib/csf/lfd.enable" }
-if ( -e "/var/lib/csf/lfd.start" )    { unlink "/var/lib/csf/lfd.start" }
-if ( -e "/var/lib/csf/lfd.restart" )  { unlink "/var/lib/csf/lfd.restart" }
-if ( -e "/var/lib/csf/csf.4.saved" )  { unlink "/var/lib/csf/csf.4.saved" }
-if ( -e "/var/lib/csf/csf.4.ipsets" ) { unlink "/var/lib/csf/csf.4.ipsets" }
-if ( -e "/var/lib/csf/csf.6.saved" )  { unlink "/var/lib/csf/csf.6.saved" }
-if ( -e "/var/lib/csf/csf.dnscache" ) { unlink "/var/lib/csf/csf.dnscache" }
-if ( -e "/var/lib/csf/csf.gignore" )  { unlink "/var/lib/csf/csf.gignore" }
-
-getethdev();
-($version) = slurpee( "/etc/csf/version.txt", 'warn' => 0 ) or cleanup( __LINE__, "Unable to open version.txt" );
-chomp $version;
-logfile("daemon started on $hostname - csf v$version (cPanel)");
-if ( $config{DEBUG} >= 1 ) { logfile("Clock Ticks: $clock_ticks") }
-if ( $config{DEBUG} >= 1 ) { logfile("debug: **** DEBUG LEVEL $config{DEBUG} ENABLED ****") }
-
-unless ( -e $config{SENDMAIL} ) {
-    logfile("*WARNING* Unable to send email reports - [$config{SENDMAIL}] not found");
-}
-
-if ( ConfigServer::Service::type() eq "systemd" ) {
-    my @reply = syscommand( __LINE__, $config{SYSTEMCTL}, "is-active", "firewalld" );
-    chomp @reply;
-    if ( $reply[0] eq "active" or $reply[0] eq "activating" ) {
-        cleanup( __LINE__, "*Error* firewalld found to be running. You must stop and disable firewalld when using csf" );
-        exit 1;
-    }
-}
-
-require ConfigServer::RegexMain;
-import ConfigServer::RegexMain;
-
-if ( $config{RESTRICT_SYSLOG} == 1 ) {
-    logfile("Restricted log file access (RESTRICT_SYSLOG)");
-    foreach (
-        qw{LF_SSHD LF_FTPD LF_IMAPD LF_POP3D LF_BIND LF_SUHOSIN
-        LF_SSH_EMAIL_ALERT LF_SU_EMAIL_ALERT LF_CONSOLE_EMAIL_ALERT
-        LF_DISTATTACK LF_DISTFTP LT_POP3D LT_IMAPD PS_INTERVAL
-        UID_INTERVAL PORTKNOCKING_ALERT LF_SUDO_EMAIL_ALERT}
-    ) {
-        if ( $config{$_} != 0 ) {
-            $config{$_} = 0;
-            logfile("RESTRICT_SYSLOG: Option $_ *Disabled*");
-        }
-    }
-}
-elsif ( $config{RESTRICT_SYSLOG} == 3 ) {
-    logfile("Restricting syslog/rsyslog socket acccess to group [$config{RESTRICT_SYSLOG_GROUP}]...");
-    syslog_init();
-}
-
-if ( $config{SYSLOG} or $config{SYSLOG_CHECK} ) {
-    unless ($sys_syslog) {
-        logfile("*Error* Cannot log to SYSLOG - Perl module Sys::Syslog required");
-    }
-}
-
-if ( -e "/etc/csf/csf.blocklists" ) {
-    my @entries = slurp("/etc/csf/csf.blocklists");
-    foreach my $line (@entries) {
-        if ( $line =~ /^Include\s*(.*)$/ ) {
-            my @incfile = slurp($1);
-            push @entries, @incfile;
-        }
-    }
-    foreach my $line (@entries) {
-        $line =~ s/$cleanreg//g;
-        if ( $line eq "" )               { next }
-        if ( $line =~ /^\s*\#|Include/ ) { next }
-        my ( $name, $interval, $max, $url ) = split( /\|/, $line );
-        if ( $name =~ /^\w+$/ ) {
-            $name = substr( uc $name, 0, 25 );
-            if ( $name =~ /^CXS_/ ) { $name =~ s/^CXS_/X_CXS_/ }
-            if ( $interval < 3600 ) { $interval = 3600 }
-            if ( $max eq "" )       { $max = 0 }
-            $blocklists{$name}{interval} = $interval;
-            $blocklists{$name}{max}      = $max;
-            $blocklists{$name}{url}      = $url;
-        }
-    }
-}
-if ( $cxsreputation and -e "/etc/cxs/cxs.blocklists" ) {
-    my $all   = 0;
-    my @lines = slurp("/etc/cxs/cxs.blocklists");
-    if ( grep { $_ =~ /^CXS_ALL/ } @lines ) {
-        $all = 1;
-    }
-    foreach my $line (@lines) {
-        $line =~ s/$cleanreg//g;
-        if ( $line =~ /^(\s|\#|$)/ ) { next }
-        my ( $name, $interval, $max, $url ) = split( /\|/, $line );
-        $url =~ s/download\.configserver\.com/$config{DOWNLOADSERVER}/g;
-        if ( $all and $name ne "CXS_ALL" ) { next }
-        if ( $name =~ /^\w+$/ ) {
-            $name = substr( uc $name, 0, 25 );
-            if ( $max eq "" ) { $max = 0 }
-            $blocklists{$name}{interval} = $interval;
-            $blocklists{$name}{max}      = $max;
-            $blocklists{$name}{url}      = $url;
-        }
-    }
-}
-
-if ( -e "/etc/csf/csf.ignore" ) {
-    my @ignore = slurp("/etc/csf/csf.ignore");
-    foreach my $line (@ignore) {
-        if ( $line =~ /^Include\s*(.*)$/ ) {
-            my @incfile = slurp($1);
-            push @ignore, @incfile;
-        }
-    }
-    foreach my $line (@ignore) {
-        $line =~ s/$cleanreg//g;
-        if ( $line eq "" )               { next }
-        if ( $line =~ /^\s*\#|Include/ ) { next }
-        my ( $first, undef ) = split( /\s/, $line );
-        my ( $ip, $iscidr ) = split( /\//, $first );
-        if ( checkip( \$first ) ) {
-            if ($iscidr) { push @cidrs, $first }
-            else         { $ignoreips{$ip} = 1 }
-        }
-        elsif ( $ip ne "127.0.0.1" ) { logfile("Invalid entry in csf.ignore: [$first]") }
-    }
-    foreach my $entry (@cidrs) {
-        if ( checkip( \$entry ) == 6 ) {
-            eval { local $SIG{__DIE__} = undef; $cidr6->add($entry) };
+    unless ( defined $urlget ) {
+        if ( -e $config{CURL} or -e $config{WGET} ) {
+            $config{URLGET} = 3;
+            $urlget = ConfigServer::URLGet->new( $config{URLGET}, "csf/$version", $config{URLPROXY} );
+            logfile("*WARNING* URLGET set to use LWP but perl module is not installed, fallback to using CURL/WGET");
         }
         else {
-            eval { local $SIG{__DIE__} = undef; $cidr->add($entry) };
-        }
-        if ($@) { logfile("Invalid entry in csf.ignore: $entry") }
-    }
-}
-if ( -e "/etc/csf/csf.rignore" ) {
-    my @entries = slurp("/etc/csf/csf.rignore");
-    foreach my $line (@entries) {
-        if ( $line =~ /^Include\s*(.*)$/ ) {
-            my @incfile = slurp($1);
-            push @entries, @incfile;
+            $config{URLGET} = 1;
+            $urlget = ConfigServer::URLGet->new( $config{URLGET}, "csf/$version", $config{URLPROXY} );
+            logfile("*WARNING* URLGET set to use LWP but perl module is not installed, CURL and WGET not installed - reverting to HTTP::Tiny");
         }
     }
-    foreach my $line (@entries) {
-        $line =~ s/$cleanreg//g;
-        if ( $line eq "" ) { next }
-        if ( $line =~ /^\s*\#|Include/ ) { next }
-        if ( $line =~ /^(\.|\w)/ ) {
-            my ( $host, undef ) = split( /\s/, $line );
-            if ( $host ne "" ) { push @rdns, $host }
-        }
-    }
-}
-if ( $config{IGNORE_ALLOW} and -e "/etc/csf/csf.allow" ) {
-    my @ignore = slurp("/etc/csf/csf.allow");
-    foreach my $line (@ignore) {
-        if ( $line =~ /^Include\s*(.*)$/ ) {
-            my @incfile = slurp($1);
-            push @ignore, @incfile;
-        }
-    }
-    foreach my $line (@ignore) {
-        $line =~ s/$cleanreg//g;
-        if ( $line eq "" )               { next }
-        if ( $line =~ /^\s*\#|Include/ ) { next }
-        my ( $first, undef ) = split( /\s/, $line );
-        my ( $ip, $iscidr ) = split( /\//, $first );
-        if ( checkip( \$first ) ) {
-            if ($iscidr) { push @cidrs, $first }
-            else         { $ignoreips{$ip} = 1 }
-        }
-    }
-    foreach my $entry (@cidrs) {
-        if ( checkip( \$entry ) == 6 ) {
-            eval { local $SIG{__DIE__} = undef; $cidr6->add($entry) };
-        }
-        else {
-            eval { local $SIG{__DIE__} = undef; $cidr->add($entry) };
-        }
-        if ($@) { logfile("Invalid CIDR in csf.allow: $entry") }
-    }
-}
 
-if ( $config{LF_HTACCESS} or $config{LF_APACHE_404} or $config{LF_APACHE_403} or $config{LF_APACHE_401} or $config{LF_QOS} or $config{LF_SYMLINK} ) { globlog("HTACCESS_LOG") }
-if ( $config{LF_MODSEC} or $config{LF_CXS} )                                                                                                        { globlog("MODSEC_LOG") }
-if ( $config{LF_SUHOSIN} )                                                                                                                          { globlog("SUHOSIN_LOG}") }
-if ( $config{LF_SMTPAUTH} or $config{LF_EXIMSYNTAX} )                                                                                               { globlog("SMTPAUTH_LOG") }
-if ( $config{LF_POP3D} or $config{LT_POP3D} )                                                                                                       { globlog("POP3D_LOG") }
-if ( $config{LF_IMAPD} or $config{LT_IMAPD} )                                                                                                       { globlog("IMAPD_LOG") }
-if ( $config{LF_CPANEL} )                                                                                                                           { globlog("CPANEL_LOG") }
-if ( $config{LF_SSHD} or $config{LF_SSH_EMAIL_ALERT} or $config{LF_CONSOLE_EMAIL_ALERT} )                                                           { globlog("SSHD_LOG") }
-if ( $config{LF_FTPD} )                                                                                                                             { globlog("FTPD_LOG") }
-if ( $config{LF_BIND} )                                                                                                                             { globlog("BIND_LOG") }
-if ( $config{LF_CPANEL_ALERT} )                                                                                                                     { globlog("CPANEL_ACCESSLOG") }
-if ( $config{SYSLOG_CHECK} and $sys_syslog )                                                                                                        { globlog("SYSLOG_LOG") }
+    if ( -e "/etc/wwwacct.conf" ) {
+        foreach my $line ( slurp("/etc/wwwacct.conf") ) {
+            $line =~ s/$cleanreg//g;
+            if ( $line =~ /^(\s|\#|$)/ ) { next }
+            my ( $name, $value ) = split( / /, $line, 2 );
+            $cpconfig{$name} = $value;
+        }
+    }
+    if ( -e "/usr/local/cpanel/version" ) {
+        foreach my $line ( slurp("/usr/local/cpanel/version") ) {
+            $line =~ s/$cleanreg//g;
+            if ( $line =~ /\d/ ) { $cpconfig{version} = $line }
+        }
+    }
 
-if ( $config{PS_INTERVAL} or $config{ST_ENABLE} or $config{UID_INTERVAL} )                  { globlog("IPTABLES_LOG") }
-if ( $config{LF_SU_EMAIL_ALERT} )                                                           { globlog("SU_LOG") }
-if ( $config{LF_SUDO_EMAIL_ALERT} )                                                         { globlog("SUDO_LOG") }
-if ( $config{LF_SCRIPT_ALERT} )                                                             { globlog("SCRIPT_LOG") }
-if ( $config{RT_RELAY_ALERT} or $config{RT_AUTHRELAY_ALERT} or $config{RT_POPRELAY_ALERT} ) { globlog("SMTPRELAY_LOG") }
+    if ( -e "/var/lib/csf/csf.tempconf" ) { unlink("/var/lib/csf/csf.tempconf") }
+    if ( -e "/var/lib/csf/lfd.enable" )   { unlink "/var/lib/csf/lfd.enable" }
+    if ( -e "/var/lib/csf/lfd.start" )    { unlink "/var/lib/csf/lfd.start" }
+    if ( -e "/var/lib/csf/lfd.restart" )  { unlink "/var/lib/csf/lfd.restart" }
+    if ( -e "/var/lib/csf/csf.4.saved" )  { unlink "/var/lib/csf/csf.4.saved" }
+    if ( -e "/var/lib/csf/csf.4.ipsets" ) { unlink "/var/lib/csf/csf.4.ipsets" }
+    if ( -e "/var/lib/csf/csf.6.saved" )  { unlink "/var/lib/csf/csf.6.saved" }
+    if ( -e "/var/lib/csf/csf.dnscache" ) { unlink "/var/lib/csf/csf.dnscache" }
+    if ( -e "/var/lib/csf/csf.gignore" )  { unlink "/var/lib/csf/csf.gignore" }
 
-if ( $config{LT_IMAPD} ) { $loginproto{imapd} = $config{LT_IMAPD} }
-if ( $config{LT_POP3D} ) { $loginproto{pop3d} = $config{LT_POP3D} }
+    getethdev();
+    ($version) = slurpee( "/etc/csf/version.txt", 'warn' => 0 ) or cleanup( __LINE__, "Unable to open version.txt" );
+    chomp $version;
+    logfile("daemon started on $hostname - csf v$version (cPanel)");
+    if ( $config{DEBUG} >= 1 ) { logfile("Clock Ticks: $clock_ticks") }
+    if ( $config{DEBUG} >= 1 ) { logfile("debug: **** DEBUG LEVEL $config{DEBUG} ENABLED ****") }
 
-for ( my $x = 1; $x < 10; $x++ ) { globlog("CUSTOM${x}_LOG") }
+    unless ( -e $config{SENDMAIL} ) {
+        logfile("*WARNING* Unable to send email reports - [$config{SENDMAIL}] not found");
+    }
 
-if ( -e "/usr/local/cpanel/version" and -e "/etc/cpanel/ea4/is_ea4" and -e "/etc/cpanel/ea4/paths.conf" ) {
-    my @file = slurp("/etc/cpanel/ea4/paths.conf");
-    foreach my $line (@file) {
-        $line =~ s/$cleanreg//g;
-        if ( $line =~ /^(\s|\#|$)/ ) { next }
-        if ( $line !~ /=/ )          { next }
-        my ( $name, $value ) = split( /=/, $line, 2 );
-        $value =~ s/^\s+//g;
-        $value =~ s/\s+$//g;
-        if ( $name eq "dir_logs" ) {
-            if ( $config{LF_HTACCESS} or $config{LF_APACHE_404} or $config{LF_APACHE_403} or $config{LF_APACHE_401} or $config{LF_QOS} or $config{LF_SYMLINK} ) {
-                delete $globlogs{HTACCESS_LOG}{ $config{HTACCESS_LOG} };
-                delete $logfiles{ $config{HTACCESS_LOG} };
-                $globlogs{HTACCESS_LOG}{"$value/error_log"} = 1;
-                $logfiles{"$value/error_log"} = 1;
-                logfile("EasyApache4, using $value/error_log instead of $config{HTACCESS_LOG} (Web Server)");
-            }
-            if ( $config{LF_MODSEC} or $config{LF_CXS} ) {
-                delete $globlogs{MODSEC_LOG}{ $config{MODSEC_LOG} };
-                delete $logfiles{ $config{MODSEC_LOG} };
-                $globlogs{MODSEC_LOG}{"$value/error_log"} = 1;
-                $logfiles{"$value/error_log"} = 1;
-                logfile("EasyApache4, using $value/error_log instead of $config{MODSEC_LOG} {ModSecurity}");
+    if ( ConfigServer::Service::type() eq "systemd" ) {
+        my @reply = syscommand( __LINE__, $config{SYSTEMCTL}, "is-active", "firewalld" );
+        chomp @reply;
+        if ( $reply[0] eq "active" or $reply[0] eq "activating" ) {
+            cleanup( __LINE__, "*Error* firewalld found to be running. You must stop and disable firewalld when using csf" );
+            exit 1;
+        }
+    }
+
+    require ConfigServer::RegexMain;
+    import ConfigServer::RegexMain;
+
+    if ( $config{RESTRICT_SYSLOG} == 1 ) {
+        logfile("Restricted log file access (RESTRICT_SYSLOG)");
+        foreach (
+            qw{LF_SSHD LF_FTPD LF_IMAPD LF_POP3D LF_BIND LF_SUHOSIN
+            LF_SSH_EMAIL_ALERT LF_SU_EMAIL_ALERT LF_CONSOLE_EMAIL_ALERT
+            LF_DISTATTACK LF_DISTFTP LT_POP3D LT_IMAPD PS_INTERVAL
+            UID_INTERVAL PORTKNOCKING_ALERT LF_SUDO_EMAIL_ALERT}
+        ) {
+            if ( $config{$_} != 0 ) {
+                $config{$_} = 0;
+                logfile("RESTRICT_SYSLOG: Option $_ *Disabled*");
             }
         }
     }
-}
+    elsif ( $config{RESTRICT_SYSLOG} == 3 ) {
+        logfile("Restricting syslog/rsyslog socket acccess to group [$config{RESTRICT_SYSLOG_GROUP}]...");
+        syslog_init();
+    }
 
-if ( $config{LOGSCANNER} ) {
-    my @entries = slurp("/etc/csf/csf.logfiles");
-    foreach my $line (@entries) {
-        if ( $line =~ /^Include\s*(.*)$/ ) {
-            my @incfile = slurp($1);
-            push @entries, @incfile;
+    if ( $config{SYSLOG} or $config{SYSLOG_CHECK} ) {
+        unless ($sys_syslog) {
+            logfile("*Error* Cannot log to SYSLOG - Perl module Sys::Syslog required");
         }
     }
-    foreach my $file (@entries) {
-        $file =~ s/$cleanreg//g;
-        if ( $file eq "" ) { next }
-        if ( $file =~ /^\s*\#|Include/ ) { next }
-        if ( $file =~ /[*?\[]/ ) {
-            foreach my $log ( glob $file ) {
-                if ( -e $log ) {
-                    $logfiles{$log}        = 1;
-                    $logscannerfiles{$log} = 1;
-                }
-            }
-        }
-        else {
-            if ( -e $file ) {
-                $logfiles{$file}        = 1;
-                $logscannerfiles{$file} = 1;
-            }
-        }
-    }
-    my @entries2 = slurp("/etc/csf/csf.logignore");
-    foreach my $line (@entries2) {
-        if ( $line =~ /^Include\s*(.*)$/ ) {
-            my @incfile = slurp($1);
-            push @entries2, @incfile;
-        }
-    }
-    foreach my $line (@entries2) {
-        $line =~ s/$cleanreg//g;
-        if   ( $line eq "" )               { next }
-        if   ( $line =~ /^\s*\#|Include/ ) { next }
-        if   ( testregex($line) )          { push @logignore, $line }
-        else                               { logfile("*Error* Invalid regex [$line] in csf.logignore") }
-    }
-    logfile("Log Scanner...");
-}
 
-unless ( -d "/var/spool/exim" ) { $config{LF_QUEUE_ALERT} = 0 }
-
-$accept = "ACCEPT";
-if ( $config{WATCH_MODE} ) {
-    $accept                   = "LOGACCEPT";
-    $config{DROP_NOLOG}       = "";
-    $config{DROP_LOGGING}     = "1";
-    $config{DROP_IP_LOGGING}  = "1";
-    $config{DROP_OUT_LOGGING} = "1";
-    $config{DROP_PF_LOGGING}  = "1";
-    $config{PS_INTERVAL}      = "0";
-    $config{DROP_ONLYRES}     = "0";
-    logfile("WATCH_MODE enabled...");
-}
-
-if ( -e "/var/lib/csf/csf.restart" ) {
-    unlink "/var/lib/csf/csf.restart";
-    csfrestart();
-}
-
-if ( $config{LF_CSF} ) {
-    if ( -e "/var/lib/csf/cpanel.new" ) { unlink "/var/lib/csf/cpanel.new" }
-    logfile("CSF Tracking...");
-    csfcheck();
-    $csftimeout = 0;
-}
-
-if ( $config{IPV6} ) {
-    logfile("IPv6 Enabled...");
-}
-
-if ($cxsreputation) {
-    logfile("cxs Reputation Enabled...");
-}
-
-if ( $config{PT_LOAD} ) {
-    logfile("LOAD Tracking...");
-    loadcheck();
-    $loadtimeout = 0;
-}
-
-if ( $config{CF_ENABLE} and -e "/etc/csf/csf.cloudflare" ) {
-    logfile("CloudFlare Firewall...");
-    $cfblocks{LF_MODSEC} = 1;
-    $cfblocks{LF_CXS}    = 1;
-}
-
-if ( $config{MESSENGER} ) {
-    unless ( -e "/var/log/lfd_messenger.log" ) {
-        open( my $OUT, ">", "/var/log/lfd_messenger.log" );
-        close($OUT);
-    }
-    system( "chown", "$config{MESSENGER_USER}:$config{MESSENGER_USER}", "/var/log/lfd_messenger.log" );
-
-    if ( !$config{MESSENGERV2} ) {
-        messengerstop(2);
-    }
-    if ( !$config{MESSENGERV3} ) {
-        messengerstop(3);
-    }
-    my ( undef, undef, $uid, $gid ) = getpwnam( $config{MESSENGER_USER} );
-    if ( ( $config{MESSENGER_USER} ne "" ) and ( $config{MESSENGER_USER} ne "root" ) and ( $uid > 0 ) and ( $gid > 0 ) ) {
-        if ( $config{MESSENGER_HTTPS_DISABLED} ne "" ) {
-            logfile( $config{MESSENGER_HTTPS_DISABLED} );
-        }
-        if ( $config{MESSENGERV3} ) {
-            $messenger3 = ConfigServer::Messenger->init(3);
-            if ( -e "/var/cpanel/users/$config{MESSENGER_USER}" ) {
-                logfile("*MESSENGERV3* - Cannot run service using a cPanel account:[$config{MESSENGER_USER}], MESSENGER service disabled");
-                $config{MESSENGER}   = 0;
-                $config{MESSENGERV3} = 0;
-                messengerstop(3);
-            }
-            else {
-                if ( $config{MESSENGER_HTTPS_IN} ne "" ) {
-                    foreach my $port ( split( /\,/, $config{MESSENGER_HTTPS_IN} ) ) { $messengerports{$port} = 1 }
-                    logfile("Messenger HTTPS Service starting...");
-                }
-                if ( $config{MESSENGER_HTML_IN} ne "" ) {
-                    foreach my $port ( split( /\,/, $config{MESSENGER_HTML_IN} ) ) { $messengerports{$port} = 1 }
-                    logfile("Messenger HTML Service starting...");
-                }
-                messengerv3();
-            }
-        }
-        elsif ( $config{MESSENGERV2} ) {
-            $messenger2 = ConfigServer::Messenger->init(2);
-            if ( -e "/var/cpanel/users/$config{MESSENGER_USER}" ) {
-                logfile("*MESSENGERV2* - Cannot run service using a cPanel account:[$config{MESSENGER_USER}], MESSENGER service disabled");
-                $config{MESSENGER}   = 0;
-                $config{MESSENGERV2} = 0;
-                messengerstop(2);
-            }
-            else {
-                if ( $config{MESSENGER_HTTPS_IN} ne "" ) {
-                    foreach my $port ( split( /\,/, $config{MESSENGER_HTTPS_IN} ) ) { $messengerports{$port} = 1 }
-                    logfile("Messenger HTTPS Service starting...");
-                }
-                if ( $config{MESSENGER_HTML_IN} ne "" ) {
-                    foreach my $port ( split( /\,/, $config{MESSENGER_HTML_IN} ) ) { $messengerports{$port} = 1 }
-                    logfile("Messenger HTML Service starting...");
-                }
-                messengerv2();
-            }
-        }
-        else {
-            $messenger1 = ConfigServer::Messenger->init(1);
-            if ( $config{MESSENGER_HTTPS_IN} ne "" ) {
-                foreach my $port ( split( /\,/, $config{MESSENGER_HTTPS_IN} ) ) { $messengerports{$port} = 1 }
-                logfile("Messenger HTTPS Service starting...");
-                messenger( $config{MESSENGER_HTTPS}, $config{MESSENGER_USER}, "HTTPS" );
-            }
-            if ( $config{MESSENGER_HTML_IN} ne "" ) {
-                foreach my $port ( split( /\,/, $config{MESSENGER_HTML_IN} ) ) { $messengerports{$port} = 1 }
-                logfile("Messenger HTML Service starting...");
-                messenger( $config{MESSENGER_HTML}, $config{MESSENGER_USER}, "HTML" );
-            }
-        }
-        if ( $config{MESSENGER_TEXT_IN} ne "" ) {
-            unless ( defined $messenger1 ) {
-                $messenger1 = ConfigServer::Messenger->init(1);
-            }
-            foreach my $port ( split( /\,/, $config{MESSENGER_TEXT_IN} ) ) { $messengerports{$port} = 1 }
-            logfile("Messenger TEXT Service starting...");
-            messenger( $config{MESSENGER_TEXT}, $config{MESSENGER_USER}, "TEXT" );
-        }
-    }
-    else {
-        logfile("Messenger account [$config{MESSENGER_USER}] invalid, MESSENGER service *disabled*");
-        $config{MESSENGER} = 0;
-    }
-}
-else {
-    messengerstop(2);
-    messengerstop(3);
-}
-
-if ( $config{UI} ) {
-    if ( $config{UI_CXS} ) {
-        use lib '/etc/cxs';
-        require ConfigServer::cxsUI;
-    }
-    if ( $config{UI_USER} eq "" or $config{UI_USER} eq "username" ) {
-        logfile("*Error* Cannot run csf Integrated UI - UI_USER must set");
-        $config{UI} = 0;
-    }
-    elsif ( $config{UI_PASS} eq "" or $config{UI_PASS} eq "password" ) {
-        logfile("*Error* Cannot run Integrated csf UI - UI_PASS must set");
-        $config{UI} = 0;
-    }
-    else {
-        logfile("csf Integrated UI running up on port $config{UI_PORT}...");
-        ui();
-    }
-}
-
-if ( $config{CLUSTER_RECVFROM} ) {
-    logfile("Cluster Service starting...");
-    if ( length $config{CLUSTER_KEY} < 8 ) {
-        logfile("Failed: Cluster Service - CLUSTER_KEY too short");
-        $config{CLUSTER_RECVFROM} = 0;
-    }
-    else {
-        if ( length $config{CLUSTER_KEY} < 20 ) { logfile("Cluster Service - CLUSTER_KEY should really be longer than 20 characters") }
-        lfdserver();
-    }
-}
-
-if ( $config{DYNDNS} ) {
-    logfile("DynDNS Tracking...");
-    dyndns();
-    $dyndnstimeout = 0;
-    if ( $config{DYNDNS} < 60 ) {
-        logfile("DYNDNS refresh increased to 300 to prevent looping (csf.conf setting: $config{DYNDNS})");
-        $config{DYNDNS} = 300;
-    }
-}
-
-if ( $config{LF_GLOBAL} ) {
-    if ( $config{GLOBAL_IGNORE} ) { logfile("Global Ignore Tracking...") }
-    if ( $config{GLOBAL_ALLOW} )  { logfile("Global Allow Tracking...") }
-    if ( $config{GLOBAL_DENY} )   { logfile("Global Deny Tracking...") }
-    if ( $config{GLOBAL_DYNDNS} ) { logfile("Global DynDNS Tracking...") }
-    global();
-    $globaltimeout = 0;
-    if ( $config{LF_GLOBAL} < 60 ) {
-        logfile("LF_GLOBAL refresh increased to 300 to prevent looping (csf.conf setting: $config{LF_GLOBAL})");
-        $config{LF_GLOBAL} = 300;
-    }
-    if ( $config{GLOBAL_DYNDNS_INTERVAL} < 60 ) {
-        logfile("GLOBAL_DYNDNS_INTERVAL refresh increased to 300 to prevent looping (csf.conf setting: $config{GLOBAL_DYNDNS_INTERVAL})");
-        $config{GLOBAL_DYNDNS_INTERVAL} = 300;
-    }
-}
-
-if ( scalar( keys %blocklists ) > 0 ) {
-    logfile("Blocklist Tracking...");
-    blocklist();
-    $blocklisttimeout = 0;
-}
-
-if ( $config{CC_LOOKUPS} ) {
-    if ( $config{CC_LOOKUPS} != 4 and $config{MM_LICENSE_KEY} eq "" and $config{CC_SRC} eq "1" ) {
-        logfile("*ERROR*: Country Code Lookups setting MM_LICENSE_KEY must be set in /etc/csf/csf.conf to continue updating the MaxMind databases");
-    }
-    logfile("Country Code Lookups...");
-    countrycodelookups();
-    $ccltimeout = 0;
-}
-
-if ( $config{CC_DENY} or $config{CC_ALLOW} or $config{CC_ALLOW_FILTER} or $config{CC_ALLOW_PORTS} or $config{CC_DENY_PORTS} or $config{CC_ALLOW_SMTPAUTH} ) {
-    if ( $config{MM_LICENSE_KEY} eq "" and $config{CC_SRC} eq "1" ) {
-        logfile("*ERROR*: Country Code Filters setting MM_LICENSE_KEY must be set in /etc/csf/csf.conf to continue updating the MaxMind databases");
-    }
-    logfile("Country Code Filters...");
-    countrycode();
-    $cctimeout = 0;
-}
-
-if ( $config{CC_IGNORE} ) {
-    if ( $config{CC_LOOKUPS} ) {
-        logfile("Country Code Ignores...");
-    }
-    else {
-        logfile("Country Code Ignores requires CC_LOOKUPS to be enabled - disabled CC_IGNORE");
-        $config{CC_IGNORE} = "";
-    }
-}
-
-if ( $config{LF_INTEGRITY} ) {
-    logfile("System Integrity Tracking...");
-    integrity();
-    $integritytimeout = 0;
-    if ( $config{LF_INTEGRITY} < 120 ) {
-        logfile("LF_INTEGRITY refresh increased to 300 to prevent looping (csf.conf setting: $config{LF_INTEGRITY})");
-        $config{LF_INTEGRITY} = 300;
-    }
-}
-
-if ( $config{LF_EXPLOIT} ) {
-    if ( -e "/var/lib/csf/csf.tempexploit" ) { unlink("/var/lib/csf/csf.tempexploit") }
-    if ( -e "/etc/csf/csf.suignore" ) {
-        my @entries = slurp("/etc/csf/csf.suignore");
+    if ( -e "/etc/csf/csf.blocklists" ) {
+        my @entries = slurp("/etc/csf/csf.blocklists");
         foreach my $line (@entries) {
             if ( $line =~ /^Include\s*(.*)$/ ) {
                 my @incfile = slurp($1);
@@ -800,25 +340,72 @@ if ( $config{LF_EXPLOIT} ) {
             $line =~ s/$cleanreg//g;
             if ( $line eq "" )               { next }
             if ( $line =~ /^\s*\#|Include/ ) { next }
-            $suignore{$line} = 1;
+            my ( $name, $interval, $max, $url ) = split( /\|/, $line );
+            if ( $name =~ /^\w+$/ ) {
+                $name = substr( uc $name, 0, 25 );
+                if ( $name =~ /^CXS_/ ) { $name =~ s/^CXS_/X_CXS_/ }
+                if ( $interval < 3600 ) { $interval = 3600 }
+                if ( $max eq "" )       { $max = 0 }
+                $blocklists{$name}{interval} = $interval;
+                $blocklists{$name}{max}      = $max;
+                $blocklists{$name}{url}      = $url;
+            }
         }
     }
-    logfile("Exploit Tracking...");
-    exploit();
-    $exploittimeout = 0;
-    if ( $config{LF_EXPLOIT} < 60 ) {
-        logfile("LF_EXPLOIT refresh increased to 60 to prevent looping (csf.conf setting: $config{LF_EXPLOIT})");
-        $config{LF_EXPLOIT} = 60;
+    if ( $cxsreputation and -e "/etc/cxs/cxs.blocklists" ) {
+        my $all   = 0;
+        my @lines = slurp("/etc/cxs/cxs.blocklists");
+        if ( grep { $_ =~ /^CXS_ALL/ } @lines ) {
+            $all = 1;
+        }
+        foreach my $line (@lines) {
+            $line =~ s/$cleanreg//g;
+            if ( $line =~ /^(\s|\#|$)/ ) { next }
+            my ( $name, $interval, $max, $url ) = split( /\|/, $line );
+            $url =~ s/download\.configserver\.com/$config{DOWNLOADSERVER}/g;
+            if ( $all and $name ne "CXS_ALL" ) { next }
+            if ( $name =~ /^\w+$/ ) {
+                $name = substr( uc $name, 0, 25 );
+                if ( $max eq "" ) { $max = 0 }
+                $blocklists{$name}{interval} = $interval;
+                $blocklists{$name}{max}      = $max;
+                $blocklists{$name}{url}      = $url;
+            }
+        }
     }
-}
-if ( $config{X_ARF} ) {
-    if ( -e $config{HOST} ) { $abuseip = 1 }
-    else                    { logfile("Binary location of HOST is incorrect in csf.conf") }
-}
 
-if ( $config{LF_DIRWATCH} ) {
-    if ( -e "/etc/csf/csf.fignore" ) {
-        my @entries = slurp("/etc/csf/csf.fignore");
+    if ( -e "/etc/csf/csf.ignore" ) {
+        my @ignore = slurp("/etc/csf/csf.ignore");
+        foreach my $line (@ignore) {
+            if ( $line =~ /^Include\s*(.*)$/ ) {
+                my @incfile = slurp($1);
+                push @ignore, @incfile;
+            }
+        }
+        foreach my $line (@ignore) {
+            $line =~ s/$cleanreg//g;
+            if ( $line eq "" )               { next }
+            if ( $line =~ /^\s*\#|Include/ ) { next }
+            my ( $first, undef ) = split( /\s/, $line );
+            my ( $ip, $iscidr ) = split( /\//, $first );
+            if ( checkip( \$first ) ) {
+                if ($iscidr) { push @cidrs, $first }
+                else         { $ignoreips{$ip} = 1 }
+            }
+            elsif ( $ip ne "127.0.0.1" ) { logfile("Invalid entry in csf.ignore: [$first]") }
+        }
+        foreach my $entry (@cidrs) {
+            if ( checkip( \$entry ) == 6 ) {
+                eval { local $SIG{__DIE__} = undef; $cidr6->add($entry) };
+            }
+            else {
+                eval { local $SIG{__DIE__} = undef; $cidr->add($entry) };
+            }
+            if ($@) { logfile("Invalid entry in csf.ignore: $entry") }
+        }
+    }
+    if ( -e "/etc/csf/csf.rignore" ) {
+        my @entries = slurp("/etc/csf/csf.rignore");
         foreach my $line (@entries) {
             if ( $line =~ /^Include\s*(.*)$/ ) {
                 my @incfile = slurp($1);
@@ -829,90 +416,381 @@ if ( $config{LF_DIRWATCH} ) {
             $line =~ s/$cleanreg//g;
             if ( $line eq "" ) { next }
             if ( $line =~ /^\s*\#|Include/ ) { next }
-            if ( $line =~ /[*\\]/ ) {
-                if ( testregex($line) ) { push @matchfile, $line }
-                else                    { logfile("*Error* Invalid regex [$line] in csf.fignore") }
-            }
-            elsif ( $line =~ /^user:(.*)/ ) {
-                $skipuser{$1} = 1;
-            }
-            else {
-                $skipfile{$line} = 1;
+            if ( $line =~ /^(\.|\w)/ ) {
+                my ( $host, undef ) = split( /\s/, $line );
+                if ( $host ne "" ) { push @rdns, $host }
             }
         }
     }
-    if ( -e "/var/lib/csf/csf.tempfiles" ) { unlink("/var/lib/csf/csf.tempfiles") }
-    if ( -e "/var/lib/csf/csf.dwdisable" ) { unlink("/var/lib/csf/csf.dwdisable") }
-    logfile("Directory Watching...");
-    $dirwatchtimeout = 0;
-}
+    if ( $config{IGNORE_ALLOW} and -e "/etc/csf/csf.allow" ) {
+        my @ignore = slurp("/etc/csf/csf.allow");
+        foreach my $line (@ignore) {
+            if ( $line =~ /^Include\s*(.*)$/ ) {
+                my @incfile = slurp($1);
+                push @ignore, @incfile;
+            }
+        }
+        foreach my $line (@ignore) {
+            $line =~ s/$cleanreg//g;
+            if ( $line eq "" )               { next }
+            if ( $line =~ /^\s*\#|Include/ ) { next }
+            my ( $first, undef ) = split( /\s/, $line );
+            my ( $ip, $iscidr ) = split( /\//, $first );
+            if ( checkip( \$first ) ) {
+                if ($iscidr) { push @cidrs, $first }
+                else         { $ignoreips{$ip} = 1 }
+            }
+        }
+        foreach my $entry (@cidrs) {
+            if ( checkip( \$entry ) == 6 ) {
+                eval { local $SIG{__DIE__} = undef; $cidr6->add($entry) };
+            }
+            else {
+                eval { local $SIG{__DIE__} = undef; $cidr->add($entry) };
+            }
+            if ($@) { logfile("Invalid CIDR in csf.allow: $entry") }
+        }
+    }
 
-if ( $config{LF_DIRWATCH_FILE} ) {
-    if ( -e "/etc/csf/csf.dirwatch" ) {
-        logfile("Directory File Watching...");
-        my @entries = slurp("/etc/csf/csf.dirwatch");
+    if ( $config{LF_HTACCESS} or $config{LF_APACHE_404} or $config{LF_APACHE_403} or $config{LF_APACHE_401} or $config{LF_QOS} or $config{LF_SYMLINK} ) { globlog("HTACCESS_LOG") }
+    if ( $config{LF_MODSEC} or $config{LF_CXS} )                                                                                                        { globlog("MODSEC_LOG") }
+    if ( $config{LF_SUHOSIN} )                                                                                                                          { globlog("SUHOSIN_LOG}") }
+    if ( $config{LF_SMTPAUTH} or $config{LF_EXIMSYNTAX} )                                                                                               { globlog("SMTPAUTH_LOG") }
+    if ( $config{LF_POP3D} or $config{LT_POP3D} )                                                                                                       { globlog("POP3D_LOG") }
+    if ( $config{LF_IMAPD} or $config{LT_IMAPD} )                                                                                                       { globlog("IMAPD_LOG") }
+    if ( $config{LF_CPANEL} )                                                                                                                           { globlog("CPANEL_LOG") }
+    if ( $config{LF_SSHD} or $config{LF_SSH_EMAIL_ALERT} or $config{LF_CONSOLE_EMAIL_ALERT} )                                                           { globlog("SSHD_LOG") }
+    if ( $config{LF_FTPD} )                                                                                                                             { globlog("FTPD_LOG") }
+    if ( $config{LF_BIND} )                                                                                                                             { globlog("BIND_LOG") }
+    if ( $config{LF_CPANEL_ALERT} )                                                                                                                     { globlog("CPANEL_ACCESSLOG") }
+    if ( $config{SYSLOG_CHECK} and $sys_syslog )                                                                                                        { globlog("SYSLOG_LOG") }
+
+    if ( $config{PS_INTERVAL} or $config{ST_ENABLE} or $config{UID_INTERVAL} )                  { globlog("IPTABLES_LOG") }
+    if ( $config{LF_SU_EMAIL_ALERT} )                                                           { globlog("SU_LOG") }
+    if ( $config{LF_SUDO_EMAIL_ALERT} )                                                         { globlog("SUDO_LOG") }
+    if ( $config{LF_SCRIPT_ALERT} )                                                             { globlog("SCRIPT_LOG") }
+    if ( $config{RT_RELAY_ALERT} or $config{RT_AUTHRELAY_ALERT} or $config{RT_POPRELAY_ALERT} ) { globlog("SMTPRELAY_LOG") }
+
+    if ( $config{LT_IMAPD} ) { $loginproto{imapd} = $config{LT_IMAPD} }
+    if ( $config{LT_POP3D} ) { $loginproto{pop3d} = $config{LT_POP3D} }
+
+    for ( my $x = 1; $x < 10; $x++ ) { globlog("CUSTOM${x}_LOG") }
+
+    if ( -e "/usr/local/cpanel/version" and -e "/etc/cpanel/ea4/is_ea4" and -e "/etc/cpanel/ea4/paths.conf" ) {
+        my @file = slurp("/etc/cpanel/ea4/paths.conf");
+        foreach my $line (@file) {
+            $line =~ s/$cleanreg//g;
+            if ( $line =~ /^(\s|\#|$)/ ) { next }
+            if ( $line !~ /=/ )          { next }
+            my ( $name, $value ) = split( /=/, $line, 2 );
+            $value =~ s/^\s+//g;
+            $value =~ s/\s+$//g;
+            if ( $name eq "dir_logs" ) {
+                if ( $config{LF_HTACCESS} or $config{LF_APACHE_404} or $config{LF_APACHE_403} or $config{LF_APACHE_401} or $config{LF_QOS} or $config{LF_SYMLINK} ) {
+                    delete $globlogs{HTACCESS_LOG}{ $config{HTACCESS_LOG} };
+                    delete $logfiles{ $config{HTACCESS_LOG} };
+                    $globlogs{HTACCESS_LOG}{"$value/error_log"} = 1;
+                    $logfiles{"$value/error_log"} = 1;
+                    logfile("EasyApache4, using $value/error_log instead of $config{HTACCESS_LOG} (Web Server)");
+                }
+                if ( $config{LF_MODSEC} or $config{LF_CXS} ) {
+                    delete $globlogs{MODSEC_LOG}{ $config{MODSEC_LOG} };
+                    delete $logfiles{ $config{MODSEC_LOG} };
+                    $globlogs{MODSEC_LOG}{"$value/error_log"} = 1;
+                    $logfiles{"$value/error_log"} = 1;
+                    logfile("EasyApache4, using $value/error_log instead of $config{MODSEC_LOG} {ModSecurity}");
+                }
+            }
+        }
+    }
+
+    if ( $config{LOGSCANNER} ) {
+        my @entries = slurp("/etc/csf/csf.logfiles");
         foreach my $line (@entries) {
             if ( $line =~ /^Include\s*(.*)$/ ) {
                 my @incfile = slurp($1);
                 push @entries, @incfile;
             }
         }
-        foreach my $line (@entries) {
-            $line =~ s/$cleanreg//g;
-            if ( $line eq "" )               { next }
-            if ( $line =~ /^\s*\#|Include/ ) { next }
-            if ( -e $line ) {
-                $dirwatchfile{$line} = 1;
+        foreach my $file (@entries) {
+            $file =~ s/$cleanreg//g;
+            if ( $file eq "" ) { next }
+            if ( $file =~ /^\s*\#|Include/ ) { next }
+            if ( $file =~ /[*?\[]/ ) {
+                foreach my $log ( glob $file ) {
+                    if ( -e $log ) {
+                        $logfiles{$log}        = 1;
+                        $logscannerfiles{$log} = 1;
+                    }
+                }
             }
             else {
-                logfile("Directory File Watching [$line] not found - ignoring");
+                if ( -e $file ) {
+                    $logfiles{$file}        = 1;
+                    $logscannerfiles{$file} = 1;
+                }
             }
         }
-        dirwatchfile();
-        $dirwatchfiletimeout = 0;
-    }
-}
-
-if ( $config{LF_SCRIPT_ALERT} ) {
-    logfile("Email Script Tracking...");
-    if ( -e "/etc/csf/csf.signore" ) {
-        my @entries = slurp("/etc/csf/csf.signore");
-        foreach my $line (@entries) {
+        my @entries2 = slurp("/etc/csf/csf.logignore");
+        foreach my $line (@entries2) {
             if ( $line =~ /^Include\s*(.*)$/ ) {
                 my @incfile = slurp($1);
-                push @entries, @incfile;
+                push @entries2, @incfile;
             }
         }
-        foreach my $line (@entries) {
+        foreach my $line (@entries2) {
             $line =~ s/$cleanreg//g;
-            if ( $line eq "" )               { next }
-            if ( $line =~ /^\s*\#|Include/ ) { next }
-            $skipscript{$line} = 1;
+            if   ( $line eq "" )               { next }
+            if   ( $line =~ /^\s*\#|Include/ ) { next }
+            if   ( testregex($line) )          { push @logignore, $line }
+            else                               { logfile("*Error* Invalid regex [$line] in csf.logignore") }
+        }
+        logfile("Log Scanner...");
+    }
+
+    unless ( -d "/var/spool/exim" ) { $config{LF_QUEUE_ALERT} = 0 }
+
+    $accept = "ACCEPT";
+    if ( $config{WATCH_MODE} ) {
+        $accept                   = "LOGACCEPT";
+        $config{DROP_NOLOG}       = "";
+        $config{DROP_LOGGING}     = "1";
+        $config{DROP_IP_LOGGING}  = "1";
+        $config{DROP_OUT_LOGGING} = "1";
+        $config{DROP_PF_LOGGING}  = "1";
+        $config{PS_INTERVAL}      = "0";
+        $config{DROP_ONLYRES}     = "0";
+        logfile("WATCH_MODE enabled...");
+    }
+
+    if ( -e "/var/lib/csf/csf.restart" ) {
+        unlink "/var/lib/csf/csf.restart";
+        csfrestart();
+    }
+
+    if ( $config{LF_CSF} ) {
+        if ( -e "/var/lib/csf/cpanel.new" ) { unlink "/var/lib/csf/cpanel.new" }
+        logfile("CSF Tracking...");
+        csfcheck();
+        $csftimeout = 0;
+    }
+
+    if ( $config{IPV6} ) {
+        logfile("IPv6 Enabled...");
+    }
+
+    if ($cxsreputation) {
+        logfile("cxs Reputation Enabled...");
+    }
+
+    if ( $config{PT_LOAD} ) {
+        logfile("LOAD Tracking...");
+        loadcheck();
+        $loadtimeout = 0;
+    }
+
+    if ( $config{CF_ENABLE} and -e "/etc/csf/csf.cloudflare" ) {
+        logfile("CloudFlare Firewall...");
+        $cfblocks{LF_MODSEC} = 1;
+        $cfblocks{LF_CXS}    = 1;
+    }
+
+    if ( $config{MESSENGER} ) {
+        unless ( -e "/var/log/lfd_messenger.log" ) {
+            open( my $OUT, ">", "/var/log/lfd_messenger.log" );
+            close($OUT);
+        }
+        system( "chown", "$config{MESSENGER_USER}:$config{MESSENGER_USER}", "/var/log/lfd_messenger.log" );
+
+        if ( !$config{MESSENGERV2} ) {
+            messengerstop(2);
+        }
+        if ( !$config{MESSENGERV3} ) {
+            messengerstop(3);
+        }
+        my ( undef, undef, $uid, $gid ) = getpwnam( $config{MESSENGER_USER} );
+        if ( ( $config{MESSENGER_USER} ne "" ) and ( $config{MESSENGER_USER} ne "root" ) and ( $uid > 0 ) and ( $gid > 0 ) ) {
+            if ( $config{MESSENGER_HTTPS_DISABLED} ne "" ) {
+                logfile( $config{MESSENGER_HTTPS_DISABLED} );
+            }
+            if ( $config{MESSENGERV3} ) {
+                $messenger3 = ConfigServer::Messenger->init(3);
+                if ( -e "/var/cpanel/users/$config{MESSENGER_USER}" ) {
+                    logfile("*MESSENGERV3* - Cannot run service using a cPanel account:[$config{MESSENGER_USER}], MESSENGER service disabled");
+                    $config{MESSENGER}   = 0;
+                    $config{MESSENGERV3} = 0;
+                    messengerstop(3);
+                }
+                else {
+                    if ( $config{MESSENGER_HTTPS_IN} ne "" ) {
+                        foreach my $port ( split( /\,/, $config{MESSENGER_HTTPS_IN} ) ) { $messengerports{$port} = 1 }
+                        logfile("Messenger HTTPS Service starting...");
+                    }
+                    if ( $config{MESSENGER_HTML_IN} ne "" ) {
+                        foreach my $port ( split( /\,/, $config{MESSENGER_HTML_IN} ) ) { $messengerports{$port} = 1 }
+                        logfile("Messenger HTML Service starting...");
+                    }
+                    messengerv3();
+                }
+            }
+            elsif ( $config{MESSENGERV2} ) {
+                $messenger2 = ConfigServer::Messenger->init(2);
+                if ( -e "/var/cpanel/users/$config{MESSENGER_USER}" ) {
+                    logfile("*MESSENGERV2* - Cannot run service using a cPanel account:[$config{MESSENGER_USER}], MESSENGER service disabled");
+                    $config{MESSENGER}   = 0;
+                    $config{MESSENGERV2} = 0;
+                    messengerstop(2);
+                }
+                else {
+                    if ( $config{MESSENGER_HTTPS_IN} ne "" ) {
+                        foreach my $port ( split( /\,/, $config{MESSENGER_HTTPS_IN} ) ) { $messengerports{$port} = 1 }
+                        logfile("Messenger HTTPS Service starting...");
+                    }
+                    if ( $config{MESSENGER_HTML_IN} ne "" ) {
+                        foreach my $port ( split( /\,/, $config{MESSENGER_HTML_IN} ) ) { $messengerports{$port} = 1 }
+                        logfile("Messenger HTML Service starting...");
+                    }
+                    messengerv2();
+                }
+            }
+            else {
+                $messenger1 = ConfigServer::Messenger->init(1);
+                if ( $config{MESSENGER_HTTPS_IN} ne "" ) {
+                    foreach my $port ( split( /\,/, $config{MESSENGER_HTTPS_IN} ) ) { $messengerports{$port} = 1 }
+                    logfile("Messenger HTTPS Service starting...");
+                    messenger( $config{MESSENGER_HTTPS}, $config{MESSENGER_USER}, "HTTPS" );
+                }
+                if ( $config{MESSENGER_HTML_IN} ne "" ) {
+                    foreach my $port ( split( /\,/, $config{MESSENGER_HTML_IN} ) ) { $messengerports{$port} = 1 }
+                    logfile("Messenger HTML Service starting...");
+                    messenger( $config{MESSENGER_HTML}, $config{MESSENGER_USER}, "HTML" );
+                }
+            }
+            if ( $config{MESSENGER_TEXT_IN} ne "" ) {
+                unless ( defined $messenger1 ) {
+                    $messenger1 = ConfigServer::Messenger->init(1);
+                }
+                foreach my $port ( split( /\,/, $config{MESSENGER_TEXT_IN} ) ) { $messengerports{$port} = 1 }
+                logfile("Messenger TEXT Service starting...");
+                messenger( $config{MESSENGER_TEXT}, $config{MESSENGER_USER}, "TEXT" );
+            }
+        }
+        else {
+            logfile("Messenger account [$config{MESSENGER_USER}] invalid, MESSENGER service *disabled*");
+            $config{MESSENGER} = 0;
         }
     }
-}
-
-if ( $config{LF_QUEUE_ALERT} ) {
-    logfile("Email Queue Tracking...");
-    queuecheck();
-    $queuetimeout = 0;
-    if ( $config{LF_QUEUE_INTERVAL} < 30 ) {
-        logfile("LF_QUEUE_INTERVAL refresh increased to 300 to prevent looping (csf.conf setting: $config{LF_QUEUE_INTERVAL})");
-        $config{LF_QUEUE_INTERVAL} = 300;
+    else {
+        messengerstop(2);
+        messengerstop(3);
     }
-}
 
-if ( $config{LF_MODSECIPDB_ALERT} ) {
-    logfile("ModSecurity IP D/B Tracking...");
-    modsecipdbcheck();
-    $modsecipdbchecktimeout = 0;
-}
+    if ( $config{UI} ) {
+        if ( $config{UI_CXS} ) {
+            use lib '/etc/cxs';
+            require ConfigServer::cxsUI;
+        }
+        if ( $config{UI_USER} eq "" or $config{UI_USER} eq "username" ) {
+            logfile("*Error* Cannot run csf Integrated UI - UI_USER must set");
+            $config{UI} = 0;
+        }
+        elsif ( $config{UI_PASS} eq "" or $config{UI_PASS} eq "password" ) {
+            logfile("*Error* Cannot run Integrated csf UI - UI_PASS must set");
+            $config{UI} = 0;
+        }
+        else {
+            logfile("csf Integrated UI running up on port $config{UI_PORT}...");
+            ui();
+        }
+    }
 
-if ( $config{RT_RELAY_ALERT} or $config{RT_AUTHRELAY_ALERT} or $config{RT_POPRELAY_ALERT} or $config{RT_LOCALRELAY_ALERT} or $config{RT_LOCALHOSTRELAY_ALERT} ) {
-    logfile("Email Relay Tracking...");
-    if ( $config{RT_LOCALRELAY_ALERT} ) {
-        if ( -e "/etc/csf/csf.mignore" ) {
-            my @entries = slurp("/etc/csf/csf.mignore");
+    if ( $config{CLUSTER_RECVFROM} ) {
+        logfile("Cluster Service starting...");
+        if ( length $config{CLUSTER_KEY} < 8 ) {
+            logfile("Failed: Cluster Service - CLUSTER_KEY too short");
+            $config{CLUSTER_RECVFROM} = 0;
+        }
+        else {
+            if ( length $config{CLUSTER_KEY} < 20 ) { logfile("Cluster Service - CLUSTER_KEY should really be longer than 20 characters") }
+            lfdserver();
+        }
+    }
+
+    if ( $config{DYNDNS} ) {
+        logfile("DynDNS Tracking...");
+        dyndns();
+        $dyndnstimeout = 0;
+        if ( $config{DYNDNS} < 60 ) {
+            logfile("DYNDNS refresh increased to 300 to prevent looping (csf.conf setting: $config{DYNDNS})");
+            $config{DYNDNS} = 300;
+        }
+    }
+
+    if ( $config{LF_GLOBAL} ) {
+        if ( $config{GLOBAL_IGNORE} ) { logfile("Global Ignore Tracking...") }
+        if ( $config{GLOBAL_ALLOW} )  { logfile("Global Allow Tracking...") }
+        if ( $config{GLOBAL_DENY} )   { logfile("Global Deny Tracking...") }
+        if ( $config{GLOBAL_DYNDNS} ) { logfile("Global DynDNS Tracking...") }
+        global();
+        $globaltimeout = 0;
+        if ( $config{LF_GLOBAL} < 60 ) {
+            logfile("LF_GLOBAL refresh increased to 300 to prevent looping (csf.conf setting: $config{LF_GLOBAL})");
+            $config{LF_GLOBAL} = 300;
+        }
+        if ( $config{GLOBAL_DYNDNS_INTERVAL} < 60 ) {
+            logfile("GLOBAL_DYNDNS_INTERVAL refresh increased to 300 to prevent looping (csf.conf setting: $config{GLOBAL_DYNDNS_INTERVAL})");
+            $config{GLOBAL_DYNDNS_INTERVAL} = 300;
+        }
+    }
+
+    if ( scalar( keys %blocklists ) > 0 ) {
+        logfile("Blocklist Tracking...");
+        blocklist();
+        $blocklisttimeout = 0;
+    }
+
+    if ( $config{CC_LOOKUPS} ) {
+        if ( $config{CC_LOOKUPS} != 4 and $config{MM_LICENSE_KEY} eq "" and $config{CC_SRC} eq "1" ) {
+            logfile("*ERROR*: Country Code Lookups setting MM_LICENSE_KEY must be set in /etc/csf/csf.conf to continue updating the MaxMind databases");
+        }
+        logfile("Country Code Lookups...");
+        countrycodelookups();
+        $ccltimeout = 0;
+    }
+
+    if ( $config{CC_DENY} or $config{CC_ALLOW} or $config{CC_ALLOW_FILTER} or $config{CC_ALLOW_PORTS} or $config{CC_DENY_PORTS} or $config{CC_ALLOW_SMTPAUTH} ) {
+        if ( $config{MM_LICENSE_KEY} eq "" and $config{CC_SRC} eq "1" ) {
+            logfile("*ERROR*: Country Code Filters setting MM_LICENSE_KEY must be set in /etc/csf/csf.conf to continue updating the MaxMind databases");
+        }
+        logfile("Country Code Filters...");
+        countrycode();
+        $cctimeout = 0;
+    }
+
+    if ( $config{CC_IGNORE} ) {
+        if ( $config{CC_LOOKUPS} ) {
+            logfile("Country Code Ignores...");
+        }
+        else {
+            logfile("Country Code Ignores requires CC_LOOKUPS to be enabled - disabled CC_IGNORE");
+            $config{CC_IGNORE} = "";
+        }
+    }
+
+    if ( $config{LF_INTEGRITY} ) {
+        logfile("System Integrity Tracking...");
+        integrity();
+        $integritytimeout = 0;
+        if ( $config{LF_INTEGRITY} < 120 ) {
+            logfile("LF_INTEGRITY refresh increased to 300 to prevent looping (csf.conf setting: $config{LF_INTEGRITY})");
+            $config{LF_INTEGRITY} = 300;
+        }
+    }
+
+    if ( $config{LF_EXPLOIT} ) {
+        if ( -e "/var/lib/csf/csf.tempexploit" ) { unlink("/var/lib/csf/csf.tempexploit") }
+        if ( -e "/etc/csf/csf.suignore" ) {
+            my @entries = slurp("/etc/csf/csf.suignore");
             foreach my $line (@entries) {
                 if ( $line =~ /^Include\s*(.*)$/ ) {
                     my @incfile = slurp($1);
@@ -923,107 +801,198 @@ if ( $config{RT_RELAY_ALERT} or $config{RT_AUTHRELAY_ALERT} or $config{RT_POPREL
                 $line =~ s/$cleanreg//g;
                 if ( $line eq "" )               { next }
                 if ( $line =~ /^\s*\#|Include/ ) { next }
-                $rtignore{$line} = 1;
+                $suignore{$line} = 1;
+            }
+        }
+        logfile("Exploit Tracking...");
+        exploit();
+        $exploittimeout = 0;
+        if ( $config{LF_EXPLOIT} < 60 ) {
+            logfile("LF_EXPLOIT refresh increased to 60 to prevent looping (csf.conf setting: $config{LF_EXPLOIT})");
+            $config{LF_EXPLOIT} = 60;
+        }
+    }
+    if ( $config{X_ARF} ) {
+        if ( -e $config{HOST} ) { $abuseip = 1 }
+        else                    { logfile("Binary location of HOST is incorrect in csf.conf") }
+    }
+
+    if ( $config{LF_DIRWATCH} ) {
+        if ( -e "/etc/csf/csf.fignore" ) {
+            my @entries = slurp("/etc/csf/csf.fignore");
+            foreach my $line (@entries) {
+                if ( $line =~ /^Include\s*(.*)$/ ) {
+                    my @incfile = slurp($1);
+                    push @entries, @incfile;
+                }
+            }
+            foreach my $line (@entries) {
+                $line =~ s/$cleanreg//g;
+                if ( $line eq "" ) { next }
+                if ( $line =~ /^\s*\#|Include/ ) { next }
+                if ( $line =~ /[*\\]/ ) {
+                    if ( testregex($line) ) { push @matchfile, $line }
+                    else                    { logfile("*Error* Invalid regex [$line] in csf.fignore") }
+                }
+                elsif ( $line =~ /^user:(.*)/ ) {
+                    $skipuser{$1} = 1;
+                }
+                else {
+                    $skipfile{$line} = 1;
+                }
+            }
+        }
+        if ( -e "/var/lib/csf/csf.tempfiles" ) { unlink("/var/lib/csf/csf.tempfiles") }
+        if ( -e "/var/lib/csf/csf.dwdisable" ) { unlink("/var/lib/csf/csf.dwdisable") }
+        logfile("Directory Watching...");
+        $dirwatchtimeout = 0;
+    }
+
+    if ( $config{LF_DIRWATCH_FILE} ) {
+        if ( -e "/etc/csf/csf.dirwatch" ) {
+            logfile("Directory File Watching...");
+            my @entries = slurp("/etc/csf/csf.dirwatch");
+            foreach my $line (@entries) {
+                if ( $line =~ /^Include\s*(.*)$/ ) {
+                    my @incfile = slurp($1);
+                    push @entries, @incfile;
+                }
+            }
+            foreach my $line (@entries) {
+                $line =~ s/$cleanreg//g;
+                if ( $line eq "" )               { next }
+                if ( $line =~ /^\s*\#|Include/ ) { next }
+                if ( -e $line ) {
+                    $dirwatchfile{$line} = 1;
+                }
+                else {
+                    logfile("Directory File Watching [$line] not found - ignoring");
+                }
+            }
+            dirwatchfile();
+            $dirwatchfiletimeout = 0;
+        }
+    }
+
+    if ( $config{LF_SCRIPT_ALERT} ) {
+        logfile("Email Script Tracking...");
+        if ( -e "/etc/csf/csf.signore" ) {
+            my @entries = slurp("/etc/csf/csf.signore");
+            foreach my $line (@entries) {
+                if ( $line =~ /^Include\s*(.*)$/ ) {
+                    my @incfile = slurp($1);
+                    push @entries, @incfile;
+                }
+            }
+            foreach my $line (@entries) {
+                $line =~ s/$cleanreg//g;
+                if ( $line eq "" )               { next }
+                if ( $line =~ /^\s*\#|Include/ ) { next }
+                $skipscript{$line} = 1;
             }
         }
     }
-}
 
-if ( $config{LF_PERMBLOCK} ) {
-    logfile("Temp to Perm Block Tracking...");
-}
-
-if ( $config{LF_NETBLOCK} ) {
-    logfile("Netblock Tracking...");
-}
-
-if ( $config{LF_PERMBLOCK} or $config{LF_NETBLOCK} ) {
-    sysopen( my $TEMPIP, "/var/lib/csf/csf.tempip", O_RDWR | O_CREAT );
-    flock( $TEMPIP, LOCK_EX );
-    my @data = <$TEMPIP>;
-    chomp @data;
-    seek( $TEMPIP, 0, 0 );
-    truncate( $TEMPIP, 0 );
-    foreach my $line (@data) {
-        my $old = 1;
-        my ( $oip, $operm, $otime, $omessage ) = split( /\|/, $line, 4 );
-        my $interval = time - $otime;
-        if     ( $config{LF_PERMBLOCK} and $interval < ( $config{LF_PERMBLOCK_INTERVAL} * $config{LF_PERMBLOCK_COUNT} ) ) { $old = 0 }
-        if     ( $config{LF_NETBLOCK} and $interval < ( $config{LF_NETBLOCK_INTERVAL} * $config{LF_NETBLOCK_COUNT} ) )    { $old = 0 }
-        unless ($old)                                                                                                     { print $TEMPIP "$line\n" }
-    }
-    close($TEMPIP);
-}
-
-if ( $config{ST_SYSTEM} ) {
-    logfile("System Statistics...");
-    my $time = time;
-    sysopen( my $SYSSTATNEW, "/var/lib/csf/stats/system.new", O_RDWR | O_CREAT );
-    flock( $SYSSTATNEW, LOCK_EX );
-    seek( $SYSSTATNEW, 0, 0 );
-    truncate( $SYSSTATNEW, 0 );
-
-    sysopen( my $SYSSTAT, "/var/lib/csf/stats/system", O_RDWR | O_CREAT );
-    flock( $SYSSTAT, LOCK_EX );
-    while ( my $line = <$SYSSTAT> ) {
-        chomp $line;
-        my ( $thistime, undef ) = split( /\,/, $line );
-        if ( $time - $thistime > ( 86400 * $config{ST_SYSTEM_MAXDAYS} ) ) { next }
-        print $SYSSTATNEW $line . "\n";
-    }
-    close($SYSSTAT);
-    close($SYSSTATNEW);
-    rename "/var/lib/csf/stats/system.new", "/var/lib/csf/stats/system";
-    systemstats();
-}
-if ( $config{PS_INTERVAL} ) {
-    logfile("Port Scan Tracking...");
-    if ( $config{PS_INTERVAL} < 60 ) {
-        logfile("PS_INTERVAL refresh increased to 60 to prevent looping (csf.conf setting: $config{PS_INTERVAL})");
-        $config{PS_INTERVAL} = 60;
-    }
-    $pstimeout = 0;
-}
-if ( $config{UID_INTERVAL} ) {
-    logfile("User ID Tracking...");
-    if ( $config{UID_INTERVAL} < 60 ) {
-        logfile("UID_INTERVAL refresh increased to 60 to prevent looping (csf.conf setting: $config{UID_INTERVAL})");
-        $config{UID_INTERVAL} = 60;
-    }
-    $uidtimeout = 0;
-    my @entries = slurp("/etc/csf/csf.uidignore");
-    foreach my $line (@entries) {
-        if ( $line =~ /^Include\s*(.*)$/ ) {
-            my @incfile = slurp($1);
-            push @entries, @incfile;
+    if ( $config{LF_QUEUE_ALERT} ) {
+        logfile("Email Queue Tracking...");
+        queuecheck();
+        $queuetimeout = 0;
+        if ( $config{LF_QUEUE_INTERVAL} < 30 ) {
+            logfile("LF_QUEUE_INTERVAL refresh increased to 300 to prevent looping (csf.conf setting: $config{LF_QUEUE_INTERVAL})");
+            $config{LF_QUEUE_INTERVAL} = 300;
         }
     }
-    foreach my $line (@entries) {
-        $line =~ s/$cleanreg//g;
-        if ( $line eq "" )               { next }
-        if ( $line =~ /^\s*\#|Include/ ) { next }
-        $uidignore{$line} = 1;
-    }
-}
 
-if ( $config{CT_LIMIT} ) {
-    if ( $config{CT_STATES} ) {
-        logfile("Connection Tracking ($config{CT_STATES})...");
+    if ( $config{LF_MODSECIPDB_ALERT} ) {
+        logfile("ModSecurity IP D/B Tracking...");
+        modsecipdbcheck();
+        $modsecipdbchecktimeout = 0;
     }
-    else {
-        logfile("Connection Tracking...");
-    }
-    connectiontracking();
-    $cttimeout = 0;
-    if ( $config{CT_INTERVAL} < 10 ) {
-        logfile("CT_INTERVAL refresh increased to 30 to prevent looping (csf.conf setting: $config{CT_INTERVAL})");
-        $config{CT_INTERVAL} = 30;
-    }
-}
 
-if ( $config{PT_LIMIT} ) {
-    if ( -e "/etc/csf/csf.pignore" ) {
-        my @entries = slurp("/etc/csf/csf.pignore");
+    if ( $config{RT_RELAY_ALERT} or $config{RT_AUTHRELAY_ALERT} or $config{RT_POPRELAY_ALERT} or $config{RT_LOCALRELAY_ALERT} or $config{RT_LOCALHOSTRELAY_ALERT} ) {
+        logfile("Email Relay Tracking...");
+        if ( $config{RT_LOCALRELAY_ALERT} ) {
+            if ( -e "/etc/csf/csf.mignore" ) {
+                my @entries = slurp("/etc/csf/csf.mignore");
+                foreach my $line (@entries) {
+                    if ( $line =~ /^Include\s*(.*)$/ ) {
+                        my @incfile = slurp($1);
+                        push @entries, @incfile;
+                    }
+                }
+                foreach my $line (@entries) {
+                    $line =~ s/$cleanreg//g;
+                    if ( $line eq "" )               { next }
+                    if ( $line =~ /^\s*\#|Include/ ) { next }
+                    $rtignore{$line} = 1;
+                }
+            }
+        }
+    }
+
+    if ( $config{LF_PERMBLOCK} ) {
+        logfile("Temp to Perm Block Tracking...");
+    }
+
+    if ( $config{LF_NETBLOCK} ) {
+        logfile("Netblock Tracking...");
+    }
+
+    if ( $config{LF_PERMBLOCK} or $config{LF_NETBLOCK} ) {
+        sysopen( my $TEMPIP, "/var/lib/csf/csf.tempip", O_RDWR | O_CREAT );
+        flock( $TEMPIP, LOCK_EX );
+        my @data = <$TEMPIP>;
+        chomp @data;
+        seek( $TEMPIP, 0, 0 );
+        truncate( $TEMPIP, 0 );
+        foreach my $line (@data) {
+            my $old = 1;
+            my ( $oip, $operm, $otime, $omessage ) = split( /\|/, $line, 4 );
+            my $interval = time - $otime;
+            if     ( $config{LF_PERMBLOCK} and $interval < ( $config{LF_PERMBLOCK_INTERVAL} * $config{LF_PERMBLOCK_COUNT} ) ) { $old = 0 }
+            if     ( $config{LF_NETBLOCK} and $interval < ( $config{LF_NETBLOCK_INTERVAL} * $config{LF_NETBLOCK_COUNT} ) )    { $old = 0 }
+            unless ($old)                                                                                                     { print $TEMPIP "$line\n" }
+        }
+        close($TEMPIP);
+    }
+
+    if ( $config{ST_SYSTEM} ) {
+        logfile("System Statistics...");
+        my $time = time;
+        sysopen( my $SYSSTATNEW, "/var/lib/csf/stats/system.new", O_RDWR | O_CREAT );
+        flock( $SYSSTATNEW, LOCK_EX );
+        seek( $SYSSTATNEW, 0, 0 );
+        truncate( $SYSSTATNEW, 0 );
+
+        sysopen( my $SYSSTAT, "/var/lib/csf/stats/system", O_RDWR | O_CREAT );
+        flock( $SYSSTAT, LOCK_EX );
+        while ( my $line = <$SYSSTAT> ) {
+            chomp $line;
+            my ( $thistime, undef ) = split( /\,/, $line );
+            if ( $time - $thistime > ( 86400 * $config{ST_SYSTEM_MAXDAYS} ) ) { next }
+            print $SYSSTATNEW $line . "\n";
+        }
+        close($SYSSTAT);
+        close($SYSSTATNEW);
+        rename "/var/lib/csf/stats/system.new", "/var/lib/csf/stats/system";
+        systemstats();
+    }
+    if ( $config{PS_INTERVAL} ) {
+        logfile("Port Scan Tracking...");
+        if ( $config{PS_INTERVAL} < 60 ) {
+            logfile("PS_INTERVAL refresh increased to 60 to prevent looping (csf.conf setting: $config{PS_INTERVAL})");
+            $config{PS_INTERVAL} = 60;
+        }
+        $pstimeout = 0;
+    }
+    if ( $config{UID_INTERVAL} ) {
+        logfile("User ID Tracking...");
+        if ( $config{UID_INTERVAL} < 60 ) {
+            logfile("UID_INTERVAL refresh increased to 60 to prevent looping (csf.conf setting: $config{UID_INTERVAL})");
+            $config{UID_INTERVAL} = 60;
+        }
+        $uidtimeout = 0;
+        my @entries = slurp("/etc/csf/csf.uidignore");
         foreach my $line (@entries) {
             if ( $line =~ /^Include\s*(.*)$/ ) {
                 my @incfile = slurp($1);
@@ -1034,49 +1003,71 @@ if ( $config{PT_LIMIT} ) {
             $line =~ s/$cleanreg//g;
             if ( $line eq "" )               { next }
             if ( $line =~ /^\s*\#|Include/ ) { next }
-            my ( $item, $rule ) = split( /:/, $line, 2 );
-            $rule =~ s/[\r\n]//g;
-            $rule =~ s/\s*$//g;
-            $item =~ s/\s//g;
-            $item = lc $item;
-
-            if ( $item =~ /^(cmd|exe|user)$/ ) {
-                $skip{$item}{$rule} = 1;
-            }
-            elsif ( $item =~ /^(pcmd|pexe|puser)$/ ) {
-                if ( testregex($rule) ) { $pskip{$item}{$rule} = 1 }
-                else                    { logfile("*Error* Invalid regex [$line] in csf.pignore") }
-            }
+            $uidignore{$line} = 1;
         }
     }
-    if ( -e "/var/lib/csf/csf.temppids" )  { unlink("/var/lib/csf/csf.temppids") }
-    if ( -e "/var/lib/csf/csf.tempusers" ) { unlink("/var/lib/csf/csf.tempusers") }
-    logfile("Process Tracking...");
-    processtracking();
-    $pttimeout = 0;
-    if ( $config{PT_INTERVAL} < 10 ) {
-        logfile("PT_INTERVAL refresh increased to 60 to prevent looping (csf.conf setting: $config{PT_INTERVAL})");
-        $config{PT_INTERVAL} = 60;
+
+    if ( $config{CT_LIMIT} ) {
+        if ( $config{CT_STATES} ) {
+            logfile("Connection Tracking ($config{CT_STATES})...");
+        }
+        else {
+            logfile("Connection Tracking...");
+        }
+        connectiontracking();
+        $cttimeout = 0;
+        if ( $config{CT_INTERVAL} < 10 ) {
+            logfile("CT_INTERVAL refresh increased to 30 to prevent looping (csf.conf setting: $config{CT_INTERVAL})");
+            $config{CT_INTERVAL} = 30;
+        }
     }
 
-    if ( $config{PT_SSHDHUNG} ) {
-        logfile("SSHD Hung Session Tracking...");
-    }
-}
+    if ( $config{PT_LIMIT} ) {
+        if ( -e "/etc/csf/csf.pignore" ) {
+            my @entries = slurp("/etc/csf/csf.pignore");
+            foreach my $line (@entries) {
+                if ( $line =~ /^Include\s*(.*)$/ ) {
+                    my @incfile = slurp($1);
+                    push @entries, @incfile;
+                }
+            }
+            foreach my $line (@entries) {
+                $line =~ s/$cleanreg//g;
+                if ( $line eq "" )               { next }
+                if ( $line =~ /^\s*\#|Include/ ) { next }
+                my ( $item, $rule ) = split( /:/, $line, 2 );
+                $rule =~ s/[\r\n]//g;
+                $rule =~ s/\s*$//g;
+                $item =~ s/\s//g;
+                $item = lc $item;
 
-if ( $config{AT_ALERT} ) {
-    if ( $config{AT_ALERT} == 3 ) {
-        my ( $user, $passwd, $uid, $gid, $quota, $comment, $gcos, $dir, $shell ) = getpwnam("root");
-        $accounttracking{$user}{account} = 1;
-        $accounttracking{$user}{passwd}  = $passwd;
-        $accounttracking{$user}{uid}     = $uid;
-        $accounttracking{$user}{gid}     = $gid;
-        $accounttracking{$user}{dir}     = $dir;
-        $accounttracking{$user}{shell}   = $shell;
+                if ( $item =~ /^(cmd|exe|user)$/ ) {
+                    $skip{$item}{$rule} = 1;
+                }
+                elsif ( $item =~ /^(pcmd|pexe|puser)$/ ) {
+                    if ( testregex($rule) ) { $pskip{$item}{$rule} = 1 }
+                    else                    { logfile("*Error* Invalid regex [$line] in csf.pignore") }
+                }
+            }
+        }
+        if ( -e "/var/lib/csf/csf.temppids" )  { unlink("/var/lib/csf/csf.temppids") }
+        if ( -e "/var/lib/csf/csf.tempusers" ) { unlink("/var/lib/csf/csf.tempusers") }
+        logfile("Process Tracking...");
+        processtracking();
+        $pttimeout = 0;
+        if ( $config{PT_INTERVAL} < 10 ) {
+            logfile("PT_INTERVAL refresh increased to 60 to prevent looping (csf.conf setting: $config{PT_INTERVAL})");
+            $config{PT_INTERVAL} = 60;
+        }
+
+        if ( $config{PT_SSHDHUNG} ) {
+            logfile("SSHD Hung Session Tracking...");
+        }
     }
-    else {
-        while ( my ( $user, $passwd, $uid, $gid, $quota, $comment, $gcos, $dir, $shell ) = getpwent() ) {
-            if ( ( $config{AT_ALERT} eq "2" ) and ( $uid ne "0" ) ) { next }
+
+    if ( $config{AT_ALERT} ) {
+        if ( $config{AT_ALERT} == 3 ) {
+            my ( $user, $passwd, $uid, $gid, $quota, $comment, $gcos, $dir, $shell ) = getpwnam("root");
             $accounttracking{$user}{account} = 1;
             $accounttracking{$user}{passwd}  = $passwd;
             $accounttracking{$user}{uid}     = $uid;
@@ -1084,591 +1075,591 @@ if ( $config{AT_ALERT} ) {
             $accounttracking{$user}{dir}     = $dir;
             $accounttracking{$user}{shell}   = $shell;
         }
-        endpwent();
-    }
-    logfile("Account Tracking...");
-    $attimeout = 0;
-    if ( $config{AT_INTERVAL} < 10 ) {
-        logfile("AT_INTERVAL refresh increased to 60 to prevent looping (csf.conf setting: $config{AT_INTERVAL})");
-        $config{AT_INTERVAL} = 60;
-    }
-}
-
-if ( $config{LF_SSH_EMAIL_ALERT} ) {
-    logfile("SSH Tracking...");
-}
-if ( $config{LF_SU_EMAIL_ALERT} ) {
-    logfile("SU Tracking...");
-}
-if ( $config{LF_SUDO_EMAIL_ALERT} ) {
-    logfile("SUDO Tracking...");
-}
-if ( $config{LF_CONSOLE_EMAIL_ALERT} ) {
-    logfile("Console Tracking...");
-}
-
-if ( $config{LF_CPANEL_ALERT} ) {
-    $config{LF_CPANEL_ALERT_USERS} =~ s/\s//g;
-    foreach my $user ( split( /\,/, $config{LF_CPANEL_ALERT_USERS} ) ) {
-        $cpanelalertusers{$user} = 1;
-    }
-    logfile("WHM Tracking...");
-}
-
-if ( $config{PORTKNOCKING} and $config{PORTKNOCKING_ALERT} ) {
-    logfile("Port Knocking Tracking...");
-}
-
-my $sshdef = $config{PORTS_sshd};
-$ports{pop3d}        = $config{PORTS_pop3d};
-$ports{imapd}        = $config{PORTS_imapd};
-$ports{htpasswd}     = $config{PORTS_htpasswd};
-$ports{mod_security} = $config{PORTS_mod_security};
-$ports{mod_qos}      = $config{PORTS_mod_qos};
-$ports{symlink}      = $config{PORTS_symlink};
-$ports{cxs}          = $config{PORTS_cxs};
-$ports{bind}         = $config{PORTS_bind};
-$ports{suhosin}      = $config{PORTS_suhosin};
-$ports{cpanel}       = $config{PORTS_cpanel};
-$ports{ftpd}         = $config{PORTS_ftpd};
-$ports{smtpauth}     = $config{PORTS_smtpauth};
-$ports{eximsyntax}   = $config{PORTS_eximsyntax};
-
-opendir( my $DIR, "/etc/chkserv.d" );
-while ( my $file = readdir($DIR) ) {
-    if ( $file =~ /exim-(\d+)/ ) {
-        $ports{smtpauth}   .= ",$1";
-        $ports{eximsyntax} .= ",$1";
-    }
-}
-closedir($DIR);
-
-if ( -e "/etc/ssh/sshd_config" ) {
-    foreach my $line ( slurp("/etc/ssh/sshd_config") ) {
-        $line =~ s/$cleanreg//g;
-        if ( $line =~ /^(\s|\#|$)/ ) { next }
-        if ( $line =~ /^Port\s+(\d+)/i ) {
-            my $port = $1;
-            if ( $ports{sshd} ) {
-                $ports{sshd} .= ",$port";
+        else {
+            while ( my ( $user, $passwd, $uid, $gid, $quota, $comment, $gcos, $dir, $shell ) = getpwent() ) {
+                if ( ( $config{AT_ALERT} eq "2" ) and ( $uid ne "0" ) ) { next }
+                $accounttracking{$user}{account} = 1;
+                $accounttracking{$user}{passwd}  = $passwd;
+                $accounttracking{$user}{uid}     = $uid;
+                $accounttracking{$user}{gid}     = $gid;
+                $accounttracking{$user}{dir}     = $dir;
+                $accounttracking{$user}{shell}   = $shell;
             }
-            else {
-                $ports{sshd} = $port;
+            endpwent();
+        }
+        logfile("Account Tracking...");
+        $attimeout = 0;
+        if ( $config{AT_INTERVAL} < 10 ) {
+            logfile("AT_INTERVAL refresh increased to 60 to prevent looping (csf.conf setting: $config{AT_INTERVAL})");
+            $config{AT_INTERVAL} = 60;
+        }
+    }
+
+    if ( $config{LF_SSH_EMAIL_ALERT} ) {
+        logfile("SSH Tracking...");
+    }
+    if ( $config{LF_SU_EMAIL_ALERT} ) {
+        logfile("SU Tracking...");
+    }
+    if ( $config{LF_SUDO_EMAIL_ALERT} ) {
+        logfile("SUDO Tracking...");
+    }
+    if ( $config{LF_CONSOLE_EMAIL_ALERT} ) {
+        logfile("Console Tracking...");
+    }
+
+    if ( $config{LF_CPANEL_ALERT} ) {
+        $config{LF_CPANEL_ALERT_USERS} =~ s/\s//g;
+        foreach my $user ( split( /\,/, $config{LF_CPANEL_ALERT_USERS} ) ) {
+            $cpanelalertusers{$user} = 1;
+        }
+        logfile("WHM Tracking...");
+    }
+
+    if ( $config{PORTKNOCKING} and $config{PORTKNOCKING_ALERT} ) {
+        logfile("Port Knocking Tracking...");
+    }
+
+    my $sshdef = $config{PORTS_sshd};
+    $ports{pop3d}        = $config{PORTS_pop3d};
+    $ports{imapd}        = $config{PORTS_imapd};
+    $ports{htpasswd}     = $config{PORTS_htpasswd};
+    $ports{mod_security} = $config{PORTS_mod_security};
+    $ports{mod_qos}      = $config{PORTS_mod_qos};
+    $ports{symlink}      = $config{PORTS_symlink};
+    $ports{cxs}          = $config{PORTS_cxs};
+    $ports{bind}         = $config{PORTS_bind};
+    $ports{suhosin}      = $config{PORTS_suhosin};
+    $ports{cpanel}       = $config{PORTS_cpanel};
+    $ports{ftpd}         = $config{PORTS_ftpd};
+    $ports{smtpauth}     = $config{PORTS_smtpauth};
+    $ports{eximsyntax}   = $config{PORTS_eximsyntax};
+
+    opendir( my $DIR, "/etc/chkserv.d" );
+    while ( my $file = readdir($DIR) ) {
+        if ( $file =~ /exim-(\d+)/ ) {
+            $ports{smtpauth}   .= ",$1";
+            $ports{eximsyntax} .= ",$1";
+        }
+    }
+    closedir($DIR);
+
+    if ( -e "/etc/ssh/sshd_config" ) {
+        foreach my $line ( slurp("/etc/ssh/sshd_config") ) {
+            $line =~ s/$cleanreg//g;
+            if ( $line =~ /^(\s|\#|$)/ ) { next }
+            if ( $line =~ /^Port\s+(\d+)/i ) {
+                my $port = $1;
+                if ( $ports{sshd} ) {
+                    $ports{sshd} .= ",$port";
+                }
+                else {
+                    $ports{sshd} = $port;
+                }
             }
         }
     }
-}
-unless ( $ports{sshd} ) { $ports{sshd} = $sshdef }
+    unless ( $ports{sshd} ) { $ports{sshd} = $sshdef }
 
-if ( $config{LF_INTERVAL} < 60 ) {
-    logfile("LF_INTERVAL refresh increased to 300 to prevent looping (csf.conf setting: $config{LF_INTERVAL})");
-    $config{LT_INTERVAL} = 300;
-}
-
-if ( $config{LF_PARSE} < 5 or $config{LF_PARSE} > 20 ) {
-    logfile("LF_PARSE refresh reset to 5 to prevent looping (csf.conf setting: $config{LF_PARSE})");
-    $config{LF_PARSE} = 5;
-}
-
-my $lastline = "";
-$scripttimeout = 0;
-my $duration  = 0;
-my $maintimer = 0;
-while (1) {
-    $0         = "lfd - processing";
-    $maintimer = time;
-
-    seek( $pidfile_fh, 0, 0 );
-    my @piddata = <$pidfile_fh>;
-    chomp @piddata;
-    if ( ( $pid ne $piddata[0] ) or ( $pidino ne ( stat($pidfile) )[1] ) ) {
-        cleanup( __LINE__, "*Error* pid mismatch or missing" );
+    if ( $config{LF_INTERVAL} < 60 ) {
+        logfile("LF_INTERVAL refresh increased to 300 to prevent looping (csf.conf setting: $config{LF_INTERVAL})");
+        $config{LT_INTERVAL} = 300;
     }
 
-    if ( -e "/etc/csf/csf.error" ) {
-        cleanup( __LINE__, "*Error* You have an unresolved error when starting csf. You need to restart csf successfully before restarting lfd (see /etc/csf/csf.error). *lfd stopped*" );
-    }
-    my $perms = sprintf "%04o", ( stat("/etc/csf") )[2] & oct("07777");
-    if ( $perms != "0600" ) {
-        chmod( 0600, "/etc/csf" );
-        logfile("*Permissions* on /etc/csf reset to 0600 [currently: $perms]");
-    }
-    $perms = sprintf "%04o", ( stat("/var/lib/csf") )[2] & oct("07777");
-    if ( $perms != "0600" ) {
-        chmod( 0600, "/var/lib/csf" );
-        logfile("*Permissions* on /var/lib/csf reset to 0600 [currently: $perms]");
-    }
-    $perms = sprintf "%04o", ( stat("/usr/local/csf") )[2] & oct("07777");
-    if ( $perms != "0600" ) {
-        chmod( 0600, "/usr/local/csf" );
-        logfile("*Permissions* on /usr/local/csf reset to 0600 [currently: $perms]");
+    if ( $config{LF_PARSE} < 5 or $config{LF_PARSE} > 20 ) {
+        logfile("LF_PARSE refresh reset to 5 to prevent looping (csf.conf setting: $config{LF_PARSE})");
+        $config{LF_PARSE} = 5;
     }
 
-    $locktimeout += $duration;
-    if ( $locktimeout >= 60 ) {
-        $locktimeout = 0;
-        lockhang();
-    }
+    my $lastline = "";
+    $scripttimeout = 0;
+    my $duration  = 0;
+    my $maintimer = 0;
+    while (1) {
+        $0         = "lfd - processing";
+        $maintimer = time;
 
-    if ( scalar( keys %forks ) > 200 ) {
-        my $forkcnt = 0;
-        foreach my $key ( keys %forks ) {
-            if ( $key =~ /\d+/ and $key > 1 and kill( 0, $key ) ) {
-                $forkcnt++;
-                if ( $config{DEBUG} >= 3 ) { logfile("debug: fork:[$key]") }
+        seek( $pidfile_fh, 0, 0 );
+        my @piddata = <$pidfile_fh>;
+        chomp @piddata;
+        if ( ( $pid ne $piddata[0] ) or ( $pidino ne ( stat($pidfile) )[1] ) ) {
+            cleanup( __LINE__, "*Error* pid mismatch or missing" );
+        }
+
+        if ( -e "/etc/csf/csf.error" ) {
+            cleanup( __LINE__, "*Error* You have an unresolved error when starting csf. You need to restart csf successfully before restarting lfd (see /etc/csf/csf.error). *lfd stopped*" );
+        }
+        my $perms = sprintf "%04o", ( stat("/etc/csf") )[2] & oct("07777");
+        if ( $perms != "0600" ) {
+            chmod( 0600, "/etc/csf" );
+            logfile("*Permissions* on /etc/csf reset to 0600 [currently: $perms]");
+        }
+        $perms = sprintf "%04o", ( stat("/var/lib/csf") )[2] & oct("07777");
+        if ( $perms != "0600" ) {
+            chmod( 0600, "/var/lib/csf" );
+            logfile("*Permissions* on /var/lib/csf reset to 0600 [currently: $perms]");
+        }
+        $perms = sprintf "%04o", ( stat("/usr/local/csf") )[2] & oct("07777");
+        if ( $perms != "0600" ) {
+            chmod( 0600, "/usr/local/csf" );
+            logfile("*Permissions* on /usr/local/csf reset to 0600 [currently: $perms]");
+        }
+
+        $locktimeout += $duration;
+        if ( $locktimeout >= 60 ) {
+            $locktimeout = 0;
+            lockhang();
+        }
+
+        if ( scalar( keys %forks ) > 200 ) {
+            my $forkcnt = 0;
+            foreach my $key ( keys %forks ) {
+                if ( $key =~ /\d+/ and $key > 1 and kill( 0, $key ) ) {
+                    $forkcnt++;
+                    if ( $config{DEBUG} >= 3 ) { logfile("debug: fork:[$key]") }
+                }
+                else {
+                    delete $forks{$key};
+                }
             }
-            else {
-                delete $forks{$key};
+            if ( $config{DEBUG} >= 2 ) { logfile("debug: Forks:[$forkcnt]") }
+            if ( $forkcnt > 200 ) {
+                logfile("*Error* Excessive number of children ($forkcnt), restarting lfd...");
+                lfdrestart();
+                exit;
             }
         }
-        if ( $config{DEBUG} >= 2 ) { logfile("debug: Forks:[$forkcnt]") }
-        if ( $forkcnt > 200 ) {
-            logfile("*Error* Excessive number of children ($forkcnt), restarting lfd...");
+
+        if ( -e "/var/lib/csf/lfd.restart" ) {
+            unlink "/var/lib/csf/lfd.restart";
             lfdrestart();
             exit;
         }
-    }
 
-    if ( -e "/var/lib/csf/lfd.restart" ) {
-        unlink "/var/lib/csf/lfd.restart";
-        lfdrestart();
-        exit;
-    }
-
-    if ( -e "/var/lib/csf/csf.restart" ) {
-        unlink "/var/lib/csf/csf.restart";
-        csfrestart();
-    }
-
-    if ( $config{LF_CSF} ) {
-        $csftimeout += $duration;
-        if ( $csftimeout >= 300 ) {
-            $csftimeout = 0;
-            csfcheck();
+        if ( -e "/var/lib/csf/csf.restart" ) {
+            unlink "/var/lib/csf/csf.restart";
+            csfrestart();
         }
-    }
 
-    if ( $config{SYSLOG_CHECK} and $sys_syslog ) {
-        $syslogchecktimeout += $duration;
-        if ( $syslogchecktimeout >= $config{SYSLOG_CHECK} ) {
-            $syslogchecktimeout = 0;
-            if ( $syslogcheckcode eq "" ) {
-                my @chars = ( '0' .. '9', 'a' .. 'z', 'A' .. 'Z' );
-                $syslogcheckcode = join '', map { $chars[ rand(@chars) ] } ( 1 .. ( 15 + int( rand(15) ) ) );
-                eval {
-                    local $SIG{__DIE__} = undef;
-                    openlog( 'lfd', 'ndelay,pid', 'user' );
-                    syslog( 'info', "SYSLOG check [$syslogcheckcode]" );
-                    closelog();
-                }
-            }
-            else {
-                syslogcheck();
-                $syslogcheckcode = "";
+        if ( $config{LF_CSF} ) {
+            $csftimeout += $duration;
+            if ( $csftimeout >= 300 ) {
+                $csftimeout = 0;
+                csfcheck();
             }
         }
-    }
 
-    if ( $config{ST_SYSTEM} ) {
-        $systemstatstimeout += $duration;
-        if ( $systemstatstimeout >= 60 ) {
-            $systemstatstimeout = 0;
-            systemstats();
-        }
-    }
-
-    if ( $config{LT_POP3D} ) {
-        $logintimeout{pop3d} += $duration;
-        if ( $logintimeout{pop3d} >= 3600 ) {
-            delete $logintimeout{pop3d};
-            delete $logins{pop3d};
-        }
-    }
-    if ( $config{LT_IMAPD} ) {
-        $logintimeout{imapd} += $duration;
-        if ( $logintimeout{imapd} >= 3600 ) {
-            delete $logintimeout{imapd};
-            delete $logins{imapd};
-        }
-    }
-    if ( $config{PS_INTERVAL} ) {
-        $pstimeout += $duration;
-        if ( $pstimeout >= $config{PS_INTERVAL} ) {
-            $pstimeout = 0;
-            undef %portscans;
-        }
-    }
-    if ( $config{UID_INTERVAL} ) {
-        $uidtimeout += $duration;
-        if ( $uidtimeout >= $config{UID_INTERVAL} ) {
-            $uidtimeout = 0;
-            undef %uidscans;
-        }
-    }
-    if ( $config{LF_SCRIPT_ALERT} ) {
-        $scripttimeout += $duration;
-        if ( $scripttimeout >= 3600 ) {
-            $scripttimeout = 0;
-            undef %scripts;
-        }
-    }
-    if ( $config{LF_APACHE_404} ) {
-        $apache404timeout += $duration;
-        if ( $apache404timeout >= $config{LF_INTERVAL} ) {
-            $apache404timeout = 0;
-            undef %apache404;
-        }
-    }
-    if ( $config{LF_APACHE_403} ) {
-        $apache403timeout += $duration;
-        if ( $apache403timeout >= $config{LF_INTERVAL} ) {
-            $apache403timeout = 0;
-            undef %apache403;
-        }
-    }
-    if ( $config{LF_APACHE_401} ) {
-        $apache401timeout += $duration;
-        if ( $apache401timeout >= $config{LF_INTERVAL} ) {
-            $apache401timeout = 0;
-            undef %apache401;
-        }
-    }
-    if ( $config{RT_RELAY_ALERT} or $config{RT_AUTHRELAY_ALERT} or $config{RT_POPRELAY_ALERT} or $config{RT_LOCALRELAY_ALERT} or $config{RT_LOCALHOSTRELAY_ALERT} ) {
-        $relaytimeout += $duration;
-        if ( $relaytimeout >= 3600 ) {
-            $relaytimeout = 0;
-            undef %relays;
-        }
-    }
-
-    if ( -e "/var/lib/csf/csf.tempconf" ) {
-        open( my $IN, "<", "/var/lib/csf/csf.tempconf" );
-        flock( $IN, LOCK_SH );
-        while ( my $line = <$IN> ) {
-            chomp $line;
-            if ( $line =~ /^\#/ ) { next }
-            if ( $line !~ /=/ )   { next }
-            my ( $name, $value ) = split( /=/, $line, 2 );
-            $name =~ s/\s//g;
-            if ( $value =~ /\"(.*)\"/ ) {
-                $value = $1;
-            }
-            else {
-                cleanup( __LINE__, "*Error* Invalid configuration line in csf.tempconf" );
-            }
-            $config{$name} = $value;
-        }
-        close($IN);
-    }
-
-    if ( $config{GLOBAL_IGNORE} and -e "/var/lib/csf/csf.gignore" ) {
-        undef @gcidrs;
-        undef %gignoreips;
-        undef $gcidr;
-        undef $gcidr6;
-        $gcidr  = Net::CIDR::Lite->new;
-        $gcidr6 = Net::CIDR::Lite->new;
-        open( my $IN, "<", "/var/lib/csf/csf.gignore" );
-        flock( $IN, LOCK_SH );
-
-        while ( my $line = <$IN> ) {
-            chomp $line;
-            if ( $line =~ /^([#\n\r\s])/ or $line eq "" ) { next }
-            my ( $ip, undef ) = split( /\s/, $line );
-            my ( undef, $iscidr ) = split( /\//, $ip );
-            my $v = checkip( \$ip );
-            if ($v) {
-                if ($iscidr) {
-                    push @gcidrs, $ip;
-                    undef $@;
-                    if ( $v == 6 ) {
-                        eval { local $SIG{__DIE__} = undef; $gcidr6->add($ip) };
+        if ( $config{SYSLOG_CHECK} and $sys_syslog ) {
+            $syslogchecktimeout += $duration;
+            if ( $syslogchecktimeout >= $config{SYSLOG_CHECK} ) {
+                $syslogchecktimeout = 0;
+                if ( $syslogcheckcode eq "" ) {
+                    my @chars = ( '0' .. '9', 'a' .. 'z', 'A' .. 'Z' );
+                    $syslogcheckcode = join '', map { $chars[ rand(@chars) ] } ( 1 .. ( 15 + int( rand(15) ) ) );
+                    eval {
+                        local $SIG{__DIE__} = undef;
+                        openlog( 'lfd', 'ndelay,pid', 'user' );
+                        syslog( 'info', "SYSLOG check [$syslogcheckcode]" );
+                        closelog();
                     }
-                    else {
-                        eval { local $SIG{__DIE__} = undef; $gcidr->add($ip) };
+                }
+                else {
+                    syslogcheck();
+                    $syslogcheckcode = "";
+                }
+            }
+        }
+
+        if ( $config{ST_SYSTEM} ) {
+            $systemstatstimeout += $duration;
+            if ( $systemstatstimeout >= 60 ) {
+                $systemstatstimeout = 0;
+                systemstats();
+            }
+        }
+
+        if ( $config{LT_POP3D} ) {
+            $logintimeout{pop3d} += $duration;
+            if ( $logintimeout{pop3d} >= 3600 ) {
+                delete $logintimeout{pop3d};
+                delete $logins{pop3d};
+            }
+        }
+        if ( $config{LT_IMAPD} ) {
+            $logintimeout{imapd} += $duration;
+            if ( $logintimeout{imapd} >= 3600 ) {
+                delete $logintimeout{imapd};
+                delete $logins{imapd};
+            }
+        }
+        if ( $config{PS_INTERVAL} ) {
+            $pstimeout += $duration;
+            if ( $pstimeout >= $config{PS_INTERVAL} ) {
+                $pstimeout = 0;
+                undef %portscans;
+            }
+        }
+        if ( $config{UID_INTERVAL} ) {
+            $uidtimeout += $duration;
+            if ( $uidtimeout >= $config{UID_INTERVAL} ) {
+                $uidtimeout = 0;
+                undef %uidscans;
+            }
+        }
+        if ( $config{LF_SCRIPT_ALERT} ) {
+            $scripttimeout += $duration;
+            if ( $scripttimeout >= 3600 ) {
+                $scripttimeout = 0;
+                undef %scripts;
+            }
+        }
+        if ( $config{LF_APACHE_404} ) {
+            $apache404timeout += $duration;
+            if ( $apache404timeout >= $config{LF_INTERVAL} ) {
+                $apache404timeout = 0;
+                undef %apache404;
+            }
+        }
+        if ( $config{LF_APACHE_403} ) {
+            $apache403timeout += $duration;
+            if ( $apache403timeout >= $config{LF_INTERVAL} ) {
+                $apache403timeout = 0;
+                undef %apache403;
+            }
+        }
+        if ( $config{LF_APACHE_401} ) {
+            $apache401timeout += $duration;
+            if ( $apache401timeout >= $config{LF_INTERVAL} ) {
+                $apache401timeout = 0;
+                undef %apache401;
+            }
+        }
+        if ( $config{RT_RELAY_ALERT} or $config{RT_AUTHRELAY_ALERT} or $config{RT_POPRELAY_ALERT} or $config{RT_LOCALRELAY_ALERT} or $config{RT_LOCALHOSTRELAY_ALERT} ) {
+            $relaytimeout += $duration;
+            if ( $relaytimeout >= 3600 ) {
+                $relaytimeout = 0;
+                undef %relays;
+            }
+        }
+
+        if ( -e "/var/lib/csf/csf.tempconf" ) {
+            open( my $IN, "<", "/var/lib/csf/csf.tempconf" );
+            flock( $IN, LOCK_SH );
+            while ( my $line = <$IN> ) {
+                chomp $line;
+                if ( $line =~ /^\#/ ) { next }
+                if ( $line !~ /=/ )   { next }
+                my ( $name, $value ) = split( /=/, $line, 2 );
+                $name =~ s/\s//g;
+                if ( $value =~ /\"(.*)\"/ ) {
+                    $value = $1;
+                }
+                else {
+                    cleanup( __LINE__, "*Error* Invalid configuration line in csf.tempconf" );
+                }
+                $config{$name} = $value;
+            }
+            close($IN);
+        }
+
+        if ( $config{GLOBAL_IGNORE} and -e "/var/lib/csf/csf.gignore" ) {
+            undef @gcidrs;
+            undef %gignoreips;
+            undef $gcidr;
+            undef $gcidr6;
+            $gcidr  = Net::CIDR::Lite->new;
+            $gcidr6 = Net::CIDR::Lite->new;
+            open( my $IN, "<", "/var/lib/csf/csf.gignore" );
+            flock( $IN, LOCK_SH );
+
+            while ( my $line = <$IN> ) {
+                chomp $line;
+                if ( $line =~ /^([#\n\r\s])/ or $line eq "" ) { next }
+                my ( $ip, undef ) = split( /\s/, $line );
+                my ( undef, $iscidr ) = split( /\//, $ip );
+                my $v = checkip( \$ip );
+                if ($v) {
+                    if ($iscidr) {
+                        push @gcidrs, $ip;
+                        undef $@;
+                        if ( $v == 6 ) {
+                            eval { local $SIG{__DIE__} = undef; $gcidr6->add($ip) };
+                        }
+                        else {
+                            eval { local $SIG{__DIE__} = undef; $gcidr->add($ip) };
+                        }
+                        if ($@) { logfile("Invalid entry in GLOBAL_IGNORE: $ip") }
                     }
-                    if ($@) { logfile("Invalid entry in GLOBAL_IGNORE: $ip") }
+                    else { $gignoreips{$ip} = 1 }
                 }
-                else { $gignoreips{$ip} = 1 }
+                elsif ( $ip ne "127.0.0.1" ) { logfile("Invalid entry in GLOBAL_IGNORE: [$ip]") }
             }
-            elsif ( $ip ne "127.0.0.1" ) { logfile("Invalid entry in GLOBAL_IGNORE: [$ip]") }
+            close($IN);
+            unlink "/var/lib/csf/csf.gignore";
         }
-        close($IN);
-        unlink "/var/lib/csf/csf.gignore";
-    }
 
-    $count = 0;
-    $0     = "lfd - scanning log files";
-    undef %relayip;
-    if ( $config{RELAYHOSTS} ) {
-        open( my $IN, "<", "/etc/relayhosts" );
-        flock( $IN, LOCK_SH );
-        while ( my $ip = <$IN> ) {
-            chomp $ip;
-            if ( checkip( \$ip ) ) { $relayip{$ip} = 1 }
+        $count = 0;
+        $0     = "lfd - scanning log files";
+        undef %relayip;
+        if ( $config{RELAYHOSTS} ) {
+            open( my $IN, "<", "/etc/relayhosts" );
+            flock( $IN, LOCK_SH );
+            while ( my $ip = <$IN> ) {
+                chomp $ip;
+                if ( checkip( \$ip ) ) { $relayip{$ip} = 1 }
+            }
+            close($IN);
         }
-        close($IN);
-    }
-    if ( $config{DYNDNS} and $config{DYNDNS_IGNORE} ) {
-        open( my $IN, "<", "/var/lib/csf/csf.tempdyn" );
-        flock( $IN, LOCK_SH );
-        while ( my $ip = <$IN> ) {
-            chomp $ip;
-            if ( checkip( \$ip ) ) { $relayip{$ip} = 1 }
+        if ( $config{DYNDNS} and $config{DYNDNS_IGNORE} ) {
+            open( my $IN, "<", "/var/lib/csf/csf.tempdyn" );
+            flock( $IN, LOCK_SH );
+            while ( my $ip = <$IN> ) {
+                chomp $ip;
+                if ( checkip( \$ip ) ) { $relayip{$ip} = 1 }
+            }
+            close($IN);
         }
-        close($IN);
-    }
-    if ( $config{GLOBAL_DYNDNS} and $config{GLOBAL_DYNDNS_IGNORE} ) {
-        open( my $IN, "<", "/var/lib/csf/csf.tempgdyn" );
-        flock( $IN, LOCK_SH );
-        while ( my $ip = <$IN> ) {
-            chomp $ip;
-            if ( checkip( \$ip ) ) { $relayip{$ip} = 1 }
+        if ( $config{GLOBAL_DYNDNS} and $config{GLOBAL_DYNDNS_IGNORE} ) {
+            open( my $IN, "<", "/var/lib/csf/csf.tempgdyn" );
+            flock( $IN, LOCK_SH );
+            while ( my $ip = <$IN> ) {
+                chomp $ip;
+                if ( checkip( \$ip ) ) { $relayip{$ip} = 1 }
+            }
+            close($IN);
         }
-        close($IN);
-    }
 
-    if ( $config{RESTRICT_SYSLOG} == 3 ) { syslog_perms() }
-    foreach my $lgfile ( keys %logfiles ) {
-        if ( $lgfile eq "" ) { next }
-        my $timer = time;
-        if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", $lgfile, $timer ) }
-        my $totlines = 0;
-        my @data;
-        while ( my $line = getlogfile( $lgfile, $count, $totlines ) ) {
-            if ( $line eq "reopen" ) {
-                undef @data;
-                last;
-            }
-            else {
-                $totlines++;
-                push @data, $line;
-            }
-        }
-        if ( $config{DEBUG} >= 2 ) { logfile("debug: Parsing $lgfile ($totlines lines)") }
-        foreach my $line (@data) {
-            if ( ( $lastline ne "" ) and ( $line =~ /^\S+\s+\d+\s+\S+ \S+ last message repeated (\d+) times/ ) ) {
-                my $hits = $1;
-                if ( $hits > 100 ) { $hits = 100 }
-                for ( my $x = 0; $x < $hits; $x++ ) {
-                    dochecks( $lastline, $lgfile );
+        if ( $config{RESTRICT_SYSLOG} == 3 ) { syslog_perms() }
+        foreach my $lgfile ( keys %logfiles ) {
+            if ( $lgfile eq "" ) { next }
+            my $timer = time;
+            if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", $lgfile, $timer ) }
+            my $totlines = 0;
+            my @data;
+            while ( my $line = getlogfile( $lgfile, $count, $totlines ) ) {
+                if ( $line eq "reopen" ) {
+                    undef @data;
+                    last;
+                }
+                else {
+                    $totlines++;
+                    push @data, $line;
                 }
             }
-            else {
-                dochecks( $line, $lgfile );
-                $lastline = $line;
+            if ( $config{DEBUG} >= 2 ) { logfile("debug: Parsing $lgfile ($totlines lines)") }
+            foreach my $line (@data) {
+                if ( ( $lastline ne "" ) and ( $line =~ /^\S+\s+\d+\s+\S+ \S+ last message repeated (\d+) times/ ) ) {
+                    my $hits = $1;
+                    if ( $hits > 100 ) { $hits = 100 }
+                    for ( my $x = 0; $x < $hits; $x++ ) {
+                        dochecks( $lastline, $lgfile );
+                    }
+                }
+                else {
+                    dochecks( $line, $lgfile );
+                    $lastline = $line;
+                }
+            }
+            $lastline = "";
+            $count++;
+            undef %psips;
+            undef %blockedips;
+            if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", $lgfile, $timer ) }
+        }
+
+        $0 = "lfd - processing";
+        if ( $config{CT_LIMIT} ) {
+            $cttimeout += $duration;
+            if ( $cttimeout >= $config{CT_INTERVAL} ) {
+                $cttimeout = 0;
+                connectiontracking();
             }
         }
-        $lastline = "";
-        $count++;
-        undef %psips;
-        undef %blockedips;
-        if ( $config{DEBUG} >= 3 ) { $timer = timer( "stop", $lgfile, $timer ) }
-    }
 
-    $0 = "lfd - processing";
-    if ( $config{CT_LIMIT} ) {
-        $cttimeout += $duration;
-        if ( $cttimeout >= $config{CT_INTERVAL} ) {
-            $cttimeout = 0;
-            connectiontracking();
-        }
-    }
-
-    if ( $config{DYNDNS} ) {
-        $dyndnstimeout += $duration;
-        if ( $dyndnstimeout >= $config{DYNDNS} ) {
-            $dyndnstimeout = 0;
-            dyndns();
-        }
-    }
-
-    if ( $config{GLOBAL_DYNDNS} ) {
-        $gdyndnstimeout += $duration;
-        if ( $gdyndnstimeout >= $config{GLOBAL_DYNDNS_INTERVAL} ) {
-            $gdyndnstimeout = 0;
-            globaldyndns();
-        }
-    }
-
-    if ( $config{LF_GLOBAL} ) {
-        $globaltimeout += $duration;
-        if ( $globaltimeout >= $config{LF_GLOBAL} ) {
-            $globaltimeout = 0;
-            global();
-        }
-    }
-
-    if ( scalar( keys %blocklists ) ) {
-        $blocklisttimeout += $duration;
-        if ( $blocklisttimeout >= 300 ) {
-            $blocklisttimeout = 0;
-            blocklist();
-        }
-    }
-
-    if ( $config{CC_DENY} or $config{CC_ALLOW} or $config{CC_ALLOW_FILTER} or $config{CC_ALLOW_PORTS} or $config{CC_DENY_PORTS} or $config{CC_ALLOW_SMTPAUTH} ) {
-        $cctimeout += $duration;
-        if ( $cctimeout >= 3600 ) {
-            $cctimeout = 0;
-            countrycode();
-        }
-    }
-
-    if ( $config{CC_LOOKUPS} ) {
-        $ccltimeout += $duration;
-        if ( $ccltimeout >= 3600 ) {
-            $ccltimeout = 0;
-            countrycodelookups();
-        }
-    }
-
-    if ( $config{LOGSCANNER} ) {
-        my ( $sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst ) = localtime(time);
-        my $lastrun;
-
-        if ( -e "/var/lib/csf/csf.lastlogrun" ) {
-            my @data = slurp("/var/lib/csf/csf.lastlogrun");
-            $loginterval = $lastrun = $data[0];
-        }
-        if ( $loginterval eq "" ) {
-            if ( $config{LOGSCANNER_INTERVAL} eq "hourly" ) { $loginterval = $hour }
-            if ( $config{LOGSCANNER_INTERVAL} eq "daily" )  { $loginterval = $mday }
-        }
-        if ( -e "/var/lib/csf/csf.logrun" ) {
-            unlink "/var/lib/csf/csf.logrun";
-            logscanner($hour);
-        }
-        elsif ( $config{LOGSCANNER_INTERVAL} eq "hourly" and $loginterval ne $hour ) {
-            $loginterval = $hour;
-            logscanner($hour);
-        }
-        elsif ( $config{LOGSCANNER_INTERVAL} eq "daily" and $loginterval ne $mday ) {
-            $loginterval = $mday;
-            logscanner($hour);
-        }
-
-        if ( $lastrun ne $loginterval ) {
-            $lastrun = $loginterval;
-            sysopen( my $LOGRUN, "/var/lib/csf/csf.lastlogrun", O_WRONLY | O_CREAT | O_TRUNC );
-            flock( $LOGRUN, LOCK_EX );
-            print $LOGRUN $loginterval;
-            close($LOGRUN);
-        }
-    }
-
-    if ( $config{LF_INTEGRITY} ) {
-        $integritytimeout += $duration;
-        if ( $integritytimeout >= $config{LF_INTEGRITY} ) {
-            $integritytimeout = 0;
-            integrity();
-        }
-    }
-
-    if ( $config{LF_QUEUE_ALERT} ) {
-        $queuetimeout += $duration;
-        if ( $queuetimeout >= $config{LF_QUEUE_INTERVAL} ) {
-            $queuetimeout = 0;
-            queuecheck();
-        }
-    }
-
-    if ( $config{LF_MODSECIPDB_ALERT} ) {
-        $modsecipdbchecktimeout += $duration;
-        if ( $modsecipdbchecktimeout >= 3600 ) {
-            $modsecipdbchecktimeout = 0;
-            modsecipdbcheck();
-        }
-    }
-
-    if ( $config{LF_EXPLOIT} ) {
-        $exploittimeout += $duration;
-        if ( $exploittimeout >= $config{LF_EXPLOIT} ) {
-            $exploittimeout = 0;
-            exploit();
-        }
-    }
-
-    if ( $config{LF_DIRWATCH} ) {
-        $dirwatchtimeout += $duration;
-        if ( not -e "/var/lib/csf/csf.dwdisable" ) {
-            if ( $dirwatchtimeout >= $config{LF_DIRWATCH} ) {
-                $dirwatchtimeout = 0;
-                dirwatch();
+        if ( $config{DYNDNS} ) {
+            $dyndnstimeout += $duration;
+            if ( $dyndnstimeout >= $config{DYNDNS} ) {
+                $dyndnstimeout = 0;
+                dyndns();
             }
         }
-    }
 
-    if ( $config{LF_DIRWATCH_FILE} ) {
-        $dirwatchfiletimeout += $duration;
-        if ( $dirwatchfiletimeout >= $config{LF_DIRWATCH_FILE} ) {
-            dirwatchfile();
-            $dirwatchfiletimeout = 0;
+        if ( $config{GLOBAL_DYNDNS} ) {
+            $gdyndnstimeout += $duration;
+            if ( $gdyndnstimeout >= $config{GLOBAL_DYNDNS_INTERVAL} ) {
+                $gdyndnstimeout = 0;
+                globaldyndns();
+            }
         }
-    }
 
-    if ( $config{PT_LOAD} ) {
-        $loadtimeout += $duration;
-        if ( $loadtimeout >= $config{PT_LOAD} ) {
-            $loadtimeout = 0;
-            loadcheck();
+        if ( $config{LF_GLOBAL} ) {
+            $globaltimeout += $duration;
+            if ( $globaltimeout >= $config{LF_GLOBAL} ) {
+                $globaltimeout = 0;
+                global();
+            }
         }
-    }
 
-    if ( $config{PT_LIMIT} ) {
-        $pttimeout += $duration;
-        if ( $pttimeout >= $config{PT_INTERVAL} ) {
-            $pttimeout = 0;
-            processtracking();
+        if ( scalar( keys %blocklists ) ) {
+            $blocklisttimeout += $duration;
+            if ( $blocklisttimeout >= 300 ) {
+                $blocklisttimeout = 0;
+                blocklist();
+            }
         }
-    }
 
-    if ( $config{MESSENGER} ) {
-        unless ( -e "/var/log/lfd_messenger.log" ) {
-            open( my $OUT, ">", "/var/log/lfd_messenger.log" );
-            close($OUT);
+        if ( $config{CC_DENY} or $config{CC_ALLOW} or $config{CC_ALLOW_FILTER} or $config{CC_ALLOW_PORTS} or $config{CC_DENY_PORTS} or $config{CC_ALLOW_SMTPAUTH} ) {
+            $cctimeout += $duration;
+            if ( $cctimeout >= 3600 ) {
+                $cctimeout = 0;
+                countrycode();
+            }
         }
-        system( "chown", "$config{MESSENGER_USER}:$config{MESSENGER_USER}", "/var/log/lfd_messenger.log" );
-        foreach my $key ( keys %messengerips ) {
-            if ( $messengerips{$key} > 1 and $config{"MESSENGER_${key}_IN"} ne "" ) {
-                unless ( kill( 0, $messengerips{$key} ) ) {
-                    messenger( $config{"MESSENGER_${key}"}, $config{MESSENGER_USER}, $key );
-                    logfile("Messenger $key Service died, restarted");
+
+        if ( $config{CC_LOOKUPS} ) {
+            $ccltimeout += $duration;
+            if ( $ccltimeout >= 3600 ) {
+                $ccltimeout = 0;
+                countrycodelookups();
+            }
+        }
+
+        if ( $config{LOGSCANNER} ) {
+            my ( $sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst ) = localtime(time);
+            my $lastrun;
+
+            if ( -e "/var/lib/csf/csf.lastlogrun" ) {
+                my @data = slurp("/var/lib/csf/csf.lastlogrun");
+                $loginterval = $lastrun = $data[0];
+            }
+            if ( $loginterval eq "" ) {
+                if ( $config{LOGSCANNER_INTERVAL} eq "hourly" ) { $loginterval = $hour }
+                if ( $config{LOGSCANNER_INTERVAL} eq "daily" )  { $loginterval = $mday }
+            }
+            if ( -e "/var/lib/csf/csf.logrun" ) {
+                unlink "/var/lib/csf/csf.logrun";
+                logscanner($hour);
+            }
+            elsif ( $config{LOGSCANNER_INTERVAL} eq "hourly" and $loginterval ne $hour ) {
+                $loginterval = $hour;
+                logscanner($hour);
+            }
+            elsif ( $config{LOGSCANNER_INTERVAL} eq "daily" and $loginterval ne $mday ) {
+                $loginterval = $mday;
+                logscanner($hour);
+            }
+
+            if ( $lastrun ne $loginterval ) {
+                $lastrun = $loginterval;
+                sysopen( my $LOGRUN, "/var/lib/csf/csf.lastlogrun", O_WRONLY | O_CREAT | O_TRUNC );
+                flock( $LOGRUN, LOCK_EX );
+                print $LOGRUN $loginterval;
+                close($LOGRUN);
+            }
+        }
+
+        if ( $config{LF_INTEGRITY} ) {
+            $integritytimeout += $duration;
+            if ( $integritytimeout >= $config{LF_INTEGRITY} ) {
+                $integritytimeout = 0;
+                integrity();
+            }
+        }
+
+        if ( $config{LF_QUEUE_ALERT} ) {
+            $queuetimeout += $duration;
+            if ( $queuetimeout >= $config{LF_QUEUE_INTERVAL} ) {
+                $queuetimeout = 0;
+                queuecheck();
+            }
+        }
+
+        if ( $config{LF_MODSECIPDB_ALERT} ) {
+            $modsecipdbchecktimeout += $duration;
+            if ( $modsecipdbchecktimeout >= 3600 ) {
+                $modsecipdbchecktimeout = 0;
+                modsecipdbcheck();
+            }
+        }
+
+        if ( $config{LF_EXPLOIT} ) {
+            $exploittimeout += $duration;
+            if ( $exploittimeout >= $config{LF_EXPLOIT} ) {
+                $exploittimeout = 0;
+                exploit();
+            }
+        }
+
+        if ( $config{LF_DIRWATCH} ) {
+            $dirwatchtimeout += $duration;
+            if ( not -e "/var/lib/csf/csf.dwdisable" ) {
+                if ( $dirwatchtimeout >= $config{LF_DIRWATCH} ) {
+                    $dirwatchtimeout = 0;
+                    dirwatch();
                 }
             }
         }
-        messengerrecaptcha();
-    }
-    if ( $config{UI} ) {
-        if ( $uiip > 1 and !( kill( 0, $uiip ) ) ) {
-            ui();
-            logfile("Integrated UI Service died, restarted");
-        }
-    }
-    if ( $config{CLUSTER_RECVFROM} ) {
-        if ( $clusterip > 1 and !( kill( 0, $clusterip ) ) ) {
-            lfdserver();
-            logfile("Cluster Service died, restarted");
-        }
-    }
 
-    if ( $config{AT_ALERT} ) {
-        $attimeout += $duration;
-        if ( $attimeout >= $config{AT_INTERVAL} ) {
-            $attimeout = 0;
-            undef %newaccounttracking;
-            if ( $config{AT_ALERT} == 3 ) {
-                my ( $user, $passwd, $uid, $gid, $quota, $comment, $gcos, $dir, $shell ) = getpwnam("root");
-                $newaccounttracking{$user}{account} = 1;
-                $newaccounttracking{$user}{passwd}  = $passwd;
-                $newaccounttracking{$user}{uid}     = $uid;
-                $newaccounttracking{$user}{gid}     = $gid;
-                $newaccounttracking{$user}{dir}     = $dir;
-                $newaccounttracking{$user}{shell}   = $shell;
+        if ( $config{LF_DIRWATCH_FILE} ) {
+            $dirwatchfiletimeout += $duration;
+            if ( $dirwatchfiletimeout >= $config{LF_DIRWATCH_FILE} ) {
+                dirwatchfile();
+                $dirwatchfiletimeout = 0;
             }
-            else {
-                while ( my ( $user, $passwd, $uid, $gid, $quota, $comment, $gcos, $dir, $shell ) = getpwent() ) {
-                    if ( ( $config{AT_ALERT} eq "2" ) and ( $uid ne "0" ) ) { next }
+        }
+
+        if ( $config{PT_LOAD} ) {
+            $loadtimeout += $duration;
+            if ( $loadtimeout >= $config{PT_LOAD} ) {
+                $loadtimeout = 0;
+                loadcheck();
+            }
+        }
+
+        if ( $config{PT_LIMIT} ) {
+            $pttimeout += $duration;
+            if ( $pttimeout >= $config{PT_INTERVAL} ) {
+                $pttimeout = 0;
+                processtracking();
+            }
+        }
+
+        if ( $config{MESSENGER} ) {
+            unless ( -e "/var/log/lfd_messenger.log" ) {
+                open( my $OUT, ">", "/var/log/lfd_messenger.log" );
+                close($OUT);
+            }
+            system( "chown", "$config{MESSENGER_USER}:$config{MESSENGER_USER}", "/var/log/lfd_messenger.log" );
+            foreach my $key ( keys %messengerips ) {
+                if ( $messengerips{$key} > 1 and $config{"MESSENGER_${key}_IN"} ne "" ) {
+                    unless ( kill( 0, $messengerips{$key} ) ) {
+                        messenger( $config{"MESSENGER_${key}"}, $config{MESSENGER_USER}, $key );
+                        logfile("Messenger $key Service died, restarted");
+                    }
+                }
+            }
+            messengerrecaptcha();
+        }
+        if ( $config{UI} ) {
+            if ( $uiip > 1 and !( kill( 0, $uiip ) ) ) {
+                ui();
+                logfile("Integrated UI Service died, restarted");
+            }
+        }
+        if ( $config{CLUSTER_RECVFROM} ) {
+            if ( $clusterip > 1 and !( kill( 0, $clusterip ) ) ) {
+                lfdserver();
+                logfile("Cluster Service died, restarted");
+            }
+        }
+
+        if ( $config{AT_ALERT} ) {
+            $attimeout += $duration;
+            if ( $attimeout >= $config{AT_INTERVAL} ) {
+                $attimeout = 0;
+                undef %newaccounttracking;
+                if ( $config{AT_ALERT} == 3 ) {
+                    my ( $user, $passwd, $uid, $gid, $quota, $comment, $gcos, $dir, $shell ) = getpwnam("root");
                     $newaccounttracking{$user}{account} = 1;
                     $newaccounttracking{$user}{passwd}  = $passwd;
                     $newaccounttracking{$user}{uid}     = $uid;
@@ -1676,27 +1667,37 @@ while (1) {
                     $newaccounttracking{$user}{dir}     = $dir;
                     $newaccounttracking{$user}{shell}   = $shell;
                 }
-                endpwent();
+                else {
+                    while ( my ( $user, $passwd, $uid, $gid, $quota, $comment, $gcos, $dir, $shell ) = getpwent() ) {
+                        if ( ( $config{AT_ALERT} eq "2" ) and ( $uid ne "0" ) ) { next }
+                        $newaccounttracking{$user}{account} = 1;
+                        $newaccounttracking{$user}{passwd}  = $passwd;
+                        $newaccounttracking{$user}{uid}     = $uid;
+                        $newaccounttracking{$user}{gid}     = $gid;
+                        $newaccounttracking{$user}{dir}     = $dir;
+                        $newaccounttracking{$user}{shell}   = $shell;
+                    }
+                    endpwent();
+                }
+                accounttracking();
+                %accounttracking = %newaccounttracking;
             }
-            accounttracking();
-            %accounttracking = %newaccounttracking;
         }
+
+        ipunblock();
+
+        $0 = "lfd - sleeping";
+        sleep( $config{LF_PARSE} );
+
+        $duration = time - $maintimer;
+        if ( ( $config{DEBUG} >= 1 ) and ( $duration > ( $config{LF_PARSE} * 10 ) ) ) {
+            logfile("debug: *Performance* log parsing taking $duration seconds");
+        }
+        if ( $config{DEBUG} >= 2 ) { logfile("debug: Tick: $duration [$config{LF_PARSE}]") }
     }
 
-    ipunblock();
-
-    $0 = "lfd - sleeping";
-    sleep( $config{LF_PARSE} );
-
-    $duration = time - $maintimer;
-    if ( ( $config{DEBUG} >= 1 ) and ( $duration > ( $config{LF_PARSE} * 10 ) ) ) {
-        logfile("debug: *Performance* log parsing taking $duration seconds");
-    }
-    if ( $config{DEBUG} >= 2 ) { logfile("debug: Tick: $duration [$config{LF_PARSE}]") }
-}
-
-return 0;
-} # End of run()
+    return 0;
+}    # End of run()
 
 sub dochecks {
     my $line            = shift;

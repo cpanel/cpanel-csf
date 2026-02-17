@@ -68,133 +68,133 @@ __PACKAGE__->run() unless caller;
 
 sub run {
     my $class = shift;
-    
+
     # Initialize package variables
     $version = version();
-    
+
     $ipscidr6 = Net::CIDR::Lite->new;
     $ipscidr  = Net::CIDR::Lite->new;
     eval { local $SIG{__DIE__} = undef; $ipscidr6->add("::1/128") };
     eval { local $SIG{__DIE__} = undef; $ipscidr->add("127.0.0.0/8") };
-    
+
     $slurpreg  = ConfigServer::Slurp->slurpreg;
     $cleanreg  = ConfigServer::Slurp->cleanreg;
     $faststart = 0;
 
-process_input();
-load_config();
+    process_input();
+    load_config();
 
-$urlget = ConfigServer::URLGet->new( $config{URLGET}, "csf/$version", $config{URLPROXY} );
-unless ( defined $urlget ) {
-    if ( -e $config{CURL} or -e $config{WGET} ) {
-        $config{URLGET} = 3;
-        $urlget = ConfigServer::URLGet->new( $config{URLGET}, "csf/$version", $config{URLPROXY} );
-        print "*WARNING* URLGET set to use LWP but perl module is not installed, fallback to using CURL/WGET\n";
-        $warning .= "*WARNING* URLGET set to use LWP but perl module is not installed, fallback to using CURL/WGET\n";
-    }
-    else {
-        $config{URLGET} = 1;
-        $urlget = ConfigServer::URLGet->new( $config{URLGET}, "csf/$version", $config{URLPROXY} );
-        print "*WARNING* URLGET set to use LWP but perl module is not installed, reverting to HTTP::Tiny\n";
-        $warning .= "*WARNING* URLGET set to use LWP but perl module is not installed, reverting to HTTP::Tiny\n";
-    }
-}
-
-if ( ( -e "/etc/csf/csf.disable" ) and ( $input{command} ne "--enable" ) and ( $input{command} ne "-e" ) ) {
-    print "csf and lfd have been disabled, use 'csf -e' to enable\n";
-    my $ok = 0;
-    foreach my $opt ( "--version", "-v", "--check", "-c", "--ports", "-p", "--help", "-h", "--update", "-u", "-uf", "--flush", "-f", "--profile", "" ) {
-        if ( $input{command} eq $opt ) {
-            $ok = 1;
-            last;
+    $urlget = ConfigServer::URLGet->new( $config{URLGET}, "csf/$version", $config{URLPROXY} );
+    unless ( defined $urlget ) {
+        if ( -e $config{CURL} or -e $config{WGET} ) {
+            $config{URLGET} = 3;
+            $urlget = ConfigServer::URLGet->new( $config{URLGET}, "csf/$version", $config{URLPROXY} );
+            print "*WARNING* URLGET set to use LWP but perl module is not installed, fallback to using CURL/WGET\n";
+            $warning .= "*WARNING* URLGET set to use LWP but perl module is not installed, fallback to using CURL/WGET\n";
+        }
+        else {
+            $config{URLGET} = 1;
+            $urlget = ConfigServer::URLGet->new( $config{URLGET}, "csf/$version", $config{URLPROXY} );
+            print "*WARNING* URLGET set to use LWP but perl module is not installed, reverting to HTTP::Tiny\n";
+            $warning .= "*WARNING* URLGET set to use LWP but perl module is not installed, reverting to HTTP::Tiny\n";
         }
     }
-    unless ($ok) { return 1 }
-}
-unless ( -e $config{IPTABLES} )                         { error( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} (iptables binary location) does not exist!" ) }
-if     ( $config{IPV6} and !( -e $config{IP6TABLES} ) ) { error( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} (ip6tables binary location) does not exist!" ) }
 
-if ( ( -e "/etc/csf/csf.error" ) and ( $input{command} ne "--startf" ) and ( $input{command} ne "-sf" ) and ( $input{command} ne "-q" ) and ( $input{command} ne "--startq" ) and ( $input{command} ne "--start" ) and ( $input{command} ne "-s" ) and ( $input{command} ne "--restart" ) and ( $input{command} ne "-r" ) and ( $input{command} ne "--enable" ) and ( $input{command} ne "-e" ) ) {
-    my ($error) = slurpee( "/etc/csf/csf.error", 'fatal' => 1 );
-    chomp $error;
-    print "You have an unresolved error when starting csf:\n$error\n\nYou need to restart csf successfully to remove this warning, or delete /etc/csf/csf.error\n";
-    return 1;
-}
-
-unless ( $input{command} =~ /^--(stop|initdown|initup)$/ ) {
-    if ( -e "/var/lib/csf/csf.4.saved" )  { unlink "/var/lib/csf/csf.4.saved" }
-    if ( -e "/var/lib/csf/csf.4.ipsets" ) { unlink "/var/lib/csf/csf.4.ipsets" }
-    if ( -e "/var/lib/csf/csf.6.saved" )  { unlink "/var/lib/csf/csf.6.saved" }
-}
-
-if    ( ( $input{command} eq "--status" ) or ( $input{command} eq "-l" ) )   { dostatus() }
-elsif ( ( $input{command} eq "--status6" ) or ( $input{command} eq "-l6" ) ) { dostatus6() }
-elsif ( ( $input{command} eq "--version" ) or ( $input{command} eq "-v" ) )  { doversion() }
-elsif ( ( $input{command} eq "--stop" ) or ( $input{command} eq "-f" ) )     { csflock("lock"); dostop(0); csflock("unlock") }
-elsif ( ( $input{command} eq "--startf" ) or ( $input{command} eq "-sf" ) )  { csflock("lock"); dostop(1); dostart(); csflock("unlock") }
-elsif ( ( $input{command} eq "--start" ) or ( $input{command} eq "-s" ) or ( $input{command} eq "--restart" ) or ( $input{command} eq "-r" ) ) {
-    if   ( $config{LFDSTART} ) { lfdstart() }
-    else                       { csflock("lock"); dostop(1); dostart(); csflock("unlock") }
-}
-elsif ( ( $input{command} eq "--startq" ) or ( $input{command} eq "-q" ) )       { lfdstart() }
-elsif ( ( $input{command} eq "--restartall" ) or ( $input{command} eq "-ra" ) )  { dorestartall() }
-elsif ( ( $input{command} eq "--add" ) or ( $input{command} eq "-a" ) )          { doadd() }
-elsif ( ( $input{command} eq "--deny" ) or ( $input{command} eq "-d" ) )         { dodeny() }
-elsif ( ( $input{command} eq "--denyrm" ) or ( $input{command} eq "-dr" ) )      { dokill() }
-elsif ( ( $input{command} eq "--denyf" ) or ( $input{command} eq "-df" ) )       { dokillall() }
-elsif ( ( $input{command} eq "--addrm" ) or ( $input{command} eq "-ar" ) )       { doakill() }
-elsif ( ( $input{command} eq "--disable" ) or ( $input{command} eq "-x" ) )      { csflock("lock"); dodisable(); csflock("unlock") }
-elsif ( ( $input{command} eq "--enable" ) or ( $input{command} eq "-e" ) )       { csflock("lock"); doenable();  csflock("unlock") }
-elsif ( ( $input{command} eq "--check" ) or ( $input{command} eq "-c" ) )        { docheck() }
-elsif ( ( $input{command} eq "--grep" ) or ( $input{command} eq "-g" ) )         { dogrep() }
-elsif ( ( $input{command} eq "--iplookup" ) or ( $input{command} eq "-i" ) )     { doiplookup() }
-elsif ( ( $input{command} eq "--temp" ) or ( $input{command} eq "-t" ) )         { dotempban() }
-elsif ( ( $input{command} eq "--temprm" ) or ( $input{command} eq "-tr" ) )      { dotemprm() }
-elsif ( ( $input{command} eq "--temprma" ) or ( $input{command} eq "-tra" ) )    { dotemprma() }
-elsif ( ( $input{command} eq "--temprmd" ) or ( $input{command} eq "-trd" ) )    { dotemprmd() }
-elsif ( ( $input{command} eq "--tempdeny" ) or ( $input{command} eq "-td" ) )    { dotempdeny() }
-elsif ( ( $input{command} eq "--tempallow" ) or ( $input{command} eq "-ta" ) )   { dotempallow() }
-elsif ( ( $input{command} eq "--tempf" ) or ( $input{command} eq "-tf" ) )       { dotempf() }
-elsif ( ( $input{command} eq "--mail" ) or ( $input{command} eq "-m" ) )         { domail() }
-elsif ( ( $input{command} eq "--cdeny" ) or ( $input{command} eq "-cd" ) )       { doclusterdeny() }
-elsif ( ( $input{command} eq "--ctempdeny" ) or ( $input{command} eq "-ctd" ) )  { doclustertempdeny() }
-elsif ( ( $input{command} eq "--callow" ) or ( $input{command} eq "-ca" ) )      { doclusterallow() }
-elsif ( ( $input{command} eq "--ctempallow" ) or ( $input{command} eq "-cta" ) ) { doclustertempallow() }
-elsif ( ( $input{command} eq "--crm" ) or ( $input{command} eq "-cr" ) )         { doclusterrm() }
-elsif ( ( $input{command} eq "--carm" ) or ( $input{command} eq "-car" ) )       { doclusterarm() }
-elsif ( ( $input{command} eq "--cignore" ) or ( $input{command} eq "-ci" ) )     { doclusterignore() }
-elsif ( ( $input{command} eq "--cirm" ) or ( $input{command} eq "-cir" ) )       { doclusterirm() }
-elsif ( ( $input{command} eq "--cping" ) or ( $input{command} eq "-cp" ) )       { clustersend("PING") }
-elsif ( ( $input{command} eq "--cgrep" ) or ( $input{command} eq "-cg" ) )       { doclustergrep() }
-elsif ( ( $input{command} eq "--cconfig" ) or ( $input{command} eq "-cc" ) )     { docconfig() }
-elsif ( ( $input{command} eq "--cfile" ) or ( $input{command} eq "-cf" ) )       { docfile() }
-elsif ( ( $input{command} eq "--crestart" ) or ( $input{command} eq "-crs" ) )   { docrestart() }
-elsif ( ( $input{command} eq "--watch" ) or ( $input{command} eq "-w" ) )        { dowatch() }
-elsif ( ( $input{command} eq "--logrun" ) or ( $input{command} eq "-lr" ) )      { dologrun() }
-elsif ( ( $input{command} eq "--ports" ) or ( $input{command} eq "-p" ) )        { doports() }
-elsif ( $input{command} eq "--cloudflare" )                                      { docloudflare() }
-elsif ( $input{command} eq "--graphs" )                                          { dographs() }
-elsif ( $input{command} eq "--lfd" )                                             { dolfd() }
-elsif ( $input{command} eq "--rbl" )                                             { dorbls() }
-elsif ( $input{command} eq "--initup" )                                          { doinitup() }
-elsif ( $input{command} eq "--initdown" )                                        { doinitdown() }
-elsif ( $input{command} eq "--profile" )                                         { doprofile() }
-elsif ( $input{command} eq "--mregen" )                                          { domessengerv2() }
-elsif ( $input{command} eq "--trace" )                                           { dotrace() }
-else                                                                             { dohelp() }
-
-if ( $config{TESTING} ) { print "*WARNING* TESTING mode is enabled - do not forget to disable it in the configuration\n" }
-
-if ( ( $input{command} eq "--start" ) or ( $input{command} eq "-s" ) or ( $input{command} eq "--restart" ) or ( $input{command} eq "-r" ) or ( $input{command} eq "--restartall" ) or ( $input{command} eq "-ra" ) ) {
-    if ($warning) { print $warning }
-    foreach my $key ( keys %config ) {
-        my ( $insane, $range, $default ) = ConfigServer::Sanity::sanity( $key, $config{$key} );
-        if ($insane) { print "*WARNING* $key sanity check. $key = $config{$key}. Recommended range: $range (Default: $default)\n" }
+    if ( ( -e "/etc/csf/csf.disable" ) and ( $input{command} ne "--enable" ) and ( $input{command} ne "-e" ) ) {
+        print "csf and lfd have been disabled, use 'csf -e' to enable\n";
+        my $ok = 0;
+        foreach my $opt ( "--version", "-v", "--check", "-c", "--ports", "-p", "--help", "-h", "--update", "-u", "-uf", "--flush", "-f", "--profile", "" ) {
+            if ( $input{command} eq $opt ) {
+                $ok = 1;
+                last;
+            }
+        }
+        unless ($ok) { return 1 }
     }
-    unless ( $config{RESTRICT_SYSLOG} ) { print "\n*WARNING* RESTRICT_SYSLOG is disabled. See SECURITY WARNING in /etc/csf/csf.conf.\n" }
-}
+    unless ( -e $config{IPTABLES} )                         { error( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} (iptables binary location) does not exist!" ) }
+    if     ( $config{IPV6} and !( -e $config{IP6TABLES} ) ) { error( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} (ip6tables binary location) does not exist!" ) }
 
-return 0;
+    if ( ( -e "/etc/csf/csf.error" ) and ( $input{command} ne "--startf" ) and ( $input{command} ne "-sf" ) and ( $input{command} ne "-q" ) and ( $input{command} ne "--startq" ) and ( $input{command} ne "--start" ) and ( $input{command} ne "-s" ) and ( $input{command} ne "--restart" ) and ( $input{command} ne "-r" ) and ( $input{command} ne "--enable" ) and ( $input{command} ne "-e" ) ) {
+        my ($error) = slurpee( "/etc/csf/csf.error", 'fatal' => 1 );
+        chomp $error;
+        print "You have an unresolved error when starting csf:\n$error\n\nYou need to restart csf successfully to remove this warning, or delete /etc/csf/csf.error\n";
+        return 1;
+    }
+
+    unless ( $input{command} =~ /^--(stop|initdown|initup)$/ ) {
+        if ( -e "/var/lib/csf/csf.4.saved" )  { unlink "/var/lib/csf/csf.4.saved" }
+        if ( -e "/var/lib/csf/csf.4.ipsets" ) { unlink "/var/lib/csf/csf.4.ipsets" }
+        if ( -e "/var/lib/csf/csf.6.saved" )  { unlink "/var/lib/csf/csf.6.saved" }
+    }
+
+    if    ( ( $input{command} eq "--status" ) or ( $input{command} eq "-l" ) )   { dostatus() }
+    elsif ( ( $input{command} eq "--status6" ) or ( $input{command} eq "-l6" ) ) { dostatus6() }
+    elsif ( ( $input{command} eq "--version" ) or ( $input{command} eq "-v" ) )  { doversion() }
+    elsif ( ( $input{command} eq "--stop" ) or ( $input{command} eq "-f" ) )     { csflock("lock"); dostop(0); csflock("unlock") }
+    elsif ( ( $input{command} eq "--startf" ) or ( $input{command} eq "-sf" ) )  { csflock("lock"); dostop(1); dostart(); csflock("unlock") }
+    elsif ( ( $input{command} eq "--start" ) or ( $input{command} eq "-s" ) or ( $input{command} eq "--restart" ) or ( $input{command} eq "-r" ) ) {
+        if   ( $config{LFDSTART} ) { lfdstart() }
+        else                       { csflock("lock"); dostop(1); dostart(); csflock("unlock") }
+    }
+    elsif ( ( $input{command} eq "--startq" ) or ( $input{command} eq "-q" ) )       { lfdstart() }
+    elsif ( ( $input{command} eq "--restartall" ) or ( $input{command} eq "-ra" ) )  { dorestartall() }
+    elsif ( ( $input{command} eq "--add" ) or ( $input{command} eq "-a" ) )          { doadd() }
+    elsif ( ( $input{command} eq "--deny" ) or ( $input{command} eq "-d" ) )         { dodeny() }
+    elsif ( ( $input{command} eq "--denyrm" ) or ( $input{command} eq "-dr" ) )      { dokill() }
+    elsif ( ( $input{command} eq "--denyf" ) or ( $input{command} eq "-df" ) )       { dokillall() }
+    elsif ( ( $input{command} eq "--addrm" ) or ( $input{command} eq "-ar" ) )       { doakill() }
+    elsif ( ( $input{command} eq "--disable" ) or ( $input{command} eq "-x" ) )      { csflock("lock"); dodisable(); csflock("unlock") }
+    elsif ( ( $input{command} eq "--enable" ) or ( $input{command} eq "-e" ) )       { csflock("lock"); doenable();  csflock("unlock") }
+    elsif ( ( $input{command} eq "--check" ) or ( $input{command} eq "-c" ) )        { docheck() }
+    elsif ( ( $input{command} eq "--grep" ) or ( $input{command} eq "-g" ) )         { dogrep() }
+    elsif ( ( $input{command} eq "--iplookup" ) or ( $input{command} eq "-i" ) )     { doiplookup() }
+    elsif ( ( $input{command} eq "--temp" ) or ( $input{command} eq "-t" ) )         { dotempban() }
+    elsif ( ( $input{command} eq "--temprm" ) or ( $input{command} eq "-tr" ) )      { dotemprm() }
+    elsif ( ( $input{command} eq "--temprma" ) or ( $input{command} eq "-tra" ) )    { dotemprma() }
+    elsif ( ( $input{command} eq "--temprmd" ) or ( $input{command} eq "-trd" ) )    { dotemprmd() }
+    elsif ( ( $input{command} eq "--tempdeny" ) or ( $input{command} eq "-td" ) )    { dotempdeny() }
+    elsif ( ( $input{command} eq "--tempallow" ) or ( $input{command} eq "-ta" ) )   { dotempallow() }
+    elsif ( ( $input{command} eq "--tempf" ) or ( $input{command} eq "-tf" ) )       { dotempf() }
+    elsif ( ( $input{command} eq "--mail" ) or ( $input{command} eq "-m" ) )         { domail() }
+    elsif ( ( $input{command} eq "--cdeny" ) or ( $input{command} eq "-cd" ) )       { doclusterdeny() }
+    elsif ( ( $input{command} eq "--ctempdeny" ) or ( $input{command} eq "-ctd" ) )  { doclustertempdeny() }
+    elsif ( ( $input{command} eq "--callow" ) or ( $input{command} eq "-ca" ) )      { doclusterallow() }
+    elsif ( ( $input{command} eq "--ctempallow" ) or ( $input{command} eq "-cta" ) ) { doclustertempallow() }
+    elsif ( ( $input{command} eq "--crm" ) or ( $input{command} eq "-cr" ) )         { doclusterrm() }
+    elsif ( ( $input{command} eq "--carm" ) or ( $input{command} eq "-car" ) )       { doclusterarm() }
+    elsif ( ( $input{command} eq "--cignore" ) or ( $input{command} eq "-ci" ) )     { doclusterignore() }
+    elsif ( ( $input{command} eq "--cirm" ) or ( $input{command} eq "-cir" ) )       { doclusterirm() }
+    elsif ( ( $input{command} eq "--cping" ) or ( $input{command} eq "-cp" ) )       { clustersend("PING") }
+    elsif ( ( $input{command} eq "--cgrep" ) or ( $input{command} eq "-cg" ) )       { doclustergrep() }
+    elsif ( ( $input{command} eq "--cconfig" ) or ( $input{command} eq "-cc" ) )     { docconfig() }
+    elsif ( ( $input{command} eq "--cfile" ) or ( $input{command} eq "-cf" ) )       { docfile() }
+    elsif ( ( $input{command} eq "--crestart" ) or ( $input{command} eq "-crs" ) )   { docrestart() }
+    elsif ( ( $input{command} eq "--watch" ) or ( $input{command} eq "-w" ) )        { dowatch() }
+    elsif ( ( $input{command} eq "--logrun" ) or ( $input{command} eq "-lr" ) )      { dologrun() }
+    elsif ( ( $input{command} eq "--ports" ) or ( $input{command} eq "-p" ) )        { doports() }
+    elsif ( $input{command} eq "--cloudflare" )                                      { docloudflare() }
+    elsif ( $input{command} eq "--graphs" )                                          { dographs() }
+    elsif ( $input{command} eq "--lfd" )                                             { dolfd() }
+    elsif ( $input{command} eq "--rbl" )                                             { dorbls() }
+    elsif ( $input{command} eq "--initup" )                                          { doinitup() }
+    elsif ( $input{command} eq "--initdown" )                                        { doinitdown() }
+    elsif ( $input{command} eq "--profile" )                                         { doprofile() }
+    elsif ( $input{command} eq "--mregen" )                                          { domessengerv2() }
+    elsif ( $input{command} eq "--trace" )                                           { dotrace() }
+    else                                                                             { dohelp() }
+
+    if ( $config{TESTING} ) { print "*WARNING* TESTING mode is enabled - do not forget to disable it in the configuration\n" }
+
+    if ( ( $input{command} eq "--start" ) or ( $input{command} eq "-s" ) or ( $input{command} eq "--restart" ) or ( $input{command} eq "-r" ) or ( $input{command} eq "--restartall" ) or ( $input{command} eq "-ra" ) ) {
+        if ($warning) { print $warning }
+        foreach my $key ( keys %config ) {
+            my ( $insane, $range, $default ) = ConfigServer::Sanity::sanity( $key, $config{$key} );
+            if ($insane) { print "*WARNING* $key sanity check. $key = $config{$key}. Recommended range: $range (Default: $default)\n" }
+        }
+        unless ( $config{RESTRICT_SYSLOG} ) { print "\n*WARNING* RESTRICT_SYSLOG is disabled. See SECURITY WARNING in /etc/csf/csf.conf.\n" }
+    }
+
+    return 0;
 }
 
 # End of run() subroutine - all other subroutines follow below
@@ -3712,35 +3712,38 @@ sub linefilter {
 }
 
 sub docheck {
+
     # Auto-updates have been deprecated. This command now performs a local installation check.
     print "Checking CSF installation...\n";
     print "CSF version: v$version\n";
-    
+
     # Verify critical files exist
     my @critical_files = (
         '/usr/sbin/csf',
         '/usr/sbin/lfd',
         '/etc/csf/csf.conf',
     );
-    
+
     my $all_ok = 1;
     foreach my $file (@critical_files) {
-        if (-e $file) {
+        if ( -e $file ) {
             print "  ✓ $file exists\n";
-        } else {
+        }
+        else {
             print "  ✗ $file missing\n";
             $all_ok = 0;
         }
     }
-    
+
     if ($all_ok) {
         print "\nCSF installation check passed\n";
         print "Note: Auto-updates are no longer supported. Please use your package manager to update CSF.\n";
-    } else {
+    }
+    else {
         print "\nCSF installation check failed - some files are missing\n";
         exit 1;    ## no critic (Cpanel::NoExitsFromSubroutines) - Installation check failure
     }
-    
+
     return;
 }
 
@@ -5618,12 +5621,12 @@ sub syscommand {
         if ($iptableslock) { iptableslock("unlock") }
 
         chomp @output;
-        if (@output && $output[0] =~ /# Warning: iptables-legacy tables present/ ) { shift @output }
+        if ( @output && $output[0] =~ /# Warning: iptables-legacy tables present/ ) { shift @output }
         foreach my $line (@output) {
             if ( $line =~ /^Using intrapositioned negation/ ) { next }
             print $line. "\n";
         }
-        if (@output && $output[0] =~ /(^iptables: Unknown error 4294967295)|(xtables lock)/ and !$config{WAITLOCK} ) {
+        if ( @output && $output[0] =~ /(^iptables: Unknown error 4294967295)|(xtables lock)/ and !$config{WAITLOCK} ) {
             my $cnt    = 0;
             my $repeat = 6;
             while ( $cnt < $repeat ) {
@@ -5636,13 +5639,13 @@ sub syscommand {
                 waitpid( $cmdpid, 0 );
                 if ($iptableslock) { iptableslock("unlock") }
                 chomp @output;
-                if (@output && $output[0] =~ /# Warning: iptables-legacy tables present/ ) { shift @output }
+                if ( @output && $output[0] =~ /# Warning: iptables-legacy tables present/ ) { shift @output }
                 $cnt++;
-                if     (@output && $output[0] =~ /(^iptables: Unknown error 4294967295)|(xtables lock)/ and $cnt == $repeat ) { error( $line, "Error processing command for line [$line] ($repeat times): [$output[0]]" ); }
-                unless (@output && $output[0] =~ /(^iptables: Unknown error 4294967295)|(xtables lock)/ )                     { $cnt = $repeat }
+                if     ( @output && $output[0] =~ /(^iptables: Unknown error 4294967295)|(xtables lock)/ and $cnt == $repeat ) { error( $line, "Error processing command for line [$line] ($repeat times): [$output[0]]" ); }
+                unless ( @output && $output[0] =~ /(^iptables: Unknown error 4294967295)|(xtables lock)/ )                     { $cnt = $repeat }
             }
         }
-        if (@output && $output[0] =~ /^(iptables|xtables|Bad|Another)/ and ( $config{TESTING} or $force ) ) {
+        if ( @output && $output[0] =~ /^(iptables|xtables|Bad|Another)/ and ( $config{TESTING} or $force ) ) {
             if ( $output[0] =~ /iptables: No chain\/target\/match by that name/ ) {
                 error( $line, "iptables command [$command] failed, you appear to be missing a required iptables module" );
             }
@@ -5650,7 +5653,7 @@ sub syscommand {
                 error( $line, "iptables command [$command] failed" );
             }
         }
-        if (@output && $output[0] =~ /^(ip6tables|Bad|Another)/ and ( $config{TESTING} or $force ) ) {
+        if ( @output && $output[0] =~ /^(ip6tables|Bad|Another)/ and ( $config{TESTING} or $force ) ) {
             if ( $output[0] =~ /ip6tables: No chain\/target\/match by that name/ ) {
                 error( $line, "ip6tables command [$command] failed, you appear to be missing a required ip6tables module" );
             }
@@ -5658,10 +5661,10 @@ sub syscommand {
                 error( $line, "ip6tables command [$command] failed" );
             }
         }
-        if (@output && $output[0] =~ /xtables lock/ ) {
+        if ( @output && $output[0] =~ /xtables lock/ ) {
             $warning .= "iptables command [$command] failed due to xtables lock, enable WAITLOCK in csf.conf\n\n";
         }
-        if (@output && $output[0] =~ /^(iptables|xtables|ip6tables|Bad|Another)/ ) {
+        if ( @output && $output[0] =~ /^(iptables|xtables|ip6tables|Bad|Another)/ ) {
             $warning .= "*ERROR* line:[$line]\nCommand:[$command]\nError:[$output[0]]\nYou should check through the main output carefully\n\n";
         }
     }
@@ -5680,7 +5683,7 @@ sub iptableslock {
         truncate( $iptableslock_fh, 0 );
         print $iptableslock_fh $$;
     }
-    elsif($iptableslock_fh) {
+    elsif ($iptableslock_fh) {
         close($iptableslock_fh);
     }
     return;
