@@ -86,7 +86,7 @@ B<Parameters:>
 
 =over 4
 
-=item C<$item> - Configuration item name (e.g., 'AT_ALERT', 'AUTO_UPDATES')
+=item C<$item> - Configuration item name (e.g., 'AT_ALERT')
 
 =item C<$value> - Value to validate
 
@@ -114,15 +114,6 @@ Range validation:
 
     my ($bad, $acceptable, $default) = ConfigServer::Sanity::sanity('AT_INTERVAL', '5');
     # Returns: (1, "10-3600", "60") - invalid
-
-Discrete value validation:
-
-    # AUTO_UPDATES=0|1=1 in sanity.txt
-    my ($insane, $acceptable, $default) = ConfigServer::Sanity::sanity('AUTO_UPDATES', '1');
-    # Returns: (0, "0 or 1", "1") - valid
-
-    my ($bad, $acceptable, $default) = ConfigServer::Sanity::sanity('AUTO_UPDATES', '2');
-    # Returns: (1, "0 or 1", "1") - invalid
 
 =cut
 
@@ -221,7 +212,6 @@ Where:
 B<Examples:>
 
     AT_ALERT=0-3=2                    # Range with default
-    AUTO_UPDATES=0|1=1                # Discrete with default
     CC6_LOOKUPS=0-1                   # Range without default
     CT_LIMIT=0|1-1000=0               # Mixed validation
 

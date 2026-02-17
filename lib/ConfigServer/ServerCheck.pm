@@ -328,7 +328,7 @@ Checks include:
 
 =item * TESTING mode status
 
-=item * RESTRICT_SYSLOG, AUTO_UPDATES, LF_DAEMON settings
+=item * RESTRICT_SYSLOG, LF_DAEMON settings
 
 =item * MySQL port exposure (port 3306)
 

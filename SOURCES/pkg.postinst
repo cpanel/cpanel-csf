@@ -10,6 +10,8 @@ touch /usr/local/cpanel/Cpanel/Config/ConfigObj/Driver ||:
 # RPM: $1 = 2 for upgrade, 1 for fresh install
 # Debian: $1 = "configure" for both install and upgrade
 if [[ "$1" == "2" || "$1" == "configure" ]]; then
+    echo "Checking for deprecated AUTO_UPDATES setting and removing it..."
+
     # Remove AUTO_UPDATES from existing config if present
     if [ -f /etc/csf/csf.conf ]; then
         sed -i '/^AUTO_UPDATES\s*=/d' /etc/csf/csf.conf ||:

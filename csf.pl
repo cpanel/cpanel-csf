@@ -5660,7 +5660,7 @@ sub iptableslock {
         truncate( $iptableslock_fh, 0 );
         print $iptableslock_fh $$;
     }
-    else {
+    elsif($iptableslock_fh) {
         close($iptableslock_fh);
     }
     return;
