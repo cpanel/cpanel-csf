@@ -79,6 +79,9 @@ cp -a lib/* %{buildroot}/usr/local/csf/lib/
 # Install template files
 cp -a tpl/* %{buildroot}/usr/local/csf/tpl/
 
+# Add the license file
+cp LICENSE.txt %{buildroot}/etc/license.txt
+
 # Install config files from etc/ directory (recursively)
 cp -a etc/* %{buildroot}/etc/csf/
 
@@ -196,6 +199,7 @@ rm -rf %{buildroot}
 # Documentation and metadata files (not config)
 /etc/csf/changelog.txt
 /etc/csf/install.txt
+/etc/csf/license.txt
 /etc/csf/readme.txt
 /etc/csf/version.txt
 # Config-ish but with no reason for modification
