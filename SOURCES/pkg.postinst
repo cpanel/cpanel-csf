@@ -6,20 +6,20 @@ touch /usr/local/cpanel/Cpanel/Config/ConfigObj/Driver ||:
 # Register cPanel app config
 /usr/local/cpanel/bin/register_appconfig /usr/local/cpanel/bin/csf.conf.appconfig ||:
 
-# On upgrade, remove deprecated AUTO_UPDATES configuration
-# RPM: $1 = 2 for upgrade, 1 for fresh install
-# Debian: $1 = "configure" for both install and upgrade
-if [[ "$1" == "2" || "$1" == "configure" ]]; then
+# Remove deprecated AUTO_UPDATES configuration if present
+# This runs on all installs (fresh and upgrade) because config may exist from tarball
+if [ -f /etc/csf/csf.conf ] && grep -q '^AUTO_UPDATES\s*=' /etc/csf/csf.conf 2>/dev/null; then
     echo "Checking for deprecated AUTO_UPDATES setting and removing it..."
 
     # Remove AUTO_UPDATES from existing config if present
-    if [ -f /etc/csf/csf.conf ]; then
-        sed -i '/^AUTO_UPDATES\s*=/d' /etc/csf/csf.conf ||:
-        sed -i '/^# Enabling auto updates creates a cron job/,/^# You should check for new version announcements/d' /etc/csf/csf.conf ||:
-    fi
+    sed -i '/^AUTO_UPDATES\s*=/d' /etc/csf/csf.conf ||:
+    sed -i '/^# Enabling auto updates creates a cron job/,/^# You should check for new version announcements/d' /etc/csf/csf.conf ||:
+
     # Remove auto-update cron job if it exists
     rm -f /etc/cron.d/csf_update ||:
     rm -f /etc/cron.daily/csget ||:
+
+    echo "Removed deprecated AUTO_UPDATES configuration"
 fi
 
 # Disable and mask firewalld if present

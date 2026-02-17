@@ -49,7 +49,8 @@ our (
     $verbose,    $version,     $logintarget,    $noowner,         $warning,  $accept, $ipscidr,
     $ipv6reg,    $ipv4reg,     $ethdevin,       $ethdevout,       $ipscidr6, $eth6devin,
     $eth6devout, $statemodule, $logouttarget,   $cleanreg,        $slurpreg,
-    $faststart,  $urlget,      $statemodulenew, $statemodule6new, $cxsreputation
+    $faststart,  $urlget,      $statemodulenew, $statemodule6new, $cxsreputation,
+    $csflockfile_fh
 );
 
 our (
@@ -190,13 +191,12 @@ exit 0;
 
 sub csflock {
     my $lock = shift;
-    my $csflockfile_fh;
     if ( $lock eq "lock" ) {
         sysopen( $csflockfile_fh, "/var/lib/csf/csf.lock", O_RDWR | O_CREAT ) or die("Error: Unable to open csf lock file: $!");
         flock( $csflockfile_fh, LOCK_EX | LOCK_NB )                           or die "Error: csf is being restarted, try again in a moment: $!";
     }
     else {
-        close($csflockfile_fh);
+        close($csflockfile_fh) if defined $csflockfile_fh;
     }
     return;
 }
@@ -917,7 +917,7 @@ sub dostart {
 
     my $path = "PATH=\$PATH:/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin";
     my $csfpre;
-    my $csfpost;
+    my $csfpost = "";
     if    ( -e "/usr/local/csf/bin/csfpre.sh" )  { $csfpre  = "/usr/local/csf/bin/csfpre.sh" }
     elsif ( -e "/etc/csf/csfpre.sh" )            { $csfpre  = "/etc/csf/csfpre.sh" }
     if    ( -e "/usr/local/csf/bin/csfpost.sh" ) { $csfpost = "/usr/local/csf/bin/csfpost.sh" }
@@ -3702,25 +3702,35 @@ sub linefilter {
 }
 
 sub docheck {
-    my $url = "https://$config{DOWNLOADSERVER}/csf/version.txt";
-    if ( $config{URLGET} == 1 ) { $url = "http://$config{DOWNLOADSERVER}/csf/version.txt"; }
-    my ( $status, $text ) = $urlget->urlget($url);
-    if ($status) { print "Oops: $text\n"; exit 1; }    ## no critic (Cpanel::NoExitsFromSubroutines) - Network error termination
-
-    my $actv = $text;
-    my $up   = 0;
-
-    if ( ( $actv ne "" ) and ( $actv =~ /^[\d\.]*$/ ) ) {
-        if ( $actv > $version ) {
-            print "A newer version of csf is available - Current:v$version New:v$actv\n";
-        }
-        else {
-            print "csf is already at the latest version: v$version\n";
+    # Auto-updates have been deprecated. This command now performs a local installation check.
+    print "Checking CSF installation...\n";
+    print "CSF version: v$version\n";
+    
+    # Verify critical files exist
+    my @critical_files = (
+        '/usr/sbin/csf',
+        '/usr/sbin/lfd',
+        '/etc/csf/csf.conf',
+    );
+    
+    my $all_ok = 1;
+    foreach my $file (@critical_files) {
+        if (-e $file) {
+            print "  ✓ $file exists\n";
+        } else {
+            print "  ✗ $file missing\n";
+            $all_ok = 0;
         }
     }
-    else {
-        print "Unable to verify the latest version of csf at this time\n";
+    
+    if ($all_ok) {
+        print "\nCSF installation check passed\n";
+        print "Note: Auto-updates are no longer supported. Please use your package manager to update CSF.\n";
+    } else {
+        print "\nCSF installation check failed - some files are missing\n";
+        exit 1;    ## no critic (Cpanel::NoExitsFromSubroutines) - Installation check failure
     }
+    
     return;
 }
 
@@ -5638,10 +5648,10 @@ sub syscommand {
                 error( $line, "ip6tables command [$command] failed" );
             }
         }
-        if ( $output[0] =~ /xtables lock/ ) {
+        if (@output && $output[0] =~ /xtables lock/ ) {
             $warning .= "iptables command [$command] failed due to xtables lock, enable WAITLOCK in csf.conf\n\n";
         }
-        if ( $output[0] =~ /^(iptables|xtables|ip6tables|Bad|Another)/ ) {
+        if (@output && $output[0] =~ /^(iptables|xtables|ip6tables|Bad|Another)/ ) {
             $warning .= "*ERROR* line:[$line]\nCommand:[$command]\nError:[$output[0]]\nYou should check through the main output carefully\n\n";
         }
     }
