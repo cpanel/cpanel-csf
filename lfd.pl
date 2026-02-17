@@ -33,7 +33,7 @@ use ConfigServer::CheckIP qw(checkip cccheckip);
 use ConfigServer::URLGet;
 use ConfigServer::GetIPs qw(getips);
 use ConfigServer::Service;
-use ConfigServer::AbuseIP ();
+# ConfigServer::AbuseIP loaded at runtime in run() to avoid compile-time config loading
 use ConfigServer::GetEthDev;
 use ConfigServer::Sendmail;
 use ConfigServer::Logger qw(logfile);
@@ -54,7 +54,7 @@ our (
     $gcidr6,              $gdyndnstimeout,     $globaltimeout,    $hostname,               $hostshort,
     $integritytimeout,    $ipscidr,            $ipscidr6,         $ipv4reg,                $ipv6reg, $loadtimeout,
     $locktimeout,         $loginterval,        $masterpid,        $modsecipdbchecktimeout, $pid,
-    $pidfile,             $pidino,             $pstimeout,        $ptchildpid,             $pttimeout, $queuetimeout,
+    $pidfile,             $pidfile_fh,         $pidino,           $pstimeout,              $ptchildpid, $pttimeout, $queuetimeout,
     $relaytimeout,        $scripttimeout,      $slurpreg,         $smtptimeout,            $sys_syslog,
     $syslogcheckcode,     $syslogchecktimeout, $sysloggid,        $syslogpid,
     $systemstatstimeout,  $tar,                $toomanymatches,   $tz,         $uidtimeout, $uiip,
@@ -78,28 +78,39 @@ our (
     @lfsize,        @logignore,      @matchfile,  @rdns,          @suspicious
 );
 
-$pidfile = "/var/run/lfd.pid";
+# Run main script logic only when executed directly, not when loaded as module
+__PACKAGE__->run() unless caller;
 
-if ( -e "/etc/csf/csf.disable" ) {
-    print "csf and lfd have been disabled\n";
-    exit 1;
-}
+sub run {
+    my $class = shift;
+    
+    # Initialize package variables
+    $pidfile = "/var/run/lfd.pid";
 
-if ( -e "/etc/csf/csf.error" ) {
-    print "\nError: You have an unresolved error when starting csf. You need to restart csf successfully before starting lfd (see /etc/csf/csf.error)\n";
-    exit 1;
-}
+    if ( -e "/etc/csf/csf.disable" ) {
+        print "csf and lfd have been disabled\n";
+        return 1;
+    }
 
-my $config = ConfigServer::Config->loadconfig();
-%config = $config->config();
-my %configsetting = $config->configsetting();
-$ipv4reg  = $config->ipv4reg;
-$ipv6reg  = $config->ipv6reg;
-$slurpreg = ConfigServer::Slurp->slurpreg;
-$cleanreg = ConfigServer::Slurp->cleanreg;
+    if ( -e "/etc/csf/csf.error" ) {
+        print "\nError: You have an unresolved error when starting csf. You need to restart csf successfully before starting lfd (see /etc/csf/csf.error)\n";
+        return 1;
+    }
 
-unless ( $config{LF_DAEMON} ) { cleanup( __LINE__, "*Error* LF_DAEMON not enabled in /etc/csf/csf.conf" ) }
-if     ( $config{TESTING} )   { cleanup( __LINE__, "*Error* lfd will not run with TESTING enabled in /etc/csf/csf.conf" ) }
+    my $config = ConfigServer::Config->loadconfig();
+    %config = $config->config();
+    my %configsetting = $config->configsetting();
+    $ipv4reg  = $config->ipv4reg;
+    $ipv6reg  = $config->ipv6reg;
+    $slurpreg = ConfigServer::Slurp->slurpreg;
+    $cleanreg = ConfigServer::Slurp->cleanreg;
+    
+    # Load AbuseIP module after config is loaded (it needs config at compile time)
+    require ConfigServer::AbuseIP;
+    ConfigServer::AbuseIP->import();
+
+    unless ( $config{LF_DAEMON} ) { cleanup( __LINE__, "*Error* LF_DAEMON not enabled in /etc/csf/csf.conf" ) }
+    if     ( $config{TESTING} )   { cleanup( __LINE__, "*Error* lfd will not run with TESTING enabled in /etc/csf/csf.conf" ) }
 
 if ( $config{UI} ) {
     require ConfigServer::DisplayUI;
@@ -1684,7 +1695,8 @@ while (1) {
     if ( $config{DEBUG} >= 2 ) { logfile("debug: Tick: $duration [$config{LF_PARSE}]") }
 }
 
-exit;
+return 0;
+} # End of run()
 
 sub dochecks {
     my $line            = shift;
@@ -11461,3 +11473,5 @@ sub ipsetflush {
     }
     return;
 }
+
+1;
