@@ -18,7 +18,9 @@ use FindBin::libs;
 # to mock all external dependencies.
 
 # Create tmp directory with version.txt
-mkdir '/opt/repos/app-csf/tmp' unless -d '/opt/repos/app-csf/tmp';
+foreach my $dir (qw{/opt/repos /opt/repos/app-csf /opt/repos/app-csf/tmp}) {
+    mkdir $dir unless -d $dir;
+}
 open my $vfh, '>', '/opt/repos/app-csf/tmp/version.txt' or die $!;
 print $vfh "1.0.0-test\n";
 close $vfh;

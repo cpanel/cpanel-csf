@@ -33,8 +33,7 @@ use ConfigServer::CheckIP qw(checkip cccheckip);
 use ConfigServer::URLGet;
 use ConfigServer::GetIPs qw(getips);
 use ConfigServer::Service;
-
-# ConfigServer::AbuseIP loaded at runtime in run() to avoid compile-time config loading
+use ConfigServer::AbuseIP ();
 use ConfigServer::GetEthDev;
 use ConfigServer::Sendmail;
 use ConfigServer::Logger qw(logfile);
@@ -105,10 +104,6 @@ sub run {
     $ipv6reg  = $config->ipv6reg;
     $slurpreg = ConfigServer::Slurp->slurpreg;
     $cleanreg = ConfigServer::Slurp->cleanreg;
-
-    # Load AbuseIP module after config is loaded (it needs config at compile time)
-    require ConfigServer::AbuseIP;
-    ConfigServer::AbuseIP->import();
 
     unless ( $config{LF_DAEMON} ) { cleanup( __LINE__, "*Error* LF_DAEMON not enabled in /etc/csf/csf.conf" ) }
     if     ( $config{TESTING} )   { cleanup( __LINE__, "*Error* lfd will not run with TESTING enabled in /etc/csf/csf.conf" ) }

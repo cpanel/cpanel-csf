@@ -61,9 +61,6 @@ https://abusix.com/global-reporting/abuse-contact-db
 
 abusix.com is neither responsible nor liable for the content or accuracy of this message.';
 
-my $config = ConfigServer::Config->loadconfig();
-my %config = $config->config();
-
 =head2 abuseip
 
 Looks up the abuse contact information for the given IP address using the Abuse
@@ -130,7 +127,8 @@ sub abuseip {
                 local $SIG{'ALRM'}  = sub { die };
                 alarm(10);
                 my ( $childin, $childout );
-                $cmdpid = open3( $childin, $childout, $childout, $config{HOST}, "-W", "5", "-t", "TXT", $reversed_ip );
+                my $host_bin = ConfigServer::Config->get_config('HOST');
+                $cmdpid = open3( $childin, $childout, $childout, $host_bin, "-W", "5", "-t", "TXT", $reversed_ip );
                 close $childin;
                 my @results = <$childout>;
                 waitpid( $cmdpid, 0 );
