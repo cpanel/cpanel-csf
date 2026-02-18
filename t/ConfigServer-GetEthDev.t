@@ -14,7 +14,14 @@ use Test2::V0;
 use Test2::Tools::Explain;
 use Test2::Plugin::NoWarnings;
 
+use MockConfig;
+
 use ConfigServer::GetEthDev;
+
+set_config(
+    IP       => '/sbin/ip',
+    IFCONFIG => '/sbin/ifconfig',
+);
 
 subtest "Constructor" => sub {
     my $ethdev = ConfigServer::GetEthDev->new();

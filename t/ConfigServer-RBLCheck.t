@@ -32,6 +32,13 @@ my $mock_rbllookup = mock 'ConfigServer::RBLLookup' => (
 # Now load the module under test
 use ConfigServer::RBLCheck;
 
+# Mock slurp to prevent file-not-found warnings for missing csf files
+my $mock_rblcheck_slurp = mock 'ConfigServer::RBLCheck' => (
+    override => [
+        slurp => sub { return (); },
+    ],
+);
+
 subtest 'Module loads correctly' => sub {
     ok( 1,                                        'ConfigServer::RBLCheck loaded without errors' );
     ok( defined $ConfigServer::RBLCheck::VERSION, 'VERSION is defined' );
@@ -78,12 +85,14 @@ subtest 'report() with UI mode prints to STDOUT and returns output' => sub {
 
 subtest 'report() with mocked public IP returns zero failures' => sub {
 
-    # Override mock to return a public IP
-    $mock_ethdev = mock 'ConfigServer::GetEthDev' => (
+    # Directly inject a public IP into the module's %ips
+    local %ConfigServer::RBLCheck::ips = ( '8.8.8.8' => 1 );
+
+    # Override _getethdev so it doesn't overwrite our injected %ips
+    my $mock_ged = mock 'ConfigServer::RBLCheck' => (
         override => [
-            new  => sub { bless {}, shift },
-            ipv4 => sub { return ( '8.8.8.8' => 1 ) },
-            ipv6 => sub { return () },
+            _getethdev => sub { return },
+            slurp      => sub { return () },
         ]
     );
 
@@ -97,7 +106,7 @@ subtest 'report() with mocked public IP returns zero failures' => sub {
         ]
     );
 
-    my ( $failures, $output ) = ConfigServer::RBLCheck::report( 0, '', 0 );
+    my ( $failures, $output ) = ConfigServer::RBLCheck::report( 1, '', 0 );
 
     is( $failures, 0, 'Zero failures when IP is not listed' );
     like( $output, qr/8\.8\.8\.8|PUBLIC/, 'Output mentions the IP' );

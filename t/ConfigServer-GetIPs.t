@@ -14,7 +14,11 @@ use Test2::V0;
 use Test2::Tools::Explain;
 use Test2::Plugin::NoWarnings;
 
+use MockConfig;
+
 use ConfigServer::GetIPs qw(getips);
+
+set_config( HOST => '/usr/bin/host' );
 
 # Test module loading and exports
 subtest 'Module loading and exports' => sub {
