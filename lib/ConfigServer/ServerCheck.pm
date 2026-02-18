@@ -624,7 +624,7 @@ sub _servercheck {
         $isrh = 1;
         if ( $conf =~ /release (\d+)/i ) { $version = $1 }
     }
-    chomp $conf;
+    chomp $conf if length $conf;
 
     if ( $isrh or $isfedora ) {
         if ( ( $isfedora and $version < 30 ) or ( $isrh and $version < 6 ) ) { $status = 1 }
@@ -857,7 +857,7 @@ sub _whmcheck {
         _addline( $status, "Check cPanelID for $file", "You should only enable this option if you are going to use it otherwise it is a potential security risk in <i>WHM > <a href='$cpurl/scripts2/manage_external_auth/providers' target='_blank'>Manage External Authentications</a> > $file</i>" );
     }
 
-    unless ( $cpconf->{nativessl} eq undef ) {
+    if ( defined $cpconf->{nativessl} ) {
         $status = 0;
         unless ( $cpconf->{nativessl} ) { $status = 1 }
         _addline( $status, "Check whether native cPanel SSL is enabled", "You should enable this option so that lfd tracks SSL cpanel login attempts <i>WHM > <a href='$cpurl/scripts2/tweaksettings' target='_blank'>Tweak Settings</a> > Use native SSL support if possible, negating need for Stunnel</i>" );
@@ -2020,7 +2020,7 @@ sub _servicescheck {
         }
     }
     if ( scalar @enabled > 0 ) {
-        my $list;
+        my $list = '';
         foreach my $service (@enabled) {
             if ( length($list) == 0 ) {
                 $list = $service;

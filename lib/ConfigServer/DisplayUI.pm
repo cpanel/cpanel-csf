@@ -130,6 +130,7 @@ sub main {
 
     # Initialize common FORM fields to avoid uninitialized value warnings
     $FORM{action} //= '';
+    $FORM{lines}  //= '';
 
     my $cleanreg = ConfigServer::Slurp->cleanreg;
 
@@ -392,7 +393,6 @@ sub main {
         _printreturn();
     }
     elsif ( $FORM{action} eq "logtail" ) {
-        $FORM{lines} //= '';
         $FORM{lines} =~ s/\D//g;
         if ( $FORM{lines} eq "" or $FORM{lines} == 0 ) { $FORM{lines} = 30 }
         my $script_safe  = $script;
@@ -754,7 +754,7 @@ EOF
         close($IN);
         chomp @data;
         my $optionselected = "never";
-        my $email;
+        my $email          = '';
         if ( my @ls = grep { $_ =~ /csf \-m/ } @data ) {
             if ( $ls[0] =~ /\@(\w+)\s+root\s+\/usr\/sbin\/csf \-m (.*)/ ) { $optionselected = $1; $email = $2 }
         }
