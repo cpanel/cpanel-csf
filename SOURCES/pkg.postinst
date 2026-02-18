@@ -8,8 +8,6 @@ touch /usr/local/cpanel/Cpanel/Config/ConfigObj/Driver ||:
 
 # Remove deprecated AUTO_UPDATES configuration if present
 # This runs on all installs (fresh and upgrade) because config may exist from tarball
-
-# Remove AUTO_UPDATES from existing config if present
 sed -i '/^AUTO_UPDATES\s*=/d' /etc/csf/csf.conf ||:
 
 # Remove auto-update cron job if it exists
@@ -23,6 +21,9 @@ unlink /etc/csf/csfwebmin.tgz ||:
 
 # Remove the uninstall script
 rm -f /usr/local/csf/bin/uninstall.sh ||:
+
+# Do config schema updates
+/usr/local/csf/bin/auto.pl '14.00' ||:
 
 # Disable and mask firewalld if present
 systemctl daemon-reload ||:
