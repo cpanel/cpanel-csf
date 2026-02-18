@@ -65,9 +65,10 @@ use ConfigServer::GetEthDev;
 our $VERSION = 1.01;
 
 my (
-    $ui,       $failures, $verbose, $cleanreg, $status, %ips, $images,
+    $ui,       $failures, $verbose, $cleanreg, $status, $images,
     $ipresult, $output
 );
+our %ips;
 
 =head2 report($verbose, $images, $ui)
 

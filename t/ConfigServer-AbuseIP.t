@@ -14,7 +14,11 @@ use Test2::V0;
 use Test2::Tools::Explain;
 use Test2::Plugin::NoWarnings;
 
+use MockConfig;
+
 use ConfigServer::AbuseIP ();
+
+set_config( HOST => '/usr/bin/host' );
 
 # Test invalid IP addresses
 subtest 'invalid IP addresses' => sub {
