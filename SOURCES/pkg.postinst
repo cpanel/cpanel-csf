@@ -16,6 +16,14 @@ sed -i '/^AUTO_UPDATES\s*=/d' /etc/csf/csf.conf ||:
 rm -f /etc/cron.d/csf_update ||:
 rm -f /etc/cron.daily/csget ||:
 
+# Remove symlinks to webmin/uninstall in /etc/csf
+unlink /etc/csf/uninstall.sh ||:
+unlink /etc/csf/webmin ||:
+unlink /etc/csf/csfwebmin.tgz ||:
+
+# Remove the uninstall script
+rm -f /usr/local/csf/bin/uninstall.sh ||:
+
 # Disable and mask firewalld if present
 systemctl daemon-reload ||:
 systemctl disable firewalld 2>/dev/null || true
