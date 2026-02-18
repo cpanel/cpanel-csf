@@ -46,11 +46,11 @@ use ConfigServer::LookUpIP qw(iplookup);
 umask(0177);
 
 our (
-    $verbose,    $version,     $logintarget,    $noowner,         $warning,  $accept, $ipscidr,
-    $ipv6reg,    $ipv4reg,     $ethdevin,       $ethdevout,       $ipscidr6, $eth6devin,
-    $eth6devout, $statemodule, $logouttarget,   $cleanreg,        $slurpreg,
-    $faststart,  $urlget,      $statemodulenew, $statemodule6new, $cxsreputation,
-    $csflockfile_fh
+    $verbose,        $version,     $logintarget,    $noowner,         $warning,  $accept, $ipscidr,
+    $ipv6reg,        $ipv4reg,     $ethdevin,       $ethdevout,       $ipscidr6, $eth6devin,
+    $eth6devout,     $statemodule, $logouttarget,   $cleanreg,        $slurpreg,
+    $faststart,      $urlget,      $statemodulenew, $statemodule6new, $cxsreputation,
+    $csflockfile_fh, $iptableslock_fh
 );
 
 our (
@@ -3464,7 +3464,7 @@ sub getethdev {
     }
 
     $config{ETH_DEVICE} //= "";
-    ( $config{ETH_DEVICE}, undef ) = split( /:/, $config{ETH_DEVICE}, 2 );
+    $config{ETH_DEVICE} =~ s/:.*//;    # Strip everything after the first colon.
     if ( $config{ETH_DEVICE} eq "" ) {
         $ethdevin  = "! -i lo";
         $ethdevout = "! -o lo";
@@ -3473,6 +3473,8 @@ sub getethdev {
         $ethdevin  = "-i $config{ETH_DEVICE}";
         $ethdevout = "-o $config{ETH_DEVICE}";
     }
+
+    $config{ETH6_DEVICE} //= "";
     if ( $config{ETH6_DEVICE} eq "" ) {
         $eth6devin  = $ethdevin;
         $eth6devout = $ethdevout;
@@ -5700,17 +5702,18 @@ sub syscommand {
 sub iptableslock {
     my $lock      = shift;
     my $iptablesx = shift;
-    my $iptableslock_fh;
     if ( $lock eq "lock" ) {
-        sysopen( $iptableslock_fh, "/var/lib/csf/lock/command.lock", O_RDWR | O_CREAT );
-        flock( $iptableslock_fh, LOCK_EX );
-        autoflush $iptableslock_fh 1;
-        seek( $iptableslock_fh, 0, 0 );
-        truncate( $iptableslock_fh, 0 );
-        print $iptableslock_fh $$;
+        if ( sysopen( $iptableslock_fh, "/var/lib/csf/command.lock", O_RDWR | O_CREAT ) ) {
+            flock( $iptableslock_fh, LOCK_EX );
+            autoflush $iptableslock_fh 1;
+            seek( $iptableslock_fh, 0, 0 );
+            truncate( $iptableslock_fh, 0 );
+            print $iptableslock_fh $$;
+        }
     }
-    elsif ($iptableslock_fh) {
+    elsif ( $lock eq "unlock" && defined $iptableslock_fh ) {
         close($iptableslock_fh);
+        undef $iptableslock_fh;
     }
     return;
 }
