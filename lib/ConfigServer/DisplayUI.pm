@@ -2135,7 +2135,7 @@ EOF
         print "<div class='normalcontainer'>\n";
 
         print "<ul class='nav nav-tabs' id='myTabs' style='font-weight:bold'>\n";
-        print "<li class='active'><a data-toggle='tab' href='#' id='tabAll'>All</a></li>\n";
+        print "<li class='active'><a href='javascript:void(0)' id='tabAll' onclick=\"\$('#myTabs li').removeClass('active');\$(this).parent().addClass('active');\$('.tab-pane').addClass('active');return false;\">All</a></li>\n";
         print "<li><a data-toggle='tab' href='#home'>Info</a></li>\n";
         print "<li><a data-toggle='tab' href='#csf'>csf</a></li>\n";
         print "<li><a data-toggle='tab' href='#lfd'>lfd</a></li>\n";
