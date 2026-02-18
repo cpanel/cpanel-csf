@@ -1844,10 +1844,6 @@ EOD
           "</td><td style='width:100%'>If you really want to disable all alerts in lfd you can do so here. This is <strong>not</strong> recommended in any situation - you should go through the csf configuration and only disable those you do not want. As new features are added to csf you may find that you have to go into the csf configuration and disable them manually as this procedure only disables the ones that it is aware of when applied\n";
         print "</td></tr>\n";
 
-        print "<tr><td><button type='button' class='btn btn-danger confirmButton' data-query='Are you sure you want to reinstall csf and lose all modifications?' data-href='$script?action=fixnuclear' data-toggle='modal' data-target='#confirmmodal'>Reinstall csf</button>\n";
-        print "</td><td style='width:100%'>If all else fails this option will <strong>completely</strong> uninstall csf and install it again with completely default options (including TESTING mode). The previous configuration will be lost including all modifications\n";
-        print "</td></tr>\n";
-
         print "</table>\n";
         _printreturn();
         _confirmmodal();
@@ -2033,37 +2029,6 @@ EOD
         print "</div>\n";
         print "<div>You MUST now restart both csf and lfd:</div>\n";
         print "<div><form action='$script' method='post'><input type='hidden' name='action' value='restartboth'><input type='submit' class='btn btn-default' value='Restart csf+lfd'></form></div>\n";
-        _printreturn();
-    }
-    elsif ( $FORM{action} eq "fixnuclear" ) {
-        print "<div class='panel panel-default'>\n";
-        print "<div class='panel-heading panel-heading'>Nuclear Option:</div>\n";
-        print "<div class='panel-body'>";
-
-        my $time = time;
-        sysopen( my $REINSTALL, "/usr/src/reinstall_$time.sh", Fcntl::O_WRONLY | Fcntl::O_CREAT | Fcntl::O_TRUNC );
-        flock( $REINSTALL, Fcntl::LOCK_EX );
-        print $REINSTALL <<EOF;
-#!/usr/bin/bash
-bash /etc/csf/uninstall.sh
-cd /usr/src
-mv -fv csf.tgz csf.tgz.$time
-mv -fv csf csf.$time
-wget https://$config{DOWNLOADSERVER}/csf.tgz
-tar -xzf csf.tgz
-cd csf
-sh install.sh
-EOF
-        close($REINSTALL);
-        _resize("top");
-        print "<pre class='comment' style='white-space: pre-wrap; height: 500px; overflow: auto; resize:both; clear:both' id='output'>\n";
-        _printcmd( "bash", "/usr/src/reinstall_$time.sh" );
-        unlink "/usr/src/reinstall_$time.sh";
-        print "</pre>\n";
-        _resize( "bot", 1 );
-        print "</div>\n";
-        print "<div class='panel-footer panel-footer'>Completed</div>\n";
-        print "</div>\n";
         _printreturn();
     }
     else {
