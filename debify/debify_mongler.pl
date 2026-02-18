@@ -1,7 +1,8 @@
-#!/usr/local/cpanel/3rdparty/bin/perl
+#!/usr/bin/env perl
 package debify::mongler;
 
-use cPstrict;
+use strict;
+use warnings;
 
 use Cwd            ();
 use File::Basename ();
@@ -12,7 +13,8 @@ exit run(@ARGV) unless caller;
 # This script exists to keep the %install and override_dh_auto_install.sh
 # script N*Sync because debifain't no lie baby bye bye bye
 
-sub run (@args) {
+sub run {
+    my @args = @_;
 
     my $boilerplate = <<'BOIL';
 #!/bin/bash
@@ -24,7 +26,6 @@ export buildroot="debian/tmp"
 
 BOIL
 
-    my $debug     = grep { $_ eq '--debug' } @ARGV;
     my $repo_dir  = Cwd::abs_path( File::Basename::dirname(__FILE__) . '/../' );
     my $spec2open = "$repo_dir/SPECS/cpanel-csf.spec";
     open( my $fh, "<", $spec2open ) or die "Can't open '$spec2open': $!";
