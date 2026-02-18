@@ -325,9 +325,9 @@ sub run {
             my ( $name, $interval, $max, $url ) = split( /\|/, $line );
             if ( $name =~ /^\w+$/ ) {
                 $name = substr( uc $name, 0, 25 );
-                if ( $name =~ /^CXS_/ ) { $name =~ s/^CXS_/X_CXS_/ }
-                if ( $interval < 3600 ) { $interval = 3600 }
-                if ( $max eq "" )       { $max = 0 }
+                if ( $name =~ /^CXS_/ )               { $name =~ s/^CXS_/X_CXS_/ }
+                if ( !$interval || $interval < 3600 ) { $interval = 3600 }
+                if ( !length $max )                   { $max = 0 }
                 $blocklists{$name}{interval} = $interval;
                 $blocklists{$name}{max}      = $max;
                 $blocklists{$name}{url}      = $url;
@@ -344,11 +344,12 @@ sub run {
             $line =~ s/$cleanreg//g;
             if ( $line =~ /^(\s|\#|$)/ ) { next }
             my ( $name, $interval, $max, $url ) = split( /\|/, $line );
+            $url //= "";
             $url =~ s/download\.configserver\.com/$config{DOWNLOADSERVER}/g;
             if ( $all and $name ne "CXS_ALL" ) { next }
             if ( $name =~ /^\w+$/ ) {
                 $name = substr( uc $name, 0, 25 );
-                if ( $max eq "" ) { $max = 0 }
+                if ( !length $max ) { $max = 0 }
                 $blocklists{$name}{interval} = $interval;
                 $blocklists{$name}{max}      = $max;
                 $blocklists{$name}{url}      = $url;
@@ -370,6 +371,7 @@ sub run {
             if ( $line =~ /^\s*\#|Include/ ) { next }
             my ( $first, undef ) = split( /\s/, $line );
             my ( $ip, $iscidr ) = split( /\//, $first );
+            $ip //= "";
             if ( checkip( \$first ) ) {
                 if ($iscidr) { push @cidrs, $first }
                 else         { $ignoreips{$ip} = 1 }
@@ -400,6 +402,7 @@ sub run {
             if ( $line =~ /^\s*\#|Include/ ) { next }
             if ( $line =~ /^(\.|\w)/ ) {
                 my ( $host, undef ) = split( /\s/, $line );
+                $host //= "";
                 if ( $host ne "" ) { push @rdns, $host }
             }
         }
@@ -418,6 +421,7 @@ sub run {
             if ( $line =~ /^\s*\#|Include/ ) { next }
             my ( $first, undef ) = split( /\s/, $line );
             my ( $ip, $iscidr ) = split( /\//, $first );
+            $ip //= "";
             if ( checkip( \$first ) ) {
                 if ($iscidr) { push @cidrs, $first }
                 else         { $ignoreips{$ip} = 1 }
@@ -465,6 +469,7 @@ sub run {
             if ( $line =~ /^(\s|\#|$)/ ) { next }
             if ( $line !~ /=/ )          { next }
             my ( $name, $value ) = split( /=/, $line, 2 );
+            $value //= "";
             $value =~ s/^\s+//g;
             $value =~ s/\s+$//g;
             if ( $name eq "dir_logs" ) {
@@ -495,8 +500,8 @@ sub run {
             }
         }
         foreach my $file (@entries) {
-            $file =~ s/$cleanreg//g;
-            if ( $file eq "" ) { next }
+            $file && $file =~ s/$cleanreg//g;
+            if ( !length $file ) { next }
             if ( $file =~ /^\s*\#|Include/ ) { next }
             if ( $file =~ /[*?\[]/ ) {
                 foreach my $log ( glob $file ) {
@@ -911,6 +916,7 @@ sub run {
         foreach my $line (@data) {
             my $old = 1;
             my ( $oip, $operm, $otime, $omessage ) = split( /\|/, $line, 4 );
+            $otime //= 0;
             my $interval = time - $otime;
             if     ( $config{LF_PERMBLOCK} and $interval < ( $config{LF_PERMBLOCK_INTERVAL} * $config{LF_PERMBLOCK_COUNT} ) ) { $old = 0 }
             if     ( $config{LF_NETBLOCK} and $interval < ( $config{LF_NETBLOCK_INTERVAL} * $config{LF_NETBLOCK_COUNT} ) )    { $old = 0 }
@@ -999,6 +1005,8 @@ sub run {
                 if ( $line eq "" )               { next }
                 if ( $line =~ /^\s*\#|Include/ ) { next }
                 my ( $item, $rule ) = split( /:/, $line, 2 );
+                $rule //= "";
+                $item //= "";
                 $rule =~ s/[\r\n]//g;
                 $rule =~ s/\s*$//g;
                 $item =~ s/\s//g;
@@ -1216,7 +1224,7 @@ sub run {
             $syslogchecktimeout += $duration;
             if ( $syslogchecktimeout >= $config{SYSLOG_CHECK} ) {
                 $syslogchecktimeout = 0;
-                if ( $syslogcheckcode eq "" ) {
+                if ( !length $syslogcheckcode ) {
                     my @chars = ( '0' .. '9', 'a' .. 'z', 'A' .. 'Z' );
                     $syslogcheckcode = join '', map { $chars[ rand(@chars) ] } ( 1 .. ( 15 + int( rand(15) ) ) );
                     eval {
@@ -1313,6 +1321,8 @@ sub run {
                 if ( $line =~ /^\#/ ) { next }
                 if ( $line !~ /=/ )   { next }
                 my ( $name, $value ) = split( /=/, $line, 2 );
+                $name  //= "";
+                $value //= "";
                 $name =~ s/\s//g;
                 if ( $value =~ /\"(.*)\"/ ) {
                     $value = $1;
@@ -1340,6 +1350,7 @@ sub run {
                 if ( $line =~ /^([#\n\r\s])/ or $line eq "" ) { next }
                 my ( $ip, undef ) = split( /\s/, $line );
                 my ( undef, $iscidr ) = split( /\//, $ip );
+                $ip //= "";
                 my $v = checkip( \$ip );
                 if ($v) {
                     if ($iscidr) {
@@ -1394,7 +1405,7 @@ sub run {
 
         if ( $config{RESTRICT_SYSLOG} == 3 ) { syslog_perms() }
         foreach my $lgfile ( keys %logfiles ) {
-            if ( $lgfile eq "" ) { next }
+            if ( !length $lgfile ) { next }
             my $timer = time;
             if ( $config{DEBUG} >= 3 ) { $timer = timer( "start", $lgfile, $timer ) }
             my $totlines = 0;
@@ -1495,7 +1506,7 @@ sub run {
                 my @data = slurp("/var/lib/csf/csf.lastlogrun");
                 $loginterval = $lastrun = $data[0];
             }
-            if ( $loginterval eq "" ) {
+            if ( !length $loginterval ) {
                 if ( $config{LOGSCANNER_INTERVAL} eq "hourly" ) { $loginterval = $hour }
                 if ( $config{LOGSCANNER_INTERVAL} eq "daily" )  { $loginterval = $mday }
             }
@@ -1665,6 +1676,7 @@ sub dochecks {
     my ( $reason, $ip, $app, $customtrigger, $customports, $customperm, $customcf ) = ConfigServer::RegexMain::processline( $line, $lgfile, \%globlogs );
 
     my ( $gip, $account, $domain ) = split( /\|/, $ip, 3 );
+    $account //= "";
     unless ( $account =~ /^[a-zA-Z0-9\-\_\.\@\%\+]+$/ ) {
         if ( $account and $config{DEBUG} >= 1 ) { logfile("debug: (processline) Account name [$account] is invalid") }
         $account = "";
@@ -1996,6 +2008,8 @@ sub dochecks {
             foreach my $ports ( split( /\,/, $config{PS_PORTS} ) ) {
                 if ( $ports =~ /\:/ ) {
                     my ( $start, $end ) = split( /\:/, $ports );
+                    $start //= 0;
+                    $end   //= 0;
                     if ( $port >= $start and $port <= $end ) { $hit = 1 }
                 }
                 elsif ( $port == $ports ) { $hit = 1 }
@@ -2035,6 +2049,8 @@ sub dochecks {
             foreach my $ports ( split( /\,/, $config{UID_PORTS} ) ) {
                 if ( $ports =~ /\:/ ) {
                     my ( $start, $end ) = split( /\:/, $ports );
+                    $start //= 0;
+                    $end   //= 0;
                     if ( $port >= $start and $port <= $end ) { $hit = 1 }
                 }
                 elsif ( $port == $ports ) { $hit = 1 }
@@ -2393,8 +2409,9 @@ sub syslog_perms {
             while ( my $line = <$IN> ) {
                 chomp $line;
                 my @data = split( /\s+/, $line, 8 );
+                $data[7] //= "";
                 foreach my $socket (@socketids) {
-                    if ( ( $socket == $data[6] ) and ( $data[7] ne "/dev/log" ) and ( $data[7] ne "/usr/share/cagefs-skeleton/dev/log" ) ) { push @sockets, $data[7] }
+                    if ( ( $socket == ( $data[6] // 0 ) ) and ( $data[7] ne "/dev/log" ) and ( $data[7] ne "/usr/share/cagefs-skeleton/dev/log" ) ) { push @sockets, $data[7] }
                 }
             }
             close($IN);
@@ -3637,9 +3654,11 @@ sub connectiontracking {
                 if ( $rec[9] =~ /uid/ ) { next }
 
                 my ( $dip, $dport ) = split( /:/, $rec[1] );
+                $dport //= 0;
                 $dport = hex($dport);
 
                 my ( $sip, $sport ) = split( /:/, $rec[2] );
+                $sport //= 0;
                 $sport = hex($sport);
 
                 $dip = hex2ip($dip);
@@ -3962,9 +3981,11 @@ sub processtracking {
                 if ( $rec[9] =~ /uid/ ) { next }
 
                 my ( $dip, $dport ) = split( /:/, $rec[2] );
+                $dport //= 0;
                 $dport = hex($dport);
 
                 my ( $sip, $sport ) = split( /:/, $rec[1] );
+                $sport //= 0;
                 $sport = hex($sport);
 
                 if ( $dip == 0 or $sip == 0 ) { next }
@@ -4128,7 +4149,7 @@ sub processtracking {
                 }
                 else { next }
 
-                my $jiffsecs = $pstat[19] / $clock_ticks;
+                my $jiffsecs = ( $pstat[19] // 0 ) / $clock_ticks;
                 my $uptime   = int( $upsecs - $jiffsecs );
 
                 if ( $config{PT_SSHDHUNG} ) {
@@ -5451,7 +5472,7 @@ sub countrycode {
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
                         if ( $config{CC_DROP_CIDR} > 0 and $config{CC_DROP_CIDR} < 33 ) {
                             my ( $drop_ip, $drop_cidr ) = split( /\//, $ip );
-                            if ( $drop_cidr eq "" )                   { $drop_cidr = "32" }
+                            if ( !length $drop_cidr )                 { $drop_cidr = "32" }
                             if ( $drop_cidr > $config{CC_DROP_CIDR} ) { next }
                         }
                         if ( cccheckip( \$ip ) ) {
@@ -5501,7 +5522,7 @@ sub countrycode {
                             if ( cccheckip( \$ip ) ) {
                                 if ( $config{CC_DROP_CIDR} > 0 and $config{CC_DROP_CIDR} < 33 ) {
                                     my ( $drop_ip, $drop_cidr ) = split( /\//, $ip );
-                                    if ( $drop_cidr eq "" )                   { $drop_cidr = "32" }
+                                    if ( !length $drop_cidr )                 { $drop_cidr = "32" }
                                     if ( $drop_cidr > $config{CC_DROP_CIDR} ) { next }
                                 }
                                 if ( $config{SAFECHAINUPDATE} ) {
@@ -5547,7 +5568,7 @@ sub countrycode {
                             if ( cccheckip( \$ip ) ) {
                                 if ( $config{CC_DROP_CIDR} > 0 and $config{CC_DROP_CIDR} < 33 ) {
                                     my ( $drop_ip, $drop_cidr ) = split( /\//, $ip );
-                                    if ( $drop_cidr eq "" )                   { $drop_cidr = "32" }
+                                    if ( !length $drop_cidr )                 { $drop_cidr = "32" }
                                     if ( $drop_cidr > $config{CC_DROP_CIDR} ) { next }
                                 }
                                 if ( $config{SAFECHAINUPDATE} ) {
@@ -5594,7 +5615,7 @@ sub countrycode {
                             if ( cccheckip( \$ip ) ) {
                                 if ( $config{CC_DROP_CIDR} > 0 and $config{CC_DROP_CIDR} < 33 ) {
                                     my ( $drop_ip, $drop_cidr ) = split( /\//, $ip );
-                                    if ( $drop_cidr eq "" )                   { $drop_cidr = "32" }
+                                    if ( !length $drop_cidr )                 { $drop_cidr = "32" }
                                     if ( $drop_cidr > $config{CC_DROP_CIDR} ) { next }
                                 }
                                 $cnt++;
@@ -5660,7 +5681,7 @@ sub countrycode {
                             if ( cccheckip( \$ip ) ) {
                                 if ( $config{CC_DROP_CIDR} > 0 and $config{CC_DROP_CIDR} < 33 ) {
                                     my ( $drop_ip, $drop_cidr ) = split( /\//, $ip );
-                                    if ( $drop_cidr eq "" )                   { $drop_cidr = "32" }
+                                    if ( !length $drop_cidr )                 { $drop_cidr = "32" }
                                     if ( $drop_cidr > $config{CC_DROP_CIDR} ) { next }
                                 }
                                 $cnt++;
@@ -5708,7 +5729,7 @@ sub countrycode {
                             if ( cccheckip( \$ip ) ) {
                                 if ( $config{CC_DROP_CIDR} > 0 and $config{CC_DROP_CIDR} < 33 ) {
                                     my ( $drop_ip, $drop_cidr ) = split( /\//, $ip );
-                                    if ( $drop_cidr eq "" )                   { $drop_cidr = "32" }
+                                    if ( !length $drop_cidr )                 { $drop_cidr = "32" }
                                     if ( $drop_cidr > $config{CC_DROP_CIDR} ) { next }
                                 }
                                 $cnt++;
@@ -5777,7 +5798,7 @@ sub countrycode {
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
                         if ( $config{CC_DROP_CIDR} > 0 and $config{CC_DROP_CIDR} < 33 ) {
                             my ( $drop_ip, $drop_cidr ) = split( /\//, $ip );
-                            if ( $drop_cidr eq "" )                   { $drop_cidr = "32" }
+                            if ( !length $drop_cidr )                 { $drop_cidr = "32" }
                             if ( $drop_cidr > $config{CC_DROP_CIDR} ) { next }
                         }
                         my $status = cccheckip( \$ip );
@@ -5794,7 +5815,7 @@ sub countrycode {
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
                         if ( $config{CC_DROP_CIDR} > 0 and $config{CC_DROP_CIDR} < 33 ) {
                             my ( $drop_ip, $drop_cidr ) = split( /\//, $ip );
-                            if ( $drop_cidr eq "" )                   { $drop_cidr = "32" }
+                            if ( !length $drop_cidr )                 { $drop_cidr = "32" }
                             if ( $drop_cidr > $config{CC_DROP_CIDR} ) { next }
                         }
                         my $status = cccheckip( \$ip );
@@ -6260,7 +6281,7 @@ sub countrycode6 {
                     my ( $ip, undef ) = split( /\s/, $line, 2 );
                     if ( $config{CC_DROP_CIDR} > 0 and $config{CC_DROP_CIDR} < 33 ) {
                         my ( $drop_ip, $drop_cidr ) = split( /\//, $ip );
-                        if ( $drop_cidr eq "" )                   { $drop_cidr = "32" }
+                        if ( !length $drop_cidr )                 { $drop_cidr = "32" }
                         if ( $drop_cidr > $config{CC_DROP_CIDR} ) { next }
                     }
                     if ( cccheckip( \$ip ) ) {
@@ -7677,7 +7698,7 @@ sub getethdev {
     }
 
     ( $config{ETH_DEVICE}, undef ) = split( /:/, $config{ETH_DEVICE}, 2 );
-    if ( $config{ETH_DEVICE} eq "" ) {
+    if ( !length $config{ETH_DEVICE} ) {
         $ethdevin  = "! -i lo";
         $ethdevout = "! -o lo";
     }
@@ -7790,8 +7811,9 @@ sub ignoreip {
     if ( $config{CC_IGNORE} ) {
         my ( $cc, $asn ) = iplookup( $ip, 1 );
         ( $asn, undef ) = split( /\s+/, $asn );
-        if ( $cc ne ""  and $config{CC_IGNORE} =~ /$cc/i )  { return 1 }
-        if ( $asn ne "" and $config{CC_IGNORE} =~ /$asn/i ) { return 1 }
+
+        if ( length $cc  and $config{CC_IGNORE} =~ /$cc/i )  { return 1 }
+        if ( length $asn and $config{CC_IGNORE} =~ /$asn/i ) { return 1 }
     }
 
     if ( $relayip{$ip} and !$skip ) { return 1 }
@@ -7819,6 +7841,7 @@ sub ignoreip {
         while ( my $line = <$DNS> ) {
             chomp $line;
             ( $dnsip, $dnsrip, $dnshost ) = split( /\|/, $line );
+            $dnsip //= "";
             if ( $ip eq $dnsip ) {
                 $cachehit = 1;
                 last;
@@ -9493,10 +9516,11 @@ sub lfdserver {
                             my $decrypted = $cipher->decrypt($line);
                             if ( $config{DEBUG} >= 2 ) { logfile("debug: Cluster member $peeraddress said [$decrypted]") }
                             my ( $command, $ip, $perm, $ports, $inout, $timeout, $message ) = split( /\s/, $decrypted, 7 );
-                            if ( $perm eq "" )     { $perm    = 1 }
-                            if ( $ports eq "*" )   { $ports   = "" }
-                            if ( checkip( \$ip ) ) { $tip     = iplookup($ip) }
-                            if ( $message eq "" )  { $message = "Not provided - $tip" }
+                            $timeout //= 0;    # TODO: what should the default timeout be if we don't see it? Does this happen?
+                            if ( !length $perm )                    { $perm    = 1 }
+                            if ( !defined $ports or $ports eq "*" ) { $ports   = "" }
+                            if ( checkip( \$ip ) )                  { $tip     = iplookup($ip) }
+                            if ( !length $message )                 { $message = "Not provided - $tip" }
 
                             if ( $command eq "D" ) {
                                 ipblock( $perm, "Cluster member $pip said, DENY $ip, Reason:[$message]", $ip, $ports, $inout, $timeout, 1, "", "LF_CLUSTER" );
@@ -9780,6 +9804,8 @@ sub updateconfig {
     for ( my $x = 0; $x < @confdata; $x++ ) {
         if ( ( $confdata[$x] !~ /^\#/ ) and ( $confdata[$x] =~ /=/ ) ) {
             my ( $name, $value ) = split( /=/, $confdata[$x], 2 );
+            $name  //= "";
+            $value //= "";
             $name =~ s/\s*//g;
             if ( $name eq $chname ) {
                 print $OUT "$name = \"$chvalue\"\n";
@@ -10107,6 +10133,7 @@ sub systemstats {
                 else {
                     foreach my $line ( split( /\n/, $apache ) ) {
                         my ( $item, $val ) = split( /:\s*/, $line );
+                        $item //= "";
                         if ( $item eq "CPULoad" )        { $apachecpu   = $val }
                         if ( $item eq "Total Accesses" ) { $apacheacc   = $val }
                         if ( $item eq "BusyWorkers" )    { $apachebwork = $val }
@@ -10194,6 +10221,7 @@ sub allowip {
         if ( $line eq "" )               { next }
         if ( $line =~ /^\s*\#|Include/ ) { next }
         my ( $ipd, $commentd ) = split( /\s/, $line, 2 );
+        $ipd //= "";
         if ( $ipd eq $ipmatch ) {
             return 1;
         }
@@ -10220,6 +10248,7 @@ sub allowip {
             if ( $line eq "" )       { next }
             if ( $line =~ /^\s*\#/ ) { next }
             my ( $ipd, $commentd ) = split( /\s/, $line, 2 );
+            $ipd //= "";
             if ( $ipd eq $ipmatch ) {
                 return 2;
             }

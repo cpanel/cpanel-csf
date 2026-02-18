@@ -50,6 +50,12 @@ Whostmgr::ACLS::init_acls();
 # Encode any params with HTML looking stuff (script tags, iframes, etc.)
 %FORM = map { $_ => Cpanel::Encoder::Tiny::safe_html_encode_str( $FORM{$_} ) } keys(%FORM);
 
+# Guard form parameters against undef warnings
+my $form_action = $FORM{action} // '';
+
+# Check if this is a raw/streamed output action (no template wrapper needed)
+my $is_raw_output = ( $form_action eq "tailcmd" or $form_action =~ /^cf/ or $form_action eq "logtailcmd" or $form_action eq "loggrepcmd" ) ? 1 : 0;
+
 my $config   = ConfigServer::Config->loadconfig();
 my %config   = $config->config;
 my $slurpreg = ConfigServer::Slurp->slurpreg;
@@ -60,9 +66,14 @@ Cpanel::Rlimit::set_rlimit_to_infinity();
 $script = "csf.cgi";
 $images = "csf";
 
+# Guard environment variable against undef warnings
+$ENV{REMOTE_USER} //= '';
+
 foreach my $line ( slurp("/etc/csf/csf.resellers") ) {
     $line =~ s/$cleanreg//g;
     my ( $user, $alert, $privs ) = split( /\:/, $line );
+    $alert //= '';
+    $privs //= '';
     $privs =~ s/\s//g;
     foreach my $priv ( split( /\,/, $privs ) ) {
         $rprivs{$user}{$priv} = 1;
@@ -90,7 +101,7 @@ my $htmltag = '';
 if ( $config{STYLE_CUSTOM} ) {
     @header  = slurpee( '/etc/csf/csf.header', 'warn' => 0 );
     @footer  = slurpee( '/etc/csf/csf.footer', 'warn' => 0 );
-    $htmltag = "data-post='$FORM{action}'";
+    $htmltag = "data-post='$form_action'";
 }
 
 my $thisapp = "csf";
@@ -101,9 +112,9 @@ if ( $Cpanel::Version::Tiny::major_version >= 65 ) {
         flock( $CONF, LOCK_EX );
         my @confdata = <$CONF>;
         chomp @confdata;
-        for ( 0 .. scalar(@confdata) ) {
-            if ( $confdata[$_] =~ /^target=mainFrame/ ) {
-                $confdata[$_] = "target=_self";
+        foreach my $line (@confdata) {
+            if ( $line =~ /^target=mainFrame/ ) {
+                $line       = "target=_self";
                 $reregister = 1;
             }
         }
@@ -127,7 +138,7 @@ print "Content-type: text/html\r\n\r\n";
 my $templatehtml;
 my $SCRIPTOUT;
 my $old_fh;
-unless ( $FORM{action} eq "tailcmd" or $FORM{action} =~ /^cf/ or $FORM{action} eq "logtailcmd" or $FORM{action} eq "loggrepcmd" ) {
+unless ($is_raw_output) {
 
     #	open(STDERR, ">&STDOUT");
     open( $SCRIPTOUT, '>', \$templatehtml );
@@ -162,11 +173,11 @@ EOF
     print @header;
 }
 
-unless ( $FORM{action} eq "tailcmd" or $FORM{action} =~ /^cf/ or $FORM{action} eq "logtailcmd" or $FORM{action} eq "loggrepcmd" ) {
+unless ($is_raw_output) {
     print <<EOF;
 <div id="loader"></div>
 EOF
-    if ( $reregister ne "" ) { print $reregister }
+    if ( length $reregister ) { print $reregister }
 }
 
 my $ui_status;
@@ -180,10 +191,10 @@ if ( defined $ui_status and $ui_status =~ /^\d+$/ ) {
     exit($ui_status);
 }
 
-unless ( $FORM{action} eq "tailcmd" or $FORM{action} =~ /^cf/ or $FORM{action} eq "logtailcmd" or $FORM{action} eq "loggrepcmd" ) {
+unless ($is_raw_output) {
     print @footer;
 }
-unless ( $FORM{action} eq "tailcmd" or $FORM{action} =~ /^cf/ or $FORM{action} eq "logtailcmd" or $FORM{action} eq "loggrepcmd" ) {
+unless ($is_raw_output) {
     close($SCRIPTOUT);
     select $old_fh;    ## no critic (InputOutput::ProhibitOneArgSelect) - Restore previously saved default output filehandle
     Cpanel::Template::process_template(

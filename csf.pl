@@ -925,8 +925,8 @@ sub dostart {
         }
     }
 
-    my $path = "PATH=\$PATH:/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin";
-    my $csfpre = "";
+    my $path    = "PATH=\$PATH:/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin";
+    my $csfpre  = "";
     my $csfpost = "";
     if    ( -e "/usr/local/csf/bin/csfpre.sh" )  { $csfpre  = "/usr/local/csf/bin/csfpre.sh" }
     elsif ( -e "/etc/csf/csfpre.sh" )            { $csfpre  = "/etc/csf/csfpre.sh" }
@@ -1440,6 +1440,7 @@ sub doadd {
         if ( $line eq "" )               { next }
         if ( $line =~ /^\s*\#|Include/ ) { next }
         my ( $ipd, $commentd ) = split( /\s/, $line, 2 );
+        $ipd //= '';
         checkip( \$ipd );
         if ( $ipd eq $ip ) {
             $hit = 1;
@@ -1465,6 +1466,7 @@ sub doadd {
         if ( $line eq "" )               { next }
         if ( $line =~ /^\s*\#|Include/ ) { next }
         my ( $ipd, $commentd ) = split( /\s/, $line, 2 );
+        $ipd //= '';
         checkip( \$ipd );
         if ( $ipd eq $ip ) {
             $allowmatches = 1;
@@ -1531,6 +1533,7 @@ sub dodeny {
         if ( $line eq "" )               { next }
         if ( $line =~ /^\s*\#|Include/ ) { next }
         my ( $ipd, $commentd ) = split( /\s/, $line, 2 );
+        $ipd //= '';
         checkip( \$ipd );
         if ( $ipd eq $ip ) {
             print "deny failed: $ip is in the allow file /etc/csf/csf.allow\n";
@@ -1561,6 +1564,7 @@ sub dodeny {
         if ( $line eq "" )               { next }
         if ( $line =~ /^\s*\#|Include/ ) { next }
         my ( $ipd, $commentd ) = split( /\s/, $line, 2 );
+        $ipd //= '';
         checkip( \$ipd );
         if ( $ipd eq $ip ) {
             print "deny failed: $ip is in the ignore file /etc/csf/csf.ignore\n";
@@ -1592,6 +1596,7 @@ sub dodeny {
         if ( $line eq "" )               { next }
         if ( $line =~ /^\s*\#|Include/ ) { next }
         my ( $ipd, $commentd ) = split( /\s/, $line, 2 );
+        $ipd //= '';
         checkip( \$ipd );
         if ( $ipd eq $ip ) {
             $denymatches = 1;
@@ -1614,6 +1619,7 @@ sub dodeny {
             if ( $line =~ /^\s*\#|Include/ ) { next }
             if ( $line =~ /do not delete/i ) { next }
             my ( $ipd, $commentd ) = split( /\s/, $line, 2 );
+            $ipd //= '';
             $ipcount++;
             push @denyips, $line;
         }
@@ -1693,6 +1699,7 @@ sub dokill {
     foreach my $line (@deny) {
         $line =~ s/$cleanreg//g;
         my ( $ipd, $commentd ) = split( /\s/, $line, 2 );
+        $ipd //= '';
         my $ipmatch = $ipd;
         if ( $is_ip and $ipd =~ /($ipv4reg|$ipv6reg)/ ) {
             $ipmatch = $1;
@@ -1760,6 +1767,7 @@ sub dokillall {
         }
         else {
             my ( $ipd, $commentd ) = split( /\s/, $line, 2 );
+            $ipd //= '';
             linefilter( $ipd, "deny", "", 1 );
         }
     }
@@ -1790,6 +1798,7 @@ sub doakill {
     foreach my $line (@allow) {
         $line =~ s/$cleanreg//g;
         my ( $ipd, $commentd ) = split( /\s/, $line, 2 );
+        $ipd //= '';
         checkip( \$ipd );
         if ( uc $ipd eq uc $ip ) {
             print "Removing rule...\n";
@@ -1996,7 +2005,7 @@ sub doportfilters {
                         foreach my $dport ( split( /\,/, $port ) ) {
                             my ( $tport, $proto ) = split( /\;/, $dport );
                             $dport = $tport;
-                            if ( $proto eq "" ) { $proto = "tcp" }
+                            if ( !length $proto ) { $proto = "tcp" }
                             if ( $iptype == 6 ) {
                                 syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A DENYIN $eth6devin -p $proto --dport $dport -s $ip -j $dropin" );
                                 if ( $messengerports{$dport} and $config{MESSENGER6} and $config{MESSENGER_TEMP} ) { domessenger( $ip, "A", $dport ) }
@@ -2023,7 +2032,7 @@ sub doportfilters {
                         foreach my $dport ( split( /\,/, $port ) ) {
                             my ( $tport, $proto ) = split( /\;/, $dport );
                             $dport = $tport;
-                            if ( $proto eq "" ) { $proto = "tcp" }
+                            if ( !length $proto ) { $proto = "tcp" }
                             if ( $iptype == 6 ) {
                                 syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A DENYOUT $eth6devout -p $proto --dport $dport -d $ip -j $dropout" );
                             }
@@ -2067,7 +2076,7 @@ sub doportfilters {
                         foreach my $dport ( split( /\,/, $port ) ) {
                             my ( $tport, $proto ) = split( /\;/, $dport );
                             $dport = $tport;
-                            if ( $proto eq "" ) { $proto = "tcp" }
+                            if ( !length $proto ) { $proto = "tcp" }
                             if ( $iptype == 6 ) {
                                 syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I ALLOWIN $eth6devin -p $proto --dport $dport -s $ip -j $accept" );
                             }
@@ -2090,7 +2099,7 @@ sub doportfilters {
                         foreach my $dport ( split( /\,/, $port ) ) {
                             my ( $tport, $proto ) = split( /\;/, $dport );
                             $dport = $tport;
-                            if ( $proto eq "" ) { $proto = "tcp" }
+                            if ( !length $proto ) { $proto = "tcp" }
                             if ( $iptype == 6 ) {
                                 syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I ALLOWOUT $eth6devout -p $proto --dport $dport -d $ip -j $accept" );
                             }
@@ -2168,7 +2177,7 @@ sub doportfilters {
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
                         if ( $config{CC_DROP_CIDR} > 0 and $config{CC_DROP_CIDR} < 33 ) {
                             my ( $drop_ip, $drop_cidr ) = split( /\//, $ip );
-                            if ( $drop_cidr eq "" )                   { $drop_cidr = "32" }
+                            if ( !length $drop_cidr )                 { $drop_cidr = "32" }
                             if ( $drop_cidr > $config{CC_DROP_CIDR} ) { next }
                         }
                         if ( cccheckip( \$ip ) ) { push @ipset, "add -exist cc_$cc $ip" }
@@ -2184,7 +2193,7 @@ sub doportfilters {
                         if ( cccheckip( \$ip ) ) {
                             if ( $config{CC_DROP_CIDR} > 0 and $config{CC_DROP_CIDR} < 33 ) {
                                 my ( $drop_ip, $drop_cidr ) = split( /\//, $ip );
-                                if ( $drop_cidr eq "" )                   { $drop_cidr = "32" }
+                                if ( !length $drop_cidr )                 { $drop_cidr = "32" }
                                 if ( $drop_cidr > $config{CC_DROP_CIDR} ) { next }
                             }
                             syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOW -s $ip -j $accept" );
@@ -2418,7 +2427,7 @@ sub doportfilters {
                     my ( $ip, undef ) = split( /\s/, $line, 2 );
                     if ( $config{CC_DROP_CIDR} > 0 and $config{CC_DROP_CIDR} < 33 ) {
                         my ( $drop_ip, $drop_cidr ) = split( /\//, $ip );
-                        if ( $drop_cidr eq "" )                   { $drop_cidr = "32" }
+                        if ( !length $drop_cidr )                 { $drop_cidr = "32" }
                         if ( $drop_cidr > $config{CC_DROP_CIDR} ) { next }
                     }
                     my $status = cccheckip( \$ip );
@@ -2466,7 +2475,7 @@ sub doportfilters {
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
                         if ( $config{CC_DROP_CIDR} > 0 and $config{CC_DROP_CIDR} < 33 ) {
                             my ( $drop_ip, $drop_cidr ) = split( /\//, $ip );
-                            if ( $drop_cidr eq "" )                   { $drop_cidr = "32" }
+                            if ( !length $drop_cidr )                 { $drop_cidr = "32" }
                             if ( $drop_cidr > $config{CC_DROP_CIDR} ) { next }
                         }
                         if ( cccheckip( \$ip ) ) { push @ipset, "add -exist cc_$cc $ip" }
@@ -2481,7 +2490,7 @@ sub doportfilters {
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
                         if ( $config{CC_DROP_CIDR} > 0 and $config{CC_DROP_CIDR} < 33 ) {
                             my ( $drop_ip, $drop_cidr ) = split( /\//, $ip );
-                            if ( $drop_cidr eq "" )                   { $drop_cidr = "32" }
+                            if ( !length $drop_cidr )                 { $drop_cidr = "32" }
                             if ( $drop_cidr > $config{CC_DROP_CIDR} ) { next }
                         }
                         if ( cccheckip( \$ip ) ) {
@@ -2546,7 +2555,7 @@ sub doportfilters {
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
                         if ( $config{CC_DROP_CIDR} > 0 and $config{CC_DROP_CIDR} < 33 ) {
                             my ( $drop_ip, $drop_cidr ) = split( /\//, $ip );
-                            if ( $drop_cidr eq "" )                   { $drop_cidr = "32" }
+                            if ( !length $drop_cidr )                 { $drop_cidr = "32" }
                             if ( $drop_cidr > $config{CC_DROP_CIDR} ) { next }
                         }
                         if ( cccheckip( \$ip ) ) {
@@ -2565,7 +2574,7 @@ sub doportfilters {
                         if ( cccheckip( \$ip ) ) {
                             if ( $config{CC_DROP_CIDR} > 0 and $config{CC_DROP_CIDR} < 33 ) {
                                 my ( $drop_ip, $drop_cidr ) = split( /\//, $ip );
-                                if ( $drop_cidr eq "" )                   { $drop_cidr = "32" }
+                                if ( !length $drop_cidr )                 { $drop_cidr = "32" }
                                 if ( $drop_cidr > $config{CC_DROP_CIDR} ) { next }
                             }
                             syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOWF -s $ip -j RETURN" );
@@ -2682,7 +2691,7 @@ sub doportfilters {
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
                         if ( $config{CC_DROP_CIDR} > 0 and $config{CC_DROP_CIDR} < 33 ) {
                             my ( $drop_ip, $drop_cidr ) = split( /\//, $ip );
-                            if ( $drop_cidr eq "" )                   { $drop_cidr = "32" }
+                            if ( !length $drop_cidr )                 { $drop_cidr = "32" }
                             if ( $drop_cidr > $config{CC_DROP_CIDR} ) { next }
                         }
                         if ( cccheckip( \$ip ) ) { push @ipset, "add -exist cc_$cc $ip" }
@@ -2698,7 +2707,7 @@ sub doportfilters {
                         if ( cccheckip( \$ip ) ) {
                             if ( $config{CC_DROP_CIDR} > 0 and $config{CC_DROP_CIDR} < 33 ) {
                                 my ( $drop_ip, $drop_cidr ) = split( /\//, $ip );
-                                if ( $drop_cidr eq "" )                   { $drop_cidr = "32" }
+                                if ( !length $drop_cidr )                 { $drop_cidr = "32" }
                                 if ( $drop_cidr > $config{CC_DROP_CIDR} ) { next }
                             }
                             syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CC_ALLOWP -s $ip -j CC_ALLOWPORTS" );
@@ -2788,7 +2797,7 @@ sub doportfilters {
                         my ( $ip, undef ) = split( /\s/, $line, 2 );
                         if ( $config{CC_DROP_CIDR} > 0 and $config{CC_DROP_CIDR} < 33 ) {
                             my ( $drop_ip, $drop_cidr ) = split( /\//, $ip );
-                            if ( $drop_cidr eq "" )                   { $drop_cidr = "32" }
+                            if ( !length $drop_cidr )                 { $drop_cidr = "32" }
                             if ( $drop_cidr > $config{CC_DROP_CIDR} ) { next }
                         }
                         if ( cccheckip( \$ip ) ) { push @ipset, "add -exist cc_$cc $ip" }
@@ -2804,7 +2813,7 @@ sub doportfilters {
                         if ( cccheckip( \$ip ) ) {
                             if ( $config{CC_DROP_CIDR} > 0 and $config{CC_DROP_CIDR} < 33 ) {
                                 my ( $drop_ip, $drop_cidr ) = split( /\//, $ip );
-                                if ( $drop_cidr eq "" )                   { $drop_cidr = "32" }
+                                if ( !length $drop_cidr )                 { $drop_cidr = "32" }
                                 if ( $drop_cidr > $config{CC_DROP_CIDR} ) { next }
                             }
                             syscommand( __LINE__, "$config{IPTABLES} $config{IPTABLESWAIT} $verbose -A CC_DENYP -s $ip -j CC_DENYPORTS" );
@@ -3561,15 +3570,15 @@ sub linefilter {
     }
     elsif ( $line =~ /[:|]/ ) {
         if ( $line !~ /\|/ ) { $line =~ s/\:/\|/g }
-        my $sip = "";
-        my $dip = "";
-        my $sport = "";
-        my $dport = "";
+        my $sip      = "";
+        my $dip      = "";
+        my $sport    = "";
+        my $dport    = "";
         my $protocol = "-p tcp";
         my $inout;
         my $from = 0;
-        my $uid = "";
-        my $gid = "";
+        my $uid  = "";
+        my $gid  = "";
         my $iptype;
 
         my @ll = split( /\|/, $line );
@@ -4024,6 +4033,7 @@ $table, $chain, $rest
         if ( $line eq "" )               { next }
         if ( $line =~ /^\s*\#|Include/ ) { next }
         my ( $ipd, $commentd ) = split( /\s/, $line, 2 );
+        $ipd //= '';
         checkip( \$ipd );
         if ( $ipd eq $ipmatch ) {
             print "\ncsf.allow: $line\n";
@@ -4070,6 +4080,7 @@ $table, $chain, $rest
         if ( $line eq "" )               { next }
         if ( $line =~ /^\s*\#|Include/ ) { next }
         my ( $ipd, $commentd ) = split( /\s/, $line, 2 );
+        $ipd //= '';
         checkip( \$ipd );
         if ( $ipd eq $ipmatch ) {
             print "\ncsf.deny: $line\n";
@@ -4242,7 +4253,7 @@ sub dotempdeny {
             foreach my $dport ( split( /\,/, $port ) ) {
                 my ( $tport, $proto ) = split( /\;/, $dport );
                 $dport = $tport;
-                if ( $proto eq "" ) { $proto = "tcp" }
+                if ( !length $proto ) { $proto = "tcp" }
                 if ( $iptype == 6 ) {
                     syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A DENYIN $eth6devin -p $proto --dport $dport -s $ip -j $dropin" );
                     if ( $messengerports{$dport} and $config{MESSENGER6} and $config{MESSENGER_TEMP} ) { domessenger( $ip, "A", $dport ) }
@@ -4269,7 +4280,7 @@ sub dotempdeny {
             foreach my $dport ( split( /\,/, $port ) ) {
                 my ( $tport, $proto ) = split( /\;/, $dport );
                 $dport = $tport;
-                if ( $proto eq "" ) { $proto = "tcp" }
+                if ( !length $proto ) { $proto = "tcp" }
                 if ( $iptype == 6 ) {
                     syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -A DENYOUT $eth6devout -p $proto --dport $dport -d $ip -j $dropout" );
                 }
@@ -4371,7 +4382,7 @@ sub dotempallow {
             foreach my $dport ( split( /\,/, $port ) ) {
                 my ( $tport, $proto ) = split( /\;/, $dport );
                 $dport = $tport;
-                if ( $proto eq "" ) { $proto = "tcp" }
+                if ( !length $proto ) { $proto = "tcp" }
                 if ( $iptype == 6 ) {
                     syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I ALLOWIN $eth6devin -p $proto --dport $dport -s $ip -j $accept" );
                 }
@@ -4394,7 +4405,7 @@ sub dotempallow {
             foreach my $dport ( split( /\,/, $port ) ) {
                 my ( $tport, $proto ) = split( /\;/, $dport );
                 $dport = $tport;
-                if ( $proto eq "" ) { $proto = "tcp" }
+                if ( !length $proto ) { $proto = "tcp" }
                 if ( $iptype == 6 ) {
                     syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -I ALLOWOUT $eth6devout -p $proto --dport $dport -d $ip -j $accept" );
                 }
@@ -4467,7 +4478,7 @@ sub dotemprm {
                         foreach my $dport ( split( /\,/, $port ) ) {
                             my ( $tport, $proto ) = split( /\;/, $dport );
                             $dport = $tport;
-                            if ( $proto eq "" ) { $proto = "tcp" }
+                            if ( !length $proto ) { $proto = "tcp" }
                             if ( $iptype == 6 ) {
                                 syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D DENYIN $eth6devin -p $proto --dport $dport -s $ip -j $dropin" );
                                 if ( $messengerports{$dport} and $config{MESSENGER6} and $config{MESSENGER_TEMP} ) { domessenger( $ip, "D", $dport ) }
@@ -4494,7 +4505,7 @@ sub dotemprm {
                         foreach my $dport ( split( /\,/, $port ) ) {
                             my ( $tport, $proto ) = split( /\;/, $dport );
                             $dport = $tport;
-                            if ( $proto eq "" ) { $proto = "tcp" }
+                            if ( !length $proto ) { $proto = "tcp" }
                             if ( $iptype == 6 ) {
                                 syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D DENYOUT $eth6devout -p $proto --dport $dport -d $ip -j $dropout" );
                             }
@@ -4547,7 +4558,7 @@ sub dotemprm {
                         foreach my $dport ( split( /\,/, $port ) ) {
                             my ( $tport, $proto ) = split( /\;/, $dport );
                             $dport = $tport;
-                            if ( $proto eq "" ) { $proto = "tcp" }
+                            if ( !length $proto ) { $proto = "tcp" }
                             if ( $iptype == 6 ) {
                                 syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D ALLOWIN $eth6devin -p $proto --dport $dport -s $ip -j $accept" );
                             }
@@ -4570,7 +4581,7 @@ sub dotemprm {
                         foreach my $dport ( split( /\,/, $port ) ) {
                             my ( $tport, $proto ) = split( /\;/, $dport );
                             $dport = $tport;
-                            if ( $proto eq "" ) { $proto = "tcp" }
+                            if ( !length $proto ) { $proto = "tcp" }
                             if ( $iptype == 6 ) {
                                 syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D ALLOWOUT $eth6devout -p $proto --dport $dport -d $ip -j $accept" );
                             }
@@ -4649,7 +4660,7 @@ sub dotemprmd {
                         foreach my $dport ( split( /\,/, $port ) ) {
                             my ( $tport, $proto ) = split( /\;/, $dport );
                             $dport = $tport;
-                            if ( $proto eq "" ) { $proto = "tcp" }
+                            if ( !length $proto ) { $proto = "tcp" }
                             if ( $iptype == 6 ) {
                                 syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D DENYIN $eth6devin -p $proto --dport $dport -s $ip -j $dropin" );
                                 if ( $messengerports{$dport} and $config{MESSENGER6} and $config{MESSENGER_TEMP} ) { domessenger( $ip, "D", $dport ) }
@@ -4676,7 +4687,7 @@ sub dotemprmd {
                         foreach my $dport ( split( /\,/, $port ) ) {
                             my ( $tport, $proto ) = split( /\;/, $dport );
                             $dport = $tport;
-                            if ( $proto eq "" ) { $proto = "tcp" }
+                            if ( !length $proto ) { $proto = "tcp" }
                             if ( $iptype == 6 ) {
                                 syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D DENYOUT $eth6devout -p $proto --dport $dport -d $ip -j $dropout" );
                             }
@@ -4751,7 +4762,7 @@ sub dotemprma {
                         foreach my $dport ( split( /\,/, $port ) ) {
                             my ( $tport, $proto ) = split( /\;/, $dport );
                             $dport = $tport;
-                            if ( $proto eq "" ) { $proto = "tcp" }
+                            if ( !length $proto ) { $proto = "tcp" }
                             if ( $iptype == 6 ) {
                                 syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D ALLOWIN $eth6devin -p $proto --dport $dport -s $ip -j $accept" );
                             }
@@ -4774,7 +4785,7 @@ sub dotemprma {
                         foreach my $dport ( split( /\,/, $port ) ) {
                             my ( $tport, $proto ) = split( /\;/, $dport );
                             $dport = $tport;
-                            if ( $proto eq "" ) { $proto = "tcp" }
+                            if ( !length $proto ) { $proto = "tcp" }
                             if ( $iptype == 6 ) {
                                 syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D ALLOWOUT $eth6devout -p $proto --dport $dport -d $ip -j $accept" );
                             }
@@ -4837,7 +4848,7 @@ sub dotempf {
                     foreach my $dport ( split( /\,/, $port ) ) {
                         my ( $tport, $proto ) = split( /\;/, $dport );
                         $dport = $tport;
-                        if ( $proto eq "" ) { $proto = "tcp" }
+                        if ( !length $proto ) { $proto = "tcp" }
                         if ( $iptype == 6 ) {
                             syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D DENYIN $eth6devin -p $proto --dport $dport -s $ip -j $dropin" );
                             if ( $messengerports{$dport} and $config{MESSENGER6} and $config{MESSENGER_TEMP} ) { domessenger( $ip, "D", $dport ) }
@@ -4864,7 +4875,7 @@ sub dotempf {
                     foreach my $dport ( split( /\,/, $port ) ) {
                         my ( $tport, $proto ) = split( /\;/, $dport );
                         $dport = $tport;
-                        if ( $proto eq "" ) { $proto = "tcp" }
+                        if ( !length $proto ) { $proto = "tcp" }
                         if ( $iptype == 6 ) {
                             syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D DENYOUT $eth6devout -p $proto --dport $dport -d $ip -j $dropout" );
                         }
@@ -4908,7 +4919,7 @@ sub dotempf {
                     foreach my $dport ( split( /\,/, $port ) ) {
                         my ( $tport, $proto ) = split( /\;/, $dport );
                         $dport = $tport;
-                        if ( $proto eq "" ) { $proto = "tcp" }
+                        if ( !length $proto ) { $proto = "tcp" }
                         if ( $iptype == 6 ) {
                             syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D ALLOWIN $eth6devin -p $proto --dport $dport -s $ip -j $accept" );
                         }
@@ -4931,7 +4942,7 @@ sub dotempf {
                     foreach my $dport ( split( /\,/, $port ) ) {
                         my ( $tport, $proto ) = split( /\;/, $dport );
                         $dport = $tport;
-                        if ( $proto eq "" ) { $proto = "tcp" }
+                        if ( !length $proto ) { $proto = "tcp" }
                         if ( $iptype == 6 ) {
                             syscommand( __LINE__, "$config{IP6TABLES} $config{IPTABLESWAIT} $verbose -D ALLOWOUT $eth6devout -p $proto --dport $dport -d $ip -j $accept" );
                         }
@@ -5636,12 +5647,12 @@ sub syscommand {
         if ($iptableslock) { iptableslock("unlock") }
 
         chomp @output;
-        if ( @output && $output[0] =~ /# Warning: iptables-legacy tables present/ ) { shift @output }
+        if ( defined $output[0] && $output[0] =~ /# Warning: iptables-legacy tables present/ ) { shift @output }
         foreach my $line (@output) {
             if ( $line =~ /^Using intrapositioned negation/ ) { next }
             print $line. "\n";
         }
-        if ( @output && $output[0] =~ /(^iptables: Unknown error 4294967295)|(xtables lock)/ and !$config{WAITLOCK} ) {
+        if ( defined $output[0] && $output[0] =~ /(^iptables: Unknown error 4294967295)|(xtables lock)/ and !$config{WAITLOCK} ) {
             my $cnt    = 0;
             my $repeat = 6;
             while ( $cnt < $repeat ) {
@@ -5654,13 +5665,13 @@ sub syscommand {
                 waitpid( $cmdpid, 0 );
                 if ($iptableslock) { iptableslock("unlock") }
                 chomp @output;
-                if ( @output && $output[0] =~ /# Warning: iptables-legacy tables present/ ) { shift @output }
+                if ( defined $output[0] && $output[0] =~ /# Warning: iptables-legacy tables present/ ) { shift @output }
                 $cnt++;
-                if     ( @output && $output[0] =~ /(^iptables: Unknown error 4294967295)|(xtables lock)/ and $cnt == $repeat ) { error( $line, "Error processing command for line [$line] ($repeat times): [$output[0]]" ); }
-                unless ( @output && $output[0] =~ /(^iptables: Unknown error 4294967295)|(xtables lock)/ )                     { $cnt = $repeat }
+                if     ( defined $output[0] && $output[0] =~ /(^iptables: Unknown error 4294967295)|(xtables lock)/ and $cnt == $repeat ) { error( $line, "Error processing command for line [$line] ($repeat times): [$output[0]]" ); }
+                unless ( defined $output[0] && $output[0] =~ /(^iptables: Unknown error 4294967295)|(xtables lock)/ )                     { $cnt = $repeat }
             }
         }
-        if ( @output && $output[0] =~ /^(iptables|xtables|Bad|Another)/ and ( $config{TESTING} or $force ) ) {
+        if ( defined $output[0] && $output[0] =~ /^(iptables|xtables|Bad|Another)/ and ( $config{TESTING} or $force ) ) {
             if ( $output[0] =~ /iptables: No chain\/target\/match by that name/ ) {
                 error( $line, "iptables command [$command] failed, you appear to be missing a required iptables module" );
             }
@@ -5668,7 +5679,7 @@ sub syscommand {
                 error( $line, "iptables command [$command] failed" );
             }
         }
-        if ( @output && $output[0] =~ /^(ip6tables|Bad|Another)/ and ( $config{TESTING} or $force ) ) {
+        if ( defined $output[0] && $output[0] =~ /^(ip6tables|Bad|Another)/ and ( $config{TESTING} or $force ) ) {
             if ( $output[0] =~ /ip6tables: No chain\/target\/match by that name/ ) {
                 error( $line, "ip6tables command [$command] failed, you appear to be missing a required ip6tables module" );
             }
@@ -5676,10 +5687,10 @@ sub syscommand {
                 error( $line, "ip6tables command [$command] failed" );
             }
         }
-        if ( @output && $output[0] =~ /xtables lock/ ) {
+        if ( defined $output[0] && $output[0] =~ /xtables lock/ ) {
             $warning .= "iptables command [$command] failed due to xtables lock, enable WAITLOCK in csf.conf\n\n";
         }
-        if ( @output && $output[0] =~ /^(iptables|xtables|ip6tables|Bad|Another)/ ) {
+        if ( defined $output[0] && $output[0] =~ /^(iptables|xtables|ip6tables|Bad|Another)/ ) {
             $warning .= "*ERROR* line:[$line]\nCommand:[$command]\nError:[$output[0]]\nYou should check through the main output carefully\n\n";
         }
     }
