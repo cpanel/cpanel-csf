@@ -850,7 +850,7 @@ sub _whmcheck {
         close($IN);
         chomp $line;
 
-        my ( $file, $filedir ) = fileparse($openid);
+        my ( $file, $filedir ) = File::Basename::fileparse($openid);
         $status = 0;
         if ( $line =~ /\{"cpanelid"/ ) { $status = 1 }
         _addline( $status, "Check cPanelID for $file", "You should only enable this option if you are going to use it otherwise it is a potential security risk in <i>WHM > <a href='$cpurl/scripts2/manage_external_auth/providers' target='_blank'>Manage External Authentications</a> > $file</i>" );

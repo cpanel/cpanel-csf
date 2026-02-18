@@ -1598,7 +1598,7 @@ EOD
         print "<table class='table table-bordered table-striped'>\n";
         print "<thead><tr><th>Preconfigured Profiles</th><th style='border-left:1px solid #990000'>&nbsp;</th></tr></thead>\n";
         foreach my $profile (@profiles) {
-            my ( $file, undef ) = fileparse($profile);
+            my ( $file, undef ) = File::Basename::fileparse($profile);
             $file =~ s/\.conf$//;
             my $text;
             open( my $IN, "<", $profile );
@@ -1636,7 +1636,7 @@ EOD
         print "<thead><tr><th>Restore Backup Of csf.conf</th></tr></thead>\n";
         print "<tr><td><select name='backup' size='10' style='min-width:400px'>\n";
         foreach my $backup (@backups) {
-            my ( $file,  undef ) = fileparse($backup);
+            my ( $file,  undef ) = File::Basename::fileparse($backup);
             my ( $stamp, undef ) = split( /_/, $file );
             print "<optgroup label='" . localtime($stamp) . ":'><option>$file</option></optgroup>\n";
         }
@@ -1651,13 +1651,13 @@ EOD
         print "<tr><td>Select first configuration:<br>\n<select name='profile1' size='10' style='min-width:400px'>\n";
         print "<optgroup label='Profiles:'>\n";
         foreach my $profile (@profiles) {
-            my ( $file, undef ) = fileparse($profile);
+            my ( $file, undef ) = File::Basename::fileparse($profile);
             $file =~ s/\.conf$//;
             print "<option>$file</option>\n";
         }
         print "</optgroup>\n";
         foreach my $backup (@backups) {
-            my ( $file,  undef ) = fileparse($backup);
+            my ( $file,  undef ) = File::Basename::fileparse($backup);
             my ( $stamp, undef ) = split( /_/, $file );
             print "<optgroup label='" . localtime($stamp) . ":'><option>$file</option></optgroup>\n";
         }
@@ -1666,13 +1666,13 @@ EOD
         print "<optgroup label='Current Configuration:'><option value='current' selected>/etc/csf/csf.conf</option></optgroup>\n";
         print "<optgroup label='Profiles:'>\n";
         foreach my $profile (@profiles) {
-            my ( $file, undef ) = fileparse($profile);
+            my ( $file, undef ) = File::Basename::fileparse($profile);
             $file =~ s/\.conf$//;
             print "<option>$file</option>\n";
         }
         print "</optgroup>\n";
         foreach my $backup (@backups) {
-            my ( $file,  undef ) = fileparse($backup);
+            my ( $file,  undef ) = File::Basename::fileparse($backup);
             my ( $stamp, undef ) = split( /_/, $file );
             print "<optgroup label='" . localtime($stamp) . ":'><option>$file</option></optgroup>\n";
         }
