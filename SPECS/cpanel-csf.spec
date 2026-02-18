@@ -139,6 +139,8 @@ ln -sf /usr/local/csf/bin/remove_apf_bfd.sh %{buildroot}/etc/csf/remove_apf_bfd.
 ln -sf /usr/local/csf/bin/regex.custom.pm %{buildroot}/etc/csf/regex.custom.pm
 ln -sf /usr/local/csf/tpl %{buildroot}/etc/csf/alerts
 
+# END INSTALL -- DO NOT REMOVE THIS LINE, SEE debify/debify_mongler.pl
+
 %clean
 rm -rf %{buildroot}
 
