@@ -9643,7 +9643,7 @@ sub lfdserver {
                             }
                             elsif ( $command eq "FILE" ) {
                                 my ( undef, $filename ) = split( /\s/, $decrypted );
-                                my ( $file, $filedir )  = fileparse($filename);
+                                my ( $file, $filedir )  = File::Basename::fileparse($filename);
                                 if ( $config{CLUSTER_MASTER} and ( $config{CLUSTER_MASTER} eq $peeraddress ) ) {
                                     if ( $config{CLUSTER_CONFIG} ) {
                                         my ( undef, $content ) = split( /\n/, $decrypted, 2 );

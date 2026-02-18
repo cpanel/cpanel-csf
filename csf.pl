@@ -766,7 +766,7 @@ sub docfile {
     if ( -e $name ) {
         my @data = slurpee( $name, 'fatal' => 1 );
 
-        my ( $file, $filedir ) = fileparse($name);
+        my ( $file, $filedir ) = File::Basename::fileparse($name);
         my $send = "FILE $file\n";
         foreach my $line (@data) { $send .= $line }
 
@@ -5213,7 +5213,7 @@ sub doprofile {
         print "Configuration Profiles\n";
         print "======================\n";
         foreach my $profile (@profiles) {
-            my ( $file, undef ) = fileparse($profile);
+            my ( $file, undef ) = File::Basename::fileparse($profile);
             $file =~ s/\.conf$//;
             print "$file\n";
         }
@@ -5222,7 +5222,7 @@ sub doprofile {
         print "Configuration Backups\n";
         print "=====================\n";
         foreach my $backup (@backups) {
-            my ( $file,  undef ) = fileparse($backup);
+            my ( $file,  undef ) = File::Basename::fileparse($backup);
             my ( $stamp, undef ) = split( /_/, $file );
             print $file. " (" . localtime($stamp) . ")\n";
         }
