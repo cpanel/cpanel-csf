@@ -123,9 +123,6 @@ install -m 0644 cpanel/csf_small.png %{buildroot}/usr/local/cpanel/whostmgr/docr
 install -d -m 0755 %{buildroot}/usr/local/cpanel/whostmgr/docroot/templates
 install -m 0644 cpanel/csf.tmpl %{buildroot}/usr/local/cpanel/whostmgr/docroot/templates/
 
-install -d -m 0755 %{buildroot}/usr/local/cpanel/Cpanel/Config/ConfigObj/Driver
-cp -a cpanel/Driver/* %{buildroot}/usr/local/cpanel/Cpanel/Config/ConfigObj/Driver/
-
 install -d -m 0755 %{buildroot}/usr/local/cpanel/bin
 install -m 0644 cpanel/csf.conf %{buildroot}/usr/local/cpanel/bin/csf.conf.appconfig
 
