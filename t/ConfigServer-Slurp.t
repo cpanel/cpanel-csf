@@ -17,7 +17,7 @@ use File::Temp qw(tempfile);
 
 use ConfigServer::Slurp;
 
-skip_all "Broken on CI";    # Really, really weird include issue for cPstrict.
+skip_all "Broken on CI" if !-f '/usr/local/cpanel/cPstrict.pm';
 
 # Test module basics
 subtest 'Module basics' => sub {
