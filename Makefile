@@ -75,9 +75,12 @@ tarball: clean-tarball
 		os.pl
 	@echo "Created SOURCES/cpanel-csf-$(VERSION).tar.gz"
 
+pre-debify:
+	debify/debify_mongler.pl
+
 # Ensure tarball is created before local or obs builds
-local: tarball
-obs: tarball
+local: tarball pre-debify
+obs: tarball pre-debify
 
 test:
 	yath test -j8 t/*.t
