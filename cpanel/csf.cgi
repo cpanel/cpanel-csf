@@ -72,8 +72,10 @@ $ENV{REMOTE_USER} //= '';
 foreach my $line ( slurp("/etc/csf/csf.resellers") ) {
     $line =~ s/$cleanreg//g;
     my ( $user, $alert, $privs ) = split( /\:/, $line );
+    $user  //= '';
     $alert //= '';
     $privs //= '';
+    next if $user eq '';
     $privs =~ s/\s//g;
     foreach my $priv ( split( /\,/, $privs ) ) {
         $rprivs{$user}{$priv} = 1;

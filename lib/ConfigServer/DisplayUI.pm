@@ -392,6 +392,7 @@ sub main {
         _printreturn();
     }
     elsif ( $FORM{action} eq "logtail" ) {
+        $FORM{lines} //= '';
         $FORM{lines} =~ s/\D//g;
         if ( $FORM{lines} eq "" or $FORM{lines} == 0 ) { $FORM{lines} = 30 }
         my $script_safe  = $script;
