@@ -128,6 +128,9 @@ sub main {
     $config{THIS_UI} = shift;
     $|               = 1;
 
+    # Initialize common FORM fields to avoid uninitialized value warnings
+    $FORM{action} //= '';
+
     my $cleanreg = ConfigServer::Slurp->cleanreg;
 
     $ipscidr6 = Net::CIDR::Lite->new;
@@ -161,15 +164,15 @@ sub main {
         return 0;    # Signal caller to exit immediately
     }
 
-    if ( $FORM{ip} ne "" ) { $FORM{ip} =~ s/(^\s+)|(\s+$)//g }
+    if ( length $FORM{ip} ) { $FORM{ip} =~ s/(^\s+)|(\s+$)//g }
 
-    if ( ( $FORM{ip} ne "" ) and ( $FORM{ip} ne "all" ) and ( !checkip( \$FORM{ip} ) ) ) {
+    if ( ( length $FORM{ip} ) and ( $FORM{ip} ne "all" ) and ( !checkip( \$FORM{ip} ) ) ) {
         print "[$FORM{ip}] is not a valid IP/CIDR";
     }
-    elsif ( ( $FORM{ignorefile} ne "" ) and ( $FORM{ignorefile} =~ /[^\w\.]/ ) ) {
+    elsif ( ( length $FORM{ignorefile} ) and ( $FORM{ignorefile} =~ /[^\w\.]/ ) ) {
         print "[$FORM{ignorefile}] is not a valid file";
     }
-    elsif ( ( $FORM{template} ne "" ) and ( $FORM{template} =~ /[^\w\.]/ ) ) {
+    elsif ( ( length $FORM{template} ) and ( $FORM{template} =~ /[^\w\.]/ ) ) {
         print "[$FORM{template}] is not a valid file";
     }
     elsif ( $FORM{action} eq "lfdstatus" ) {
@@ -1280,6 +1283,8 @@ EOF
                 my $size  = length($end) + 4;
                 my $class = "value-default";
                 my ( $status, $range, $default ) = ConfigServer::Sanity::sanity( $start, $end );
+                $range   //= '';
+                $default //= '';
                 my $showrange = "";
                 my $showfrom;
                 my $showto;

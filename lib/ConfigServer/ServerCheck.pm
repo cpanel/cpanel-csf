@@ -209,7 +209,8 @@ sub report {
     opendir( my $PROCDIR, "/proc" );
     while ( my $pid = readdir($PROCDIR) ) {
         if ( $pid !~ /^\d+$/ ) { next }
-        push @processes, readlink("/proc/$pid/exe");
+        my $exe = readlink("/proc/$pid/exe");
+        push @processes, $exe if defined $exe;
     }
     closedir($PROCDIR);
 
@@ -1482,7 +1483,13 @@ sub _phpcheck {
             }
         }
     }
-    my %phpconf;
+    my %phpconf = (
+        version           => '',
+        enable_dl         => '',
+        disable_functions => '',
+        ini_set           => '',
+        register_globals  => '',
+    );
     foreach my $phpini ( sort keys %phpinis ) {
         my $phpbin = $phpinis{$phpini};
 
@@ -1510,11 +1517,14 @@ sub _phpcheck {
                 if ( $mas < 8 )               { $status = 1 }
                 if ( $mas == 8 and $maj < 1 ) { $status = 1 }
             }
-            open( my $IN, "<", "/usr/local/apache/conf/php.conf.yaml" );
-            flock( $IN, Fcntl::LOCK_SH() );
-            my @phpyamlconf = <$IN>;
-            close($IN);
-            chomp @phpyamlconf;
+            my @phpyamlconf;
+            if ( -e "/usr/local/apache/conf/php.conf.yaml" ) {
+                open( my $IN, "<", "/usr/local/apache/conf/php.conf.yaml" );
+                flock( $IN, Fcntl::LOCK_SH() );
+                @phpyamlconf = <$IN>;
+                close($IN);
+                chomp @phpyamlconf;
+            }
 
             if ( my @ls = grep { $_ =~ /php4:/i } @phpyamlconf ) {
                 if ( $ls[0] !~ /none/ ) {
@@ -1564,7 +1574,7 @@ sub _phpcheck {
         }
     }
     foreach my $key ( "version", "enable_dl", "disable_functions", "ini_set", "register_globals" ) {
-        my $values;
+        my $values = '';
         foreach my $value ( split( /\,/, $phpconf{$key} ) ) {
             if ( $value eq "" ) { next }
             $values .= "<br>$value\n";
