@@ -14,33 +14,11 @@ use cPstrict;
 use Test2::V0;
 use Test2::Plugin::NoWarnings;
 
-use File::Find ();
 use Perl::Tidy ();
 use MCE::Loop chunk_size => 1;
 
-# Find all Perl files
-my @files;
-File::Find::find(
-    {
-        wanted => sub {
-            my $file = $File::Find::name;
-            return if $file =~ m{/tmp/};
-            return if $file =~ m{/BUILD/};
-            return if $file =~ m{/RPMS/};
-            return if $file =~ m{/SRPMS/};
-            return if $file =~ m{/SOURCES/};
-            return if $file =~ m{/SPECS/};
-            return if $file =~ m{/cover_db/};
-            return if $file =~ m{/nytprof/};
-            return if $file =~ m{/debify/};
-            return if -d $file;
-            return unless $file =~ /\.(?:pl|pm|t)$/;
-            push @files, $file;
-        },
-        no_chdir => 1,
-    },
-    '.'
-);
+# Find all Perl files using git ls-files (respects .gitignore)
+my @files = grep { /\.(?:pl|pm|t)$/ } split /\n/, `git ls-files`;
 
 # Process files in parallel and collect results
 my @results = mce_loop {
