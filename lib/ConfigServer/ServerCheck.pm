@@ -613,7 +613,7 @@ sub _servercheck {
     _addline( $status, "Check nobody cron", "You have a nobody cron log file - you should check that this has not been created by an exploit" );
 
     $status = 0;
-    my ( $isfedora, $isrh, $version, $conf ) = 0;
+    my ( $isfedora, $isrh, $version, $conf ) = ( 0, 0, 0, '' );
     if ( -e "/etc/fedora-release" ) {
         ($conf) = ConfigServer::Slurp::slurp("/etc/fedora-release");
         $isfedora = 1;
@@ -1511,11 +1511,12 @@ sub _phpcheck {
             my ( $mas, $maj, $min );
             if ( my @ls = grep { $_ =~ /^PHP Version\s*=>\s*/i } @conf ) {
                 my $line = $ls[0];
-                $line =~ /^PHP Version\s*=>\s*(.*)/i;
-                ( $mas, $maj, $min ) = split( /\./, $1 );
-                $version = "$mas.$maj.$min";
-                if ( $mas < 8 )               { $status = 1 }
-                if ( $mas == 8 and $maj < 1 ) { $status = 1 }
+                if ( $line =~ /^PHP Version\s*=>\s*(.*)/i ) {
+                    ( $mas, $maj, $min ) = split( /\./, $1 );
+                    $version = "$mas.$maj.$min";
+                    if ( $mas < 8 )               { $status = 1 }
+                    if ( $mas == 8 and $maj < 1 ) { $status = 1 }
+                }
             }
             my @phpyamlconf;
             if ( -e "/usr/local/apache/conf/php.conf.yaml" ) {
@@ -1558,14 +1559,15 @@ sub _phpcheck {
             }
             if ($status) { $phpconf{ini_set} .= "$phpini ($phpbin)," }
 
-            my $oldver = "$mas.$maj";
-            if ( $oldver < 5.4 ) {
-                $status = 1;
-                if ( my @ls = grep { $_ =~ /^register_globals\s*=>\s*Off/i } @conf ) {
-                    $status = 0;
+            if ( defined $mas && defined $maj ) {
+                my $oldver = "$mas.$maj";
+                if ( $oldver < 5.4 ) {
+                    $status = 1;
+                    if ( my @ls = grep { $_ =~ /^register_globals\s*=>\s*Off/i } @conf ) {
+                        $status = 0;
+                    }
+                    if ($status) { $phpconf{register_globals} .= "$phpini ($phpbin)," }
                 }
-                if ($status) { $phpconf{register_globals} .= "$phpini ($phpbin)," }
-
             }
         }
         else {
@@ -1676,12 +1678,17 @@ sub _apachecheck {
     my @version = <$childout>;
     waitpid( $mypid, 0 );
     chomp @version;
-    $version[0] =~ /Apache\/(\d+)\.(\d+)\.(\d+)/;
-    my $mas = $1;
-    my $maj = $2;
-    my $min = $3;
-    if ( "$mas.$maj" < 2.2 ) { $status = 1 }
-    _addline( $status, "Check apache version", "You are running a legacy version of apache (v$mas.$maj.$min) and should consider upgrading to v2.2.* as recommended by the Apache developers" );
+    my ( $mas, $maj, $min ) = ( 0, 0, 0 );
+    if ( $version[0] =~ /Apache\/(\d+)\.(\d+)\.(\d+)/ ) {
+        $mas = $1;
+        $maj = $2;
+        $min = $3;
+        if ( "$mas.$maj" < 2.2 ) { $status = 1 }
+        _addline( $status, "Check apache version", "You are running a legacy version of apache (v$mas.$maj.$min) and should consider upgrading to v2.2.* as recommended by the Apache developers" );
+    }
+    else {
+        _addline( 1, "Check apache version", "Unable to parse Apache version from httpd output" );
+    }
 
     my $ruid2 = 0;
     if ( $ea4{enabled} ) {
