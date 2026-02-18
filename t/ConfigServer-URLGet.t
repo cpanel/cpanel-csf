@@ -5,13 +5,15 @@
 # copyright@cpanel.net                                         http://cpanel.net
 # This code is subject to the cPanel license. Unauthorized copying is prohibited.
 
+use lib 't/lib';
+use FindBin::libs;
+
 use cPstrict;
 
 use Test2::V0;
 use Test2::Tools::Explain;
 use Test2::Plugin::NoWarnings;
 
-use lib 't/lib';
 use MockConfig;
 
 use File::Temp qw(tempdir tempfile);

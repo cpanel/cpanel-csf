@@ -66,8 +66,6 @@ use ConfigServer::Logger    ();
 use ConfigServer::GetEthDev ();
 use ConfigServer::CheckIP   qw(checkip);
 
-use Cpanel::Config::LoadWwwAcctConf ();
-
 our $VERSION = 1.03;
 
 our ( %config, %globlogs, %brd, %ips );
@@ -868,6 +866,7 @@ sub scriptlinecheck {
             my ( undef, $dir, undef ) = split( /\//, $fulldir );
             return $fulldir if $dir eq "home";
 
+            require Cpanel::Config::LoadWwwAcctConf;
             $_cpconfig //= Cpanel::Config::LoadWwwAcctConf::loadwwwacctconf();
 
             my $homedir = $_cpconfig->{HOMEDIR};

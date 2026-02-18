@@ -5,13 +5,15 @@
 # copyright@cpanel.net                                         http://cpanel.net
 # This code is subject to the cPanel license. Unauthorized copying is prohibited.
 
+use lib 't/lib';
+use FindBin::libs;
+
 use cPstrict;
 
 use Test2::V0;
 use Test2::Tools::Explain;
 use Test2::Plugin::NoWarnings;
 
-use lib 't/lib';
 use MockConfig;
 
 # Now load the module under test
@@ -57,16 +59,20 @@ my $logger_mock = mock 'ConfigServer::Logger' => (
     ],
 );
 
-# Mock Cpanel::Config::LoadWwwAcctConf
-my $wwwacct_mock = mock 'Cpanel::Config::LoadWwwAcctConf' => (
-    override => [
-        loadwwwacctconf => sub {
-            return {
-                HOMEDIR => '/home',
-            };
-        },
-    ],
-);
+# Not accessible in Github Workflow run
+$INC{'Cpanel/Config/LoadWwwAcctConf'} = __FILE__;
+{
+
+    package Cpanel::Config::LoadWwwAcctConf;
+
+    sub loadwwwacctconf {
+        return {
+            HOMEDIR => '/home',
+        };
+    }
+
+    1;
+}
 
 # Test private subroutines that populate our variables
 subtest 'private _config subroutine populates %config' => sub {

@@ -1,12 +1,14 @@
 #!/usr/local/cpanel/3rdparty/bin/perl
 
+use lib 't/lib';
+use FindBin::libs;
+
 use cPstrict;
 
 use Test2::V0;
 use Test2::Tools::Explain;
 use Test2::Plugin::NoWarnings;
 
-use lib 't/lib';
 use MockConfig;
 
 # Load the module under test FIRST

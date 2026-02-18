@@ -5,14 +5,15 @@
 # copyright@cpanel.net                                         http://cpanel.net
 # This code is subject to the cPanel license. Unauthorized copying is prohibited.
 
+use lib 't/lib';
+use FindBin::libs;
+
 use cPstrict;
 
 use Test2::V0;
 use Test2::Plugin::NoWarnings;
 use Test::MockModule;
 use File::Temp ();
-
-use FindBin::libs;
 
 # This test validates that csf.pl handles uninitialized variables correctly
 # when processing firewall rules with missing or incomplete fields.
