@@ -8,7 +8,7 @@ use File::Slurper;
 
 no warnings qw{once};
 
-*read = \&File::Slurper::read_binary;
+*read       = \&File::Slurper::read_binary;
 *read_lines = \&File::Slurper::read_lines;
 
 sub read_dir ($path) {

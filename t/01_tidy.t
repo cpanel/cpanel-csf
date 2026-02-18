@@ -8,4 +8,14 @@
 
 use Test::PerlTidy qw( run_tests );
 
-run_tests();
+run_tests(
+    path    => '.',
+    exclude => [
+        qr{/tmp/},         # Temporary files directory
+        qr{/BUILD/},       # Build artifacts
+        qr{/RPMS/},        # RPM build output
+        qr{/SRPMS/},       # Source RPM build output
+        qr{/cover_db/},    # Coverage database
+        qr{/nytprof/},     # Profiling output
+    ],
+);

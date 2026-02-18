@@ -621,7 +621,7 @@ sub get_config {
     return $config{$key};
 }
 
-sub _resetconfig {
+sub resetconfig {
     undef %config;
     undef %configsetting;
     undef $warning;

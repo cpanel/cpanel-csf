@@ -128,7 +128,7 @@ sub abuseip {
                 alarm(10);
                 my ( $childin, $childout );
                 my $host_bin = ConfigServer::Config->get_config('HOST');
-                $cmdpid = open3( $childin, $childout, $childout, $host_bin, "-W", "5", "-t", "TXT", $reversed_ip );
+                $cmdpid = IPC::Open3::open3( $childin, $childout, $childout, $host_bin, "-W", "5", "-t", "TXT", $reversed_ip );
                 close $childin;
                 my @results = <$childout>;
                 waitpid( $cmdpid, 0 );

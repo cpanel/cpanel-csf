@@ -66,7 +66,7 @@ subtest 'IPv6 regex validation' => sub {
 
 # Test resetconfig
 subtest 'resetconfig functionality' => sub {
-    ConfigServer::Config::_resetconfig();
+    ConfigServer::Config::resetconfig();
 
     my %config = ConfigServer::Config::config();
     is( scalar keys %config, 0, 'config is empty after resetconfig' );
@@ -179,7 +179,7 @@ subtest 'systemcmd handles errors gracefully' => sub {
 subtest 'get_config auto-loading and retrieval' => sub {
 
     # Reset config to ensure fresh state
-    ConfigServer::Config::_resetconfig();
+    ConfigServer::Config::resetconfig();
 
     # Verify config is empty
     my %empty_config = ConfigServer::Config::config();
