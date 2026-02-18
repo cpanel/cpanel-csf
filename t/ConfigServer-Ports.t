@@ -1,5 +1,8 @@
 #!/usr/local/cpanel/3rdparty/bin/perl
 
+use lib 't/lib';
+use FindBin::libs;
+
 use cPstrict;
 
 use Test2::V0;

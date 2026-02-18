@@ -5,6 +5,9 @@
 # copyright@cpanel.net                                         http://cpanel.net
 # This code is subject to the cPanel license. Unauthorized copying is prohibited.
 
+use lib 't/lib';
+use FindBin::libs;
+
 use cPstrict;
 
 use Test2::V0;
@@ -12,14 +15,12 @@ use Test2::Plugin::NoWarnings;
 use Test::MockModule;
 use File::Temp ();
 
-use FindBin::libs;
-
 # This test validates that csf.pl can be loaded as a modulino and executed with
 # the -l argument without actually modifying firewall state. It uses Test::MockModule
 # to mock all external dependencies.
 
 # Create temporary directory for test artifacts
-my $tempdir = File::Temp->newdir( CLEANUP => 1 );
+my $tempdir   = File::Temp->newdir( CLEANUP => 1 );
 my $temp_path = $tempdir->dirname;
 
 # Create version.txt in temp directory

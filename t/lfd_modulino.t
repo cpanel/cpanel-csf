@@ -5,6 +5,9 @@
 # copyright@cpanel.net                                         http://cpanel.net
 # This code is subject to the cPanel license. Unauthorized copying is prohibited.
 
+use lib 't/lib';
+use FindBin::libs;
+
 use cPstrict;
 
 use FindBin::libs;
