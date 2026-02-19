@@ -130,8 +130,12 @@ sub main {
     $|               = 1;
 
     # Initialize common FORM fields to avoid uninitialized value warnings
-    $FORM{action} //= '';
-    $FORM{lines}  //= '';
+    $FORM{$_} //= '' for qw(
+      action lines comment dur timeout ports do graph verbose
+      grep grepi grepE grepZ type domains target option value
+      profile profile1 profile2 backup email freq formdata
+    );
+    $FORM{$_} //= 0 for qw(lognum ace);
 
     my $cleanreg = ConfigServer::Slurp->cleanreg;
 
@@ -259,11 +263,18 @@ sub main {
             chomp @deny;
         }
         foreach my $line ( reverse @deny ) {
-            if ( $line eq "" ) { next }
+            if ( !length $line ) { next }
             my ( $time, $ip, $port, $inout, $timeout, $message ) = split( /\|/, $line );
+            $time    //= 0;
+            $ip      //= '';
+            $port    //= '';
+            $inout   //= '';
+            $timeout //= 0;
+            $message //= '';
             $time = $timeout - ( time - $time );
-            if ( $port eq "" )  { $port  = "*" }
-            if ( $inout eq "" ) { $inout = " *" }
+            if ( !length $port )  { $port  = "*" }
+            if ( !length $inout ) { $inout = " *" }
+
             if ( $time < 1 ) {
                 $time = "<1";
             }
@@ -287,11 +298,18 @@ sub main {
             chomp @allow;
         }
         foreach my $line (@allow) {
-            if ( $line eq "" ) { next }
+            if ( !length $line ) { next }
             my ( $time, $ip, $port, $inout, $timeout, $message ) = split( /\|/, $line );
+            $time    //= 0;
+            $timeout //= 0;
+            $message //= '';
+            $ip      //= '';
+            $port    //= '';
+            $inout   //= '';
             $time = $timeout - ( time - $time );
-            if ( $port eq "" )  { $port  = "*" }
-            if ( $inout eq "" ) { $inout = " *" }
+            if ( !length $port )  { $port  = "*" }
+            if ( !length $inout ) { $inout = " *" }
+
             if ( $time < 1 ) {
                 $time = "<1";
             }
@@ -349,7 +367,7 @@ sub main {
         if ( $FORM{dur} eq "minutes" ) { $FORM{timeout} = $FORM{timeout} * 60 }
         if ( $FORM{dur} eq "hours" )   { $FORM{timeout} = $FORM{timeout} * 60 * 60 }
         if ( $FORM{dur} eq "days" )    { $FORM{timeout} = $FORM{timeout} * 60 * 60 * 24 }
-        if ( $FORM{ports} eq "" )      { $FORM{ports}   = "*" }
+        if ( !length $FORM{ports} )    { $FORM{ports}   = "*" }
         my $do_action = ( $FORM{do} && $FORM{do} eq "block" ) ? "block" : "allow";
         print "<div><p>Temporarily ${do_action}ing $FORM{ip} for $FORM{timeout} seconds:</p>\n<pre class='comment' style='white-space: pre-wrap;'>\n";
         if ( $FORM{do} eq "block" ) {
@@ -396,7 +414,7 @@ sub main {
     }
     elsif ( $FORM{action} eq "logtail" ) {
         $FORM{lines} =~ s/\D//g;
-        if ( $FORM{lines} eq "" or $FORM{lines} == 0 ) { $FORM{lines} = 30 }
+        if ( !length $FORM{lines} or $FORM{lines} == 0 ) { $FORM{lines} = 30 }
         my $script_safe  = $script;
         my $CSFfrombot   = 120;
         my $CSFfromright = 10;
@@ -412,7 +430,7 @@ sub main {
         my $cnt     = 0;
         foreach my $file (@data) {
             $file =~ s/$cleanreg//g;
-            if ( $file eq "" )               { next }
+            if ( !length $file )             { next }
             if ( $file =~ /^\s*\#|Include/ ) { next }
             my @globfiles;
             if ( $file =~ /[*?\[]/ ) {
@@ -466,7 +484,7 @@ EOF
     }
     elsif ( $FORM{action} eq "logtailcmd" ) {
         $FORM{lines} =~ s/\D//g;
-        if ( $FORM{lines} eq "" or $FORM{lines} == 0 ) { $FORM{lines} = 30 }
+        if ( !length $FORM{lines} or $FORM{lines} == 0 ) { $FORM{lines} = 30 }
 
         my @data = slurp("/etc/csf/csf.syslogs");
         foreach my $line (@data) {
@@ -481,7 +499,7 @@ EOF
         my $hit     = 0;
         foreach my $file (@data) {
             $file =~ s/$cleanreg//g;
-            if ( $file eq "" )               { next }
+            if ( !length $file )             { next }
             if ( $file =~ /^\s*\#|Include/ ) { next }
             my @globfiles;
             if ( $file =~ /[*?\[]/ ) {
@@ -533,7 +551,7 @@ EOF
     }
     elsif ( $FORM{action} eq "loggrep" ) {
         $FORM{lines} =~ s/\D//g;
-        if ( $FORM{lines} eq "" or $FORM{lines} == 0 ) { $FORM{lines} = 30 }
+        if ( !length $FORM{lines} or $FORM{lines} == 0 ) { $FORM{lines} = 30 }
         my $script_safe  = $script;
         my $CSFfrombot   = 120;
         my $CSFfromright = 10;
@@ -549,7 +567,7 @@ EOF
         my $cnt     = 0;
         foreach my $file (@data) {
             $file =~ s/$cleanreg//g;
-            if ( $file eq "" )               { next }
+            if ( !length $file )             { next }
             if ( $file =~ /^\s*\#|Include/ ) { next }
             my @globfiles;
             if ( $file =~ /[*?\[]/ ) {
@@ -629,7 +647,7 @@ EOF
         my $hit     = 0;
         foreach my $file (@data) {
             $file =~ s/$cleanreg//g;
-            if ( $file eq "" )               { next }
+            if ( !length $file )             { next }
             if ( $file =~ /^\s*\#|Include/ ) { next }
             my @globfiles;
             if ( $file =~ /[*?\[]/ ) {
@@ -665,9 +683,9 @@ EOF
                 eval {
                     local $SIG{__DIE__} = undef;
                     local $SIG{'ALRM'}  = sub { die };
-                    my $total;
                     if ( $FORM{grepZ} ) {
                         foreach my $file ( glob $logfile . "\*" ) {
+                            my $total = 0;
                             print "\nSearching $file:\n";
                             alarm($timeout);
                             my ( $childin, $childout );
@@ -677,7 +695,7 @@ EOF
                                 $line =~ s/&/&amp;/g;
                                 $line =~ s/</&lt;/g;
                                 $line =~ s/>/&gt;/g;
-                                if ( $FORM{grep} ne "" ) {
+                                if ( length $FORM{grep} ) {
                                     eval {
                                         local $SIG{__DIE__} = undef;
                                         if ( $FORM{grepi} ) {
@@ -698,6 +716,7 @@ EOF
                         }
                     }
                     else {
+                        my $total = 0;
                         alarm($timeout);
                         my ( $childin, $childout );
                         my $pid = IPC::Open3::open3( $childin, $childout, $childout, $grepbin, @cmd, $logfile );
@@ -706,7 +725,7 @@ EOF
                             $line =~ s/&/&amp;/g;
                             $line =~ s/</&lt;/g;
                             $line =~ s/>/&gt;/g;
-                            if ( $FORM{grep} ne "" ) {
+                            if ( length $FORM{grep} ) {
                                 eval {
                                     local $SIG{__DIE__} = undef;
                                     if ( $FORM{grepi} ) {
@@ -778,7 +797,7 @@ EOF
         my $extra = "";
         my $freq  = "daily";
         my $email;
-        if ( $FORM{email} ne "" )                         { $email = "root" }
+        if ( length $FORM{email} )                        { $email = "root" }
         if ( $FORM{email} =~ /^[a-zA-Z0-9\-\_\.\@\+]+$/ ) { $email = $FORM{email} }
         foreach my $option ( "never", "hourly", "daily", "weekly", "monthly" ) {
             if ( $FORM{freq} eq $option ) { $freq = $option }
@@ -847,7 +866,7 @@ EOF
         my $extra = "";
         my $freq  = "daily";
         my $email;
-        if ( $FORM{email} ne "" )                         { $email = "root" }
+        if ( length $FORM{email} )                        { $email = "root" }
         if ( $FORM{email} =~ /^[a-zA-Z0-9\-\_\.\@\+]+$/ ) { $email = $FORM{email} }
         foreach my $option ( "never", "hourly", "daily", "weekly", "monthly" ) {
             if ( $FORM{freq} eq $option ) { $freq = $option }
@@ -1066,7 +1085,7 @@ EOF
         if ( $FORM{dur} eq "minutes" ) { $FORM{timeout} = $FORM{timeout} * 60 }
         if ( $FORM{dur} eq "hours" )   { $FORM{timeout} = $FORM{timeout} * 60 * 60 }
         if ( $FORM{dur} eq "days" )    { $FORM{timeout} = $FORM{timeout} * 60 * 60 * 24 }
-        if ( $FORM{ports} eq "" )      { $FORM{ports}   = "*" }
+        if ( !length $FORM{ports} )    { $FORM{ports}   = "*" }
         my $cluster_action = ( defined $FORM{do} && $FORM{do} eq 'block' ) ? 'block' : 'allow';
         print "<div><p>cluster Temporarily ${cluster_action}ing $FORM{ip} for $FORM{timeout} seconds:</p>\n<pre class='comment' style='white-space: pre-wrap;'>\n";
         if ( $FORM{do} eq "block" ) {
@@ -1311,7 +1330,7 @@ EOF
                     $showfrom = $1;
                     $showto   = $2;
                 }
-                if ( $default ne "" ) {
+                if ( length $default ) {
                     $showrange = " Default: $default [$range]";
                     if ( $end ne $default ) { $class = "value-other" }
                 }
@@ -1461,13 +1480,13 @@ EOD
             close($IN);
             chomp @iptables;
             @iptables = reverse @iptables;
-            my $from;
-            my $to;
+            my $from   = '';
+            my $to     = '';
             my $divcnt = 0;
             my $expcnt = @iptables;
 
-            if ( $iptables[0]  =~ /\|(\S+\s+\d+\s+\S+)/ ) { $from = $1 }
-            if ( $iptables[-1] =~ /\|(\S+\s+\d+\s+\S+)/ ) { $to   = $1 }
+            if ( defined $iptables[0]  && $iptables[0]  =~ /\|(\S+\s+\d+\s+\S+)/ ) { $from = $1 }
+            if ( defined $iptables[-1] && $iptables[-1] =~ /\|(\S+\s+\d+\s+\S+)/ ) { $to   = $1 }
 
             print "<div class='pull-right'><button type='button' class='btn btn-primary glyphicon glyphicon-arrow-down' data-tooltip='tooltip' title='Expand All' onClick='\$(\".submenu\").show();'></button>\n";
             print "<button type='button' class='btn btn-primary glyphicon glyphicon-arrow-up' data-tooltip='tooltip' title='Collapse All' onClick='\$(\".submenu\").hide();'></button></div>\n";
@@ -1479,8 +1498,9 @@ EOD
             for ( my $x = 0; $x < $size; $x++ ) {
                 my $line = $iptables[$x];
                 $divcnt++;
-                my ( $text, $log ) = split( /\|/, $line );
-                my ( $time, $in, $out, $src, $dst, $spt, $dpt, $proto, $inout );
+                my ( $text, $log ) = split( /\|/, $line, 2 );
+                $log //= '';
+                my ( $time, $in, $out, $src, $dst, $spt, $dpt, $proto, $inout ) = ('') x 9;
                 if ( $log =~ /IN=(\S+)/ )    { $in    = $1 }
                 if ( $log =~ /OUT=(\S+)/ )   { $out   = $1 }
                 if ( $log =~ /SRC=(\S+)/ )   { $src   = $1 }
@@ -1489,7 +1509,7 @@ EOD
                 if ( $log =~ /DPT=(\d+)/ )   { $dpt   = $1 }
                 if ( $log =~ /PROTO=(\S+)/ ) { $proto = $1 }
 
-                if ( $text ne "" ) {
+                if ( length $text ) {
                     $text =~ s/\(/\<br\>\(/g;
                     if    ( $in and $src )  { $src = $text; $dst .= " <br>(server)" }
                     elsif ( $out and $dst ) { $dst = $text; $src .= " <br>(server)" }
@@ -1633,7 +1653,7 @@ EOD
             if ( $file eq "reset_to_defaults" ) {
                 $text = "This is the installation default profile and will reset all csf.conf settings, including enabling TESTING mode";
             }
-            elsif ( $profiledata[0] =~ /^\# Profile:/ ) {
+            elsif ( defined $profiledata[0] && $profiledata[0] =~ /^\# Profile:/ ) {
                 foreach my $line (@profiledata) {
                     if ( $line =~ /^\# (.*)$/ ) { $text .= "$1 " }
                 }
@@ -1746,7 +1766,9 @@ EOD
         while (<$childout>) {
             $_ =~ s/[\[\]]//g;
             my ( $var, $p1, $p2 ) = split( /\s+/, $_ );
-            if ( $var eq "" ) {
+            $p1 //= '';
+            $p2 //= '';
+            if ( !length $var ) {
                 next;
             }
             elsif ( $var eq "SETTING" ) {
@@ -1776,16 +1798,17 @@ EOD
                     if   ( $config{IPV6} and $ports{ $protocol . "6" }{$port} ) { $fopen .= "/6" }
                     else                                                        { $fopen .= "/-" }
 
-                    my $fcmd = ( $listen{$protocol}{$port}{$pid}{cmd} );
+                    my $fcmd = ( $listen{$protocol}{$port}{$pid}{cmd} // '' );
                     $fcmd =~ s/\</\&lt;/g;
                     $fcmd =~ s/\&/\&amp;/g;
 
-                    my $fexe = $listen{$protocol}{$port}{$pid}{exe};
+                    my $fexe = $listen{$protocol}{$port}{$pid}{exe} // '';
                     $fexe =~ s/\</\&lt;/g;
                     $fexe =~ s/\&/\&amp;/g;
 
-                    my $fconn = $listen{$protocol}{$port}{$pid}{conn};
-                    print "<tr><td>$port</td><td>$protocol</td><td>$fopen</td><td>$fconn</td><td>$pid</td><td>$listen{$protocol}{$port}{$pid}{user}</td><td style='overflow: hidden;text-overflow: ellipsis; width:50%'>$fcmd</td><td style='overflow: hidden;text-overflow: ellipsis; width:50%'>$fexe</td></tr>\n";
+                    my $fconn = $listen{$protocol}{$port}{$pid}{conn} // '';
+                    my $fuser = $listen{$protocol}{$port}{$pid}{user} // '';
+                    print "<tr><td>$port</td><td>$protocol</td><td>$fopen</td><td>$fconn</td><td>$pid</td><td>$fuser</td><td style='overflow: hidden;text-overflow: ellipsis; width:50%'>$fcmd</td><td style='overflow: hidden;text-overflow: ellipsis; width:50%'>$fexe</td></tr>\n";
                 }
             }
         }
@@ -2056,7 +2079,7 @@ EOD
         my @iptstatus = <$childout>;
         waitpid( $pid, 0 );
         chomp @iptstatus;
-        if ( $iptstatus[0] =~ /# Warning: iptables-legacy tables present/ ) { shift @iptstatus }
+        if ( defined $iptstatus[0] && $iptstatus[0] =~ /# Warning: iptables-legacy tables present/ ) { shift @iptstatus }
         my $status = "<div class='bs-callout bs-callout-success text-center'><h4>Firewall Status: Enabled and Running</h4></div>";
 
         if ( -e "/etc/csf/csf.disable" ) {
@@ -2065,7 +2088,7 @@ EOD
         elsif ( $config{TESTING} ) {
             $status = "<div class='bs-callout bs-callout-warning text-center'><form action='$script' method='post'><h4>Firewall Status: Enabled but in Test Mode - Don't forget to disable TESTING in the Firewall Configuration</h4></div>";
         }
-        elsif ( $iptstatus[0] !~ /^Chain LOCALINPUT/ ) {
+        elsif ( !defined $iptstatus[0] || $iptstatus[0] !~ /^Chain LOCALINPUT/ ) {
             $status = "<div class='bs-callout bs-callout-danger text-center'><form action='$script' method='post'><h4>Firewall Status: Enabled but Stopped <input type='hidden' name='action' value='start'><input type='submit' class='btn btn-default' value='Start'></form></h4></div>";
         }
         if     ( -e "/var/lib/csf/lfd.restart" ) { $status .= "<div class='bs-callout bs-callout-info text-center'><h4>lfd restart request pending</h4></div>" }
@@ -2464,7 +2487,7 @@ sub _chart {
 
 sub _systemstats {
     my $type = shift;
-    if ( $type eq "" ) { $type = "load" }
+    if ( !length $type ) { $type = "load" }
     my $img;
     my $imgdir   = "";
     my $imghddir = "";
@@ -2494,8 +2517,8 @@ sub _systemstats {
 
         print "<div class='text-center'><form action='$script' method='post'><input type='hidden' name='action' value='systemstats'><select name='graph'>\n";
         my $selected;
-        if   ( $type eq "" or $type eq "load" ) { $selected = "selected" }
-        else                                    { $selected = "" }
+        if   ( !length $type or $type eq "load" ) { $selected = "selected" }
+        else                                      { $selected = "" }
         print "<option value='load' $selected>Load Average Statistics</option>\n";
         if   ( $type eq "cpu" ) { $selected = "selected" }
         else                    { $selected = "" }
