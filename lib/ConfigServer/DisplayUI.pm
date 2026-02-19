@@ -43,11 +43,12 @@ that determine the action to perform.
 
 use cPstrict;
 
-use Fcntl           ();
-use File::Basename  ();
-use File::Copy      ();
-use Net::CIDR::Lite ();
-use IPC::Open3      ();
+use Fcntl                 ();
+use File::Basename        ();
+use File::Copy            ();
+use Net::CIDR::Lite       ();
+use IPC::Open3            ();
+use Cpanel::Encoder::Tiny ();
 
 use ConfigServer::Config      ();
 use ConfigServer::CloudFlare  ();
@@ -691,7 +692,7 @@ EOF
                                 $total += length $line;
                             }
                             waitpid( $pid, 0 );
-                            my $safe_grep = _html_escape( $FORM{grep} );
+                            my $safe_grep = Cpanel::Encoder::Tiny::safe_html_encode_str( $FORM{grep} );
                             unless ($total) { print "<---- No matches found for \"$safe_grep\" in $file ---->\n" }
                             alarm(0);
                         }
@@ -720,7 +721,7 @@ EOF
                             $total += length $line;
                         }
                         waitpid( $pid, 0 );
-                        my $safe_grep = _html_escape( $FORM{grep} );
+                        my $safe_grep = Cpanel::Encoder::Tiny::safe_html_encode_str( $FORM{grep} );
                         unless ($total) { print "<---- No matches found for \"$safe_grep\" in $logfile ---->\n" }
                         alarm(0);
                     }
@@ -1020,35 +1021,35 @@ EOF
         _cloudflare();
     }
     elsif ( $FORM{action} eq "cflist" ) {
-        my $safe_type    = _html_escape( $FORM{type} );
-        my $safe_domains = _html_escape( $FORM{domains} );
+        my $safe_type    = Cpanel::Encoder::Tiny::safe_html_encode_str( $FORM{type} );
+        my $safe_domains = Cpanel::Encoder::Tiny::safe_html_encode_str( $FORM{domains} );
         print "<div class='panel panel-info'><div class='panel-heading'>CloudFlare list $safe_type rules for user(s) $safe_domains:</div>\n";
         print "<div class='panel-body'><pre class='comment' style='white-space: pre-wrap;'>";
         _printcmd( "/usr/sbin/csf", "--cloudflare", "list", $FORM{type}, $FORM{domains} );
         print "</pre>\n</div></div>\n";
     }
     elsif ( $FORM{action} eq "cftempdeny" ) {
-        my $safe_do      = _html_escape( $FORM{do} );
-        my $safe_target  = _html_escape( $FORM{target} );
-        my $safe_domains = _html_escape( $FORM{domains} );
+        my $safe_do      = Cpanel::Encoder::Tiny::safe_html_encode_str( $FORM{do} );
+        my $safe_target  = Cpanel::Encoder::Tiny::safe_html_encode_str( $FORM{target} );
+        my $safe_domains = Cpanel::Encoder::Tiny::safe_html_encode_str( $FORM{domains} );
         print "<div class='panel panel-info'><div class='panel-heading'>CloudFlare $safe_do $safe_target for user(s) $safe_domains:</div>\n";
         print "<div class='panel-body'><pre class='comment' style='white-space: pre-wrap;'>\n";
         _printcmd( "/usr/sbin/csf", "--cloudflare", "tempadd", $FORM{do}, $FORM{target}, $FORM{domains} );
         print "</pre>\n</div></div>\n";
     }
     elsif ( $FORM{action} eq "cfadd" ) {
-        my $safe_type    = _html_escape( $FORM{type} );
-        my $safe_target  = _html_escape( $FORM{target} );
-        my $safe_domains = _html_escape( $FORM{domains} );
+        my $safe_type    = Cpanel::Encoder::Tiny::safe_html_encode_str( $FORM{type} );
+        my $safe_target  = Cpanel::Encoder::Tiny::safe_html_encode_str( $FORM{target} );
+        my $safe_domains = Cpanel::Encoder::Tiny::safe_html_encode_str( $FORM{domains} );
         print "<div class='panel panel-info'><div class='panel-heading'>CloudFlare Add $safe_type $safe_target for user(s) $safe_domains:</div>\n";
         print "<div class='panel-body'><pre class='comment' style='white-space: pre-wrap;'>";
         _printcmd( "/usr/sbin/csf", "--cloudflare", "add", $FORM{type}, $FORM{target}, $FORM{domains} );
         print "</pre>\n</div></div>\n";
     }
     elsif ( $FORM{action} eq "cfremove" ) {
-        my $safe_type    = _html_escape( $FORM{type} );
-        my $safe_target  = _html_escape( $FORM{target} );
-        my $safe_domains = _html_escape( $FORM{domains} );
+        my $safe_type    = Cpanel::Encoder::Tiny::safe_html_encode_str( $FORM{type} );
+        my $safe_target  = Cpanel::Encoder::Tiny::safe_html_encode_str( $FORM{target} );
+        my $safe_domains = Cpanel::Encoder::Tiny::safe_html_encode_str( $FORM{domains} );
         print "<div class='panel panel-info'><div class='panel-heading'>CloudFlare Delete $safe_type $safe_target for user(s) $safe_domains:</div>\n";
         print "<div class='panel-body'><pre class='comment' style='white-space: pre-wrap;'>";
         _printcmd( "/usr/sbin/csf", "--cloudflare", "del", $FORM{target}, $FORM{domains} );
@@ -1135,7 +1136,7 @@ EOF
             close($IN);
         }
         if ( $restricted{ $FORM{option} } ) {
-            my $safe_option = _html_escape( $FORM{option} );
+            my $safe_option = Cpanel::Encoder::Tiny::safe_html_encode_str( $FORM{option} );
             print "<div>Option $safe_option cannot be set with RESTRICT_UI enabled</div>\n";
             return 0;    # Signal caller to exit immediately
         }
@@ -2360,16 +2361,6 @@ EOD
     }
 
     return;
-}
-
-sub _html_escape {
-    my $text = shift // '';
-    $text =~ s/&/&amp;/g;
-    $text =~ s/</&lt;/g;
-    $text =~ s/>/&gt;/g;
-    $text =~ s/"/&quot;/g;
-    $text =~ s/'/&#39;/g;
-    return $text;
 }
 
 sub _printcmd {
