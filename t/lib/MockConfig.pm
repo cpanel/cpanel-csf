@@ -23,7 +23,7 @@ BEGIN {
     sub loadconfig    { }
     sub get_config    { }
     sub config        { }
-    sub _resetconfig  { }
+    sub resetconfig   { }
     sub ipv4reg       { return $ipv4reg; }
     sub ipv6reg       { return $ipv6reg; }
     sub configsetting { }
@@ -83,7 +83,7 @@ sub import {
             config => sub {
                 return %config;
             },
-            _resetconfig => sub {
+            resetconfig => sub {
                 %config = ();
                 return;
             },
@@ -171,7 +171,7 @@ are mocked:
 
 =item * C<config()> - Returns entire mock config hash
 
-=item * C<_resetconfig()> - Clears mock config (same as clear_config)
+=item * C<resetconfig()> - Clears mock config (same as clear_config)
 
 =back
 
