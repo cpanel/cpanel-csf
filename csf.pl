@@ -1423,7 +1423,7 @@ sub doadd {
         return;
     }
 
-    if ( $checkip == 6 and !$config{IPV6} ) {
+    if ( $checkip and $checkip == 6 and !$config{IPV6} ) {
         print "add failed: [$ip] is valid IPv6 but IPV6 is not enabled in csf.conf\n";
         return;
     }
@@ -1511,7 +1511,7 @@ sub dodeny {
         return;
     }
 
-    if ( $checkip == 6 and !$config{IPV6} ) {
+    if ( $checkip and $checkip == 6 and !$config{IPV6} ) {
         print "deny failed: [$ip] is valid IPv6 but IPV6 is not enabled in csf.conf\n";
         return;
     }
@@ -1583,8 +1583,8 @@ sub dodeny {
         }
     }
 
-    my $denymatches;
-    my @deny = slurp("/etc/csf/csf.deny");
+    my $denymatches = 0;
+    my @deny        = slurp("/etc/csf/csf.deny");
     foreach my $line (@deny) {
         if ( $line =~ /^Include\s*(.*)$/ ) {
             my @incfile = slurp($1);
@@ -1611,7 +1611,7 @@ sub dodeny {
     chomp @deny;
     if ( $config{LF_REPEATBLOCK} and $denymatches < $config{LF_REPEATBLOCK} ) { $denymatches = 0 }
     if ( $denymatches == 0 ) {
-        my $ipcount;
+        my $ipcount = 0;
         my @denyips;
         foreach my $line (@deny) {
             $line =~ s/$cleanreg//g;

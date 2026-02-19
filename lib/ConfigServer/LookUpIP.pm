@@ -165,17 +165,18 @@ sub iplookup {
         my $dnsrip;
         my $dnshost;
         my $cachehit;
-        open( my $DNS, "<", "/var/lib/csf/csf.dnscache" );
-        flock( $DNS, Fcntl::LOCK_SH );
-        while ( my $line = <$DNS> ) {
-            chomp $line;
-            ( $dnsip, $dnsrip, $dnshost ) = split( /\|/, $line );
-            if ( $ip eq $dnsip ) {
-                $cachehit = 1;
-                last;
+        if ( open( my $DNS, "<", "/var/lib/csf/csf.dnscache" ) ) {
+            flock( $DNS, Fcntl::LOCK_SH );
+            while ( my $line = <$DNS> ) {
+                chomp $line;
+                ( $dnsip, $dnsrip, $dnshost ) = split( /\|/, $line );
+                if ( $ip eq $dnsip ) {
+                    $cachehit = 1;
+                    last;
+                }
             }
+            close($DNS);
         }
-        close($DNS);
         if ($cachehit) {
             $host = $dnshost;
         }
@@ -241,12 +242,10 @@ sub iplookup {
             @result = geo_binary( $ip, $iptype );
         };
         my $asn = $result[4];
-        if   ( $result[0] eq "" ) { $result[0] = "-" }
-        if   ( $result[1] eq "" ) { $result[1] = "-" }
-        if   ( $result[2] eq "" ) { $result[2] = "-" }
-        if   ( $result[3] eq "" ) { $result[3] = "-" }
-        if   ( $result[4] eq "" ) { $result[4] = "-" }
-        else                      { $result[4] = "[$result[4]]" }
+        for my $i ( 0 .. 4 ) {
+            if ( !defined $result[$i] || $result[$i] eq "" ) { $result[$i] = "-" }
+        }
+        if ( $result[4] ne "-" ) { $result[4] = "[$result[4]]" }
 
         if ( $cc_lookups == 3 ) {
             if ($cconly) { return ( $result[0], $asn ) }
