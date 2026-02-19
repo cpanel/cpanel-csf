@@ -72,6 +72,7 @@ install -m 0700 bin/csftest.pl %{buildroot}/usr/local/csf/bin/
 install -m 0700 bin/pt_deleted_action.pl %{buildroot}/usr/local/csf/bin/
 install -m 0700 bin/regex.custom.pm %{buildroot}/usr/local/csf/bin/
 install -m 0700 bin/remove_apf_bfd.sh %{buildroot}/usr/local/csf/bin/
+install -m 0700 bin/auto.pl %{buildroot}/usr/local/csf/bin/
 
 # Install library files (recursively)
 cp -a lib/* %{buildroot}/usr/local/csf/lib/
@@ -163,10 +164,10 @@ rm -rf %{buildroot}
 # Bin files - most are code, some are user-customizable
 /usr/local/csf/bin/csftest.pl
 /usr/local/csf/bin/remove_apf_bfd.sh
+/usr/local/csf/bin/auto.pl
 /usr/local/csf/lib/*
 /usr/local/csf/profiles/*
 
-# 
 %config(noreplace) /usr/local/csf/bin/pt_deleted_action.pl
 %config(noreplace) /usr/local/csf/bin/regex.custom.pm
 
