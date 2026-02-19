@@ -16,7 +16,11 @@ VERSION := $(shell cat etc/version.txt 2>/dev/null || echo "16.00")
 sandbox:
 	mkdir -p /usr/local/csf
 	ln -sfn $(CURDIR)/lib /usr/local/csf/lib
+	ln -sfn $(CURDIR)/bin /usr/local/csf/bin
 	if [ ! -d /etc/csf ] || [ -L /etc/csf ]; then ln -sfn $(CURDIR)/etc /etc/csf; fi
+	ln -sfn $(CURDIR)/csf.pl /usr/sbin/csf
+	ln -sfn $(CURDIR)/lfd.pl /usr/sbin/lfd
+	mkdir -p /var/lib/csf/backup /var/lib/csf/Geo /var/lib/csf/lock /var/lib/csf/stats /var/lib/csf/zone
 	mkdir -p /usr/local/man/man1
 	ln -sfn $(CURDIR)/csf.1.txt /usr/local/man/man1/csf.1
 	mkdir -p $(ULC)/whostmgr/cgi/configserver/csf
