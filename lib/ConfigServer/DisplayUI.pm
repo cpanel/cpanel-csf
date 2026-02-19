@@ -43,12 +43,11 @@ that determine the action to perform.
 
 use cPstrict;
 
-use Fcntl                 ();
-use File::Basename        ();
-use File::Copy            ();
-use Net::CIDR::Lite       ();
-use IPC::Open3            ();
-use Cpanel::Encoder::Tiny ();
+use Fcntl           ();
+use File::Basename  ();
+use File::Copy      ();
+use Net::CIDR::Lite ();
+use IPC::Open3      ();
 
 use ConfigServer::Config      ();
 use ConfigServer::CloudFlare  ();
@@ -64,7 +63,8 @@ use ConfigServer::Sanity  ();
 use ConfigServer::CheckIP qw(checkip);
 use ConfigServer::Slurp   qw(slurp slurpee);
 
-use Cpanel::Config ();
+use Cpanel::Config        ();
+use Cpanel::Encoder::Tiny ();
 
 our $VERSION = 1.01;
 
@@ -368,8 +368,7 @@ sub main {
         if ( $FORM{dur} eq "hours" )   { $FORM{timeout} = $FORM{timeout} * 60 * 60 }
         if ( $FORM{dur} eq "days" )    { $FORM{timeout} = $FORM{timeout} * 60 * 60 * 24 }
         if ( !length $FORM{ports} )    { $FORM{ports}   = "*" }
-        my $do_action = ( $FORM{do} && $FORM{do} eq "block" ) ? "block" : "allow";
-        print "<div><p>Temporarily ${do_action}ing $FORM{ip} for $FORM{timeout} seconds:</p>\n<pre class='comment' style='white-space: pre-wrap;'>\n";
+        print "<div><p>Temporarily $FORM{do}ing $FORM{ip} for $FORM{timeout} seconds:</p>\n<pre class='comment' style='white-space: pre-wrap;'>\n";
         if ( $FORM{do} eq "block" ) {
             _printcmd( "/usr/sbin/csf", "-td", $FORM{ip}, $FORM{timeout}, "-p", $FORM{ports}, $FORM{comment} );
         }
@@ -533,9 +532,7 @@ EOF
                     my $pid = IPC::Open3::open3( $childin, $childout, $childout, $config{TAIL}, "-$FORM{lines}", $logfile );
                     while (<$childout>) {
                         my $line = $_;
-                        $line =~ s/&/&amp;/g;
-                        $line =~ s/</&lt;/g;
-                        $line =~ s/>/&gt;/g;
+                        $line = Cpanel::Encoder::Tiny::safe_html_encode_str($line);
                         print $line;
                     }
                     waitpid( $pid, 0 );
@@ -672,7 +669,7 @@ EOF
         if ( $FORM{grepZ} ) { $grepbin = $config{ZGREP} }
         if ( $FORM{grepi} ) { push @cmd, "-i" }
         if ( $FORM{grepE} ) { push @cmd, "-E" }
-        push @cmd, $FORM{grep};
+        push @cmd, '--', "$FORM{grep}";
 
         if ( -z $logfile ) {
             print "<---- $logfile is currently empty ---->";
@@ -692,9 +689,7 @@ EOF
                             my $pid = IPC::Open3::open3( $childin, $childout, $childout, $grepbin, @cmd, $file );
                             while (<$childout>) {
                                 my $line = $_;
-                                $line =~ s/&/&amp;/g;
-                                $line =~ s/</&lt;/g;
-                                $line =~ s/>/&gt;/g;
+                                $line = Cpanel::Encoder::Tiny::safe_html_encode_str($line);
                                 if ( length $FORM{grep} ) {
                                     eval {
                                         local $SIG{__DIE__} = undef;
@@ -710,8 +705,7 @@ EOF
                                 $total += length $line;
                             }
                             waitpid( $pid, 0 );
-                            my $safe_grep = Cpanel::Encoder::Tiny::safe_html_encode_str( $FORM{grep} );
-                            unless ($total) { print "<---- No matches found for \"$safe_grep\" in $file ---->\n" }
+                            unless ($total) { print "<---- No matches found for \"$FORM{grep}\" in $file ---->\n" }
                             alarm(0);
                         }
                     }
@@ -722,9 +716,7 @@ EOF
                         my $pid = IPC::Open3::open3( $childin, $childout, $childout, $grepbin, @cmd, $logfile );
                         while (<$childout>) {
                             my $line = $_;
-                            $line =~ s/&/&amp;/g;
-                            $line =~ s/</&lt;/g;
-                            $line =~ s/>/&gt;/g;
+                            $line = Cpanel::Encoder::Tiny::safe_html_encode_str($line);
                             if ( length $FORM{grep} ) {
                                 eval {
                                     local $SIG{__DIE__} = undef;
@@ -740,8 +732,7 @@ EOF
                             $total += length $line;
                         }
                         waitpid( $pid, 0 );
-                        my $safe_grep = Cpanel::Encoder::Tiny::safe_html_encode_str( $FORM{grep} );
-                        unless ($total) { print "<---- No matches found for \"$safe_grep\" in $logfile ---->\n" }
+                        unless ($total) { print "<---- No matches found for \"$FORM{grep}\" in $logfile ---->\n" }
                         alarm(0);
                     }
                 };
@@ -760,8 +751,7 @@ EOF
         chomp @readme;
 
         foreach my $line (@readme) {
-            $line =~ s/\</\&lt\;/g;
-            $line =~ s/\>/\&gt\;/g;
+            $line = Cpanel::Encoder::Tiny::safe_html_encode_str($line);
             print $line. "\n";
         }
         print "</pre>\n";
@@ -1040,36 +1030,25 @@ EOF
         _cloudflare();
     }
     elsif ( $FORM{action} eq "cflist" ) {
-        my $safe_type    = Cpanel::Encoder::Tiny::safe_html_encode_str( $FORM{type} );
-        my $safe_domains = Cpanel::Encoder::Tiny::safe_html_encode_str( $FORM{domains} );
-        print "<div class='panel panel-info'><div class='panel-heading'>CloudFlare list $safe_type rules for user(s) $safe_domains:</div>\n";
+        print "<div class='panel panel-info'><div class='panel-heading'>CloudFlare list $FORM{type} rules for user(s) $FORM{domains}:</div>\n";
         print "<div class='panel-body'><pre class='comment' style='white-space: pre-wrap;'>";
         _printcmd( "/usr/sbin/csf", "--cloudflare", "list", $FORM{type}, $FORM{domains} );
         print "</pre>\n</div></div>\n";
     }
     elsif ( $FORM{action} eq "cftempdeny" ) {
-        my $safe_do      = Cpanel::Encoder::Tiny::safe_html_encode_str( $FORM{do} );
-        my $safe_target  = Cpanel::Encoder::Tiny::safe_html_encode_str( $FORM{target} );
-        my $safe_domains = Cpanel::Encoder::Tiny::safe_html_encode_str( $FORM{domains} );
-        print "<div class='panel panel-info'><div class='panel-heading'>CloudFlare $safe_do $safe_target for user(s) $safe_domains:</div>\n";
+        print "<div class='panel panel-info'><div class='panel-heading'>CloudFlare $FORM{do} $FORM{target} for user(s) $FORM{domains}:</div>\n";
         print "<div class='panel-body'><pre class='comment' style='white-space: pre-wrap;'>\n";
         _printcmd( "/usr/sbin/csf", "--cloudflare", "tempadd", $FORM{do}, $FORM{target}, $FORM{domains} );
         print "</pre>\n</div></div>\n";
     }
     elsif ( $FORM{action} eq "cfadd" ) {
-        my $safe_type    = Cpanel::Encoder::Tiny::safe_html_encode_str( $FORM{type} );
-        my $safe_target  = Cpanel::Encoder::Tiny::safe_html_encode_str( $FORM{target} );
-        my $safe_domains = Cpanel::Encoder::Tiny::safe_html_encode_str( $FORM{domains} );
-        print "<div class='panel panel-info'><div class='panel-heading'>CloudFlare Add $safe_type $safe_target for user(s) $safe_domains:</div>\n";
+        print "<div class='panel panel-info'><div class='panel-heading'>CloudFlare Add $FORM{type} $FORM{target} for user(s) $FORM{domains}:</div>\n";
         print "<div class='panel-body'><pre class='comment' style='white-space: pre-wrap;'>";
         _printcmd( "/usr/sbin/csf", "--cloudflare", "add", $FORM{type}, $FORM{target}, $FORM{domains} );
         print "</pre>\n</div></div>\n";
     }
     elsif ( $FORM{action} eq "cfremove" ) {
-        my $safe_type    = Cpanel::Encoder::Tiny::safe_html_encode_str( $FORM{type} );
-        my $safe_target  = Cpanel::Encoder::Tiny::safe_html_encode_str( $FORM{target} );
-        my $safe_domains = Cpanel::Encoder::Tiny::safe_html_encode_str( $FORM{domains} );
-        print "<div class='panel panel-info'><div class='panel-heading'>CloudFlare Delete $safe_type $safe_target for user(s) $safe_domains:</div>\n";
+        print "<div class='panel panel-info'><div class='panel-heading'>CloudFlare Delete $FORM{type} $FORM{target} for user(s) $FORM{domains}:</div>\n";
         print "<div class='panel-body'><pre class='comment' style='white-space: pre-wrap;'>";
         _printcmd( "/usr/sbin/csf", "--cloudflare", "del", $FORM{target}, $FORM{domains} );
         print "</pre>\n</div></div>\n";
@@ -1086,8 +1065,7 @@ EOF
         if ( $FORM{dur} eq "hours" )   { $FORM{timeout} = $FORM{timeout} * 60 * 60 }
         if ( $FORM{dur} eq "days" )    { $FORM{timeout} = $FORM{timeout} * 60 * 60 * 24 }
         if ( !length $FORM{ports} )    { $FORM{ports}   = "*" }
-        my $cluster_action = ( defined $FORM{do} && $FORM{do} eq 'block' ) ? 'block' : 'allow';
-        print "<div><p>cluster Temporarily ${cluster_action}ing $FORM{ip} for $FORM{timeout} seconds:</p>\n<pre class='comment' style='white-space: pre-wrap;'>\n";
+        print "<div><p>cluster Temporarily $FORM{do}ing $FORM{ip} for $FORM{timeout} seconds:</p>\n<pre class='comment' style='white-space: pre-wrap;'>\n";
         if ( $FORM{do} eq "block" ) {
             _printcmd( "/usr/sbin/csf", "-ctd", $FORM{ip}, $FORM{timeout}, "-p", $FORM{ports}, $FORM{comment} );
         }
@@ -1155,8 +1133,7 @@ EOF
             close($IN);
         }
         if ( $restricted{ $FORM{option} } ) {
-            my $safe_option = Cpanel::Encoder::Tiny::safe_html_encode_str( $FORM{option} );
-            print "<div>Option $safe_option cannot be set with RESTRICT_UI enabled</div>\n";
+            print "<div>Option $FORM{option} cannot be set with RESTRICT_UI enabled</div>\n";
             return 0;    # Signal caller to exit immediately
         }
         print "<div><p>Cluster configuration option...</p>\n<pre class='comment' style='white-space: pre-wrap;'>\n";
@@ -1388,10 +1365,7 @@ EOF
                     print "<div class='comment'>\n";
                 }
                 $line =~ s/\#//g;
-                $line =~ s/&/&amp;/g;
-                $line =~ s/</&lt;/g;
-                $line =~ s/>/&gt;/g;
-                $line =~ s/\n/<br \/>\n/g;
+                $line = Cpanel::Encoder::Tiny::safe_html_encode_str($line);
                 print "$line<br />\n";
             }
         }
@@ -2627,8 +2601,7 @@ sub _editfile {
         print "# Do not remove or change this line as it is a safeguard for the UI editor\n";
 
         foreach my $line (@confdata) {
-            $line =~ s/\</\&lt\;/g;
-            $line =~ s/\>/\&gt\;/g;
+            $line = Cpanel::Encoder::Tiny::safe_html_encode_str($line);
             print $line. "\n";
         }
         print "</textarea><br></div>\n";
@@ -2687,8 +2660,7 @@ EOF
         if ($extra) { print "<input type='hidden' name='$extra' value='$FORM{$extra}'>\n"; }
         print "<textarea class='textarea' name='formdata' style='width:100%;height:500px;border: 1px solid #000;' wrap='off'>";
         foreach my $line (@confdata) {
-            $line =~ s/\</\&lt\;/g;
-            $line =~ s/\>/\&gt\;/g;
+            $line = Cpanel::Encoder::Tiny::safe_html_encode_str($line);
             print $line. "\n";
         }
         print "</textarea></div>\n";
