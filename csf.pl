@@ -3814,11 +3814,11 @@ $table, $chain, $rest
     if ( $output[0] =~ /# Warning: iptables-legacy tables present/ ) { shift @output }
 
     foreach my $line (@output) {
-        if ( $line =~ /^Chain\s([\w\_]*)\s/ ) { $chain = $1 }
-        if ( $line =~ /^(\S+) table:$/ )      { $table = $1 }
-        if ( $chain eq "acctboth" )           { next }
-        if ( !$head and ( $line =~ /^num/ ) ) { print "\nTable  Chain            $line\n"; $head = 1 }
-        if ( $line !~ /\d+/ )                 { next }
+        if ( $line =~ /^Chain\s([\w\_]*)\s/ )         { $chain = $1 }
+        if ( $line =~ /^(\S+) table:$/ )              { $table = $1 }
+        if ( defined $chain && $chain eq "acctboth" ) { next }
+        if ( !$head and ( $line =~ /^num/ ) )         { print "\nTable  Chain            $line\n"; $head = 1 }
+        if ( $line !~ /\d+/ )                         { next }
         my ( undef, undef, undef, $action, undef, undef, undef, undef, $source, $destination, $options ) = split( /\s+/, $line, 11 );
 
         my $hit = 0;
@@ -3826,14 +3826,14 @@ $table, $chain, $rest
             $hit = 1;
         }
         else {
-            if ( ( $source =~ /\// ) and ( $source ne "0.0.0.0/0" ) ) {
+            if ( defined $source and ( $source =~ /\// ) and ( $source ne "0.0.0.0/0" ) ) {
                 if ( checkip( \$source ) ) {
                     my $cidr = Net::CIDR::Lite->new;
                     eval { local $SIG{__DIE__} = undef; $cidr->add($source) };
                     if ( $cidr->find($ipmatch) ) { $hit = 1 }
                 }
             }
-            if ( !$hit and ( $destination =~ /\// ) and ( $destination ne "0.0.0.0/0" ) ) {
+            if ( !$hit and defined $destination and ( $destination =~ /\// ) and ( $destination ne "0.0.0.0/0" ) ) {
                 if ( checkip( \$destination ) ) {
                     my $cidr = Net::CIDR::Lite->new;
                     eval { local $SIG{__DIE__} = undef; $cidr->add($destination) };
@@ -3963,10 +3963,10 @@ $table, $chain, $rest
         if ( $output[0] =~ /# Warning: iptables-legacy tables present/ ) { shift @output }
 
         foreach my $line (@output) {
-            if ( $line =~ /^Chain\s([\w\_]*)\s/ ) { $chain = $1 }
-            if ( $line =~ /^(\S+) table:$/ )      { $table = $1 }
-            if ( $chain eq "acctboth" )           { next }
-            if ( !$head and ( $line =~ /^num/ ) ) { print "\nTable  Chain            $line\n"; $head = 1 }
+            if ( $line =~ /^Chain\s([\w\_]*)\s/ )          { $chain = $1 }
+            if ( $line =~ /^(\S+) table:$/ )               { $table = $1 }
+            if ( defined $chain and $chain eq "acctboth" ) { next }
+            if ( !$head and ( $line =~ /^num/ ) )          { print "\nTable  Chain            $line\n"; $head = 1 }
 
             if ( $line !~ /\d+/ ) { next }
             my ( undef, undef, undef, $action, undef, undef, undef, $source, $destination, $options ) = split( /\s+/, $line, 11 );
@@ -3976,14 +3976,14 @@ $table, $chain, $rest
                 $hit = 1;
             }
             else {
-                if ( ( $source =~ /\// ) and ( $source ne "::/0" ) ) {
+                if ( defined $source and ( $source =~ /\// ) and ( $source ne "::/0" ) ) {
                     if ( checkip( \$source ) ) {
                         my $cidr = Net::CIDR::Lite->new;
                         eval { local $SIG{__DIE__} = undef; $cidr->add($source) };
                         if ( $cidr->find($ipmatch) ) { $hit = 1 }
                     }
                 }
-                if ( !$hit and ( $destination =~ /\// ) and ( $destination ne "::/0" ) ) {
+                if ( !$hit and defined $destination and ( $destination =~ /\// ) and ( $destination ne "::/0" ) ) {
                     if ( checkip( \$destination ) ) {
                         my $cidr = Net::CIDR::Lite->new;
                         eval { local $SIG{__DIE__} = undef; $cidr->add($destination) };
