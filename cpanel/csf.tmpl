@@ -20,11 +20,11 @@ WRAPPER 'master_templates/master.tmpl'
     breadcrumburl='/cgi/configserver/csf.cgi',
 %]
 
-[% csf_output %]
-
 <script type="text/javascript" src="[% JQUERY %]"></script>
 <script type="text/javascript" src="[% JQ_UI  %]"></script>
 <script type="text/javascript" src="[% BOOTSTRAP_JS %]"></script>
+ 
+[% csf_output %]
 <script type="text/javascript">
 function getCookie(cname) {
 	var name = cname + "=";
