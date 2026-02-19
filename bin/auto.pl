@@ -1064,7 +1064,7 @@ if ( $config{TESTING} ) {
 }
 
 open( my $in_fh, "<", "/etc/csf/csf.conf" ) or die $!;
-flock( $in_fh, LOCK_SH )           or die $!;
+flock( $in_fh, LOCK_SH )                    or die $!;
 my @config = <$in_fh>;
 close($in_fh);
 chomp @config;
