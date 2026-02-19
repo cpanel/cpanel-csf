@@ -176,9 +176,10 @@ sub main {
     if ( $FORM{ip} ne "" ) { $FORM{ip} =~ s/(^\s+)|(\s+$)//g }
 
     if ( $FORM{action} ne "" and !checkip( \$FORM{ip} ) ) {
+        my $safe_ip = Cpanel::Encoder::Tiny::safe_html_encode_str( $FORM{ip} );
         print "<table class='table table-bordered table-striped'>\n";
         print "<tr><td>";
-        print "[$FORM{ip}] is not a valid IP address\n";
+        print "[$safe_ip] is not a valid IP address\n";
         print "</td></tr></table>\n";
         print "<p><form action='$script' method='post'><input type='submit' class='btn btn-default' value='Return'></form></p>\n";
     }
@@ -216,7 +217,8 @@ sub main {
                 }
                 ConfigServer::Logger::logfile("$panel Reseller [$ENV{REMOTE_USER}]: ALLOW $FORM{ip}");
             }
-            print "<p><form action='$script' method='post'><input type='hidden' name='mobi' value='$FORM{mobi}'><input type='submit' class='btn btn-default' value='Return'></form></p>\n";
+            my $safe_mobi = Cpanel::Encoder::Tiny::safe_html_encode_str( $FORM{mobi} );
+            print "<p><form action='$script' method='post'><input type='hidden' name='mobi' value='$safe_mobi'><input type='submit' class='btn btn-default' value='Return'></form></p>\n";
         }
         elsif ( $FORM{action} eq "qdeny" and $rprivs{ $ENV{REMOTE_USER} }{DENY} ) {
             if ( $FORM{comment} eq "" ) {
@@ -251,7 +253,8 @@ sub main {
                 }
                 ConfigServer::Logger::logfile("$panel Reseller [$ENV{REMOTE_USER}]: DENY $FORM{ip}");
             }
-            print "<p><form action='$script' method='post'><input type='hidden' name='mobi' value='$FORM{mobi}'><input type='submit' class='btn btn-default' value='Return'></form></p>\n";
+            my $safe_mobi = Cpanel::Encoder::Tiny::safe_html_encode_str( $FORM{mobi} );
+            print "<p><form action='$script' method='post'><input type='hidden' name='mobi' value='$safe_mobi'><input type='submit' class='btn btn-default' value='Return'></form></p>\n";
         }
         elsif ( $FORM{action} eq "qkill" and $rprivs{ $ENV{REMOTE_USER} }{UNBLOCK} ) {
             my $text = "";
@@ -270,7 +273,8 @@ sub main {
             my $text2 = _printcmd( "/usr/sbin/csf", "-tr", $FORM{ip} );
             print "</p>\n<p>...<b>Done</b>.</p>\n";
             print "</td></tr></table>\n";
-            print "<p><form action='$script' method='post'><input type='hidden' name='mobi' value='$FORM{mobi}'><input type='submit' class='btn btn-default' value='Return'></form></p>\n";
+            my $safe_mobi = Cpanel::Encoder::Tiny::safe_html_encode_str( $FORM{mobi} );
+            print "<p><form action='$script' method='post'><input type='hidden' name='mobi' value='$safe_mobi'><input type='submit' class='btn btn-default' value='Return'></form></p>\n";
 
             if ( $rprivs{ $ENV{REMOTE_USER} }{ALERT} ) {
                 open( my $IN, "<", "/usr/local/csf/tpl/reselleralert.txt" );
