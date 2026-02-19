@@ -349,7 +349,8 @@ sub main {
         if ( $FORM{dur} eq "hours" )   { $FORM{timeout} = $FORM{timeout} * 60 * 60 }
         if ( $FORM{dur} eq "days" )    { $FORM{timeout} = $FORM{timeout} * 60 * 60 * 24 }
         if ( $FORM{ports} eq "" )      { $FORM{ports}   = "*" }
-        print "<div><p>Temporarily $FORM{do}ing $FORM{ip} for $FORM{timeout} seconds:</p>\n<pre class='comment' style='white-space: pre-wrap;'>\n";
+        my $do_action = ( $FORM{do} && $FORM{do} eq "block" ) ? "block" : "allow";
+        print "<div><p>Temporarily ${do_action}ing $FORM{ip} for $FORM{timeout} seconds:</p>\n<pre class='comment' style='white-space: pre-wrap;'>\n";
         if ( $FORM{do} eq "block" ) {
             _printcmd( "/usr/sbin/csf", "-td", $FORM{ip}, $FORM{timeout}, "-p", $FORM{ports}, $FORM{comment} );
         }
@@ -690,7 +691,8 @@ EOF
                                 $total += length $line;
                             }
                             waitpid( $pid, 0 );
-                            unless ($total) { print "<---- No matches found for \"$FORM{grep}\" in $file ---->\n" }
+                            my $safe_grep = _html_escape( $FORM{grep} );
+                            unless ($total) { print "<---- No matches found for \"$safe_grep\" in $file ---->\n" }
                             alarm(0);
                         }
                     }
@@ -718,7 +720,8 @@ EOF
                             $total += length $line;
                         }
                         waitpid( $pid, 0 );
-                        unless ($total) { print "<---- No matches found for \"$FORM{grep}\" in $logfile ---->\n" }
+                        my $safe_grep = _html_escape( $FORM{grep} );
+                        unless ($total) { print "<---- No matches found for \"$safe_grep\" in $logfile ---->\n" }
                         alarm(0);
                     }
                 };
@@ -1017,25 +1020,36 @@ EOF
         _cloudflare();
     }
     elsif ( $FORM{action} eq "cflist" ) {
-        print "<div class='panel panel-info'><div class='panel-heading'>CloudFlare list $FORM{type} rules for user(s) $FORM{domains}:</div>\n";
+        my $safe_type    = _html_escape( $FORM{type} );
+        my $safe_domains = _html_escape( $FORM{domains} );
+        print "<div class='panel panel-info'><div class='panel-heading'>CloudFlare list $safe_type rules for user(s) $safe_domains:</div>\n";
         print "<div class='panel-body'><pre class='comment' style='white-space: pre-wrap;'>";
         _printcmd( "/usr/sbin/csf", "--cloudflare", "list", $FORM{type}, $FORM{domains} );
         print "</pre>\n</div></div>\n";
     }
     elsif ( $FORM{action} eq "cftempdeny" ) {
-        print "<div class='panel panel-info'><div class='panel-heading'>CloudFlare $FORM{do} $FORM{target} for user(s) $FORM{domains}:</div>\n";
+        my $safe_do      = _html_escape( $FORM{do} );
+        my $safe_target  = _html_escape( $FORM{target} );
+        my $safe_domains = _html_escape( $FORM{domains} );
+        print "<div class='panel panel-info'><div class='panel-heading'>CloudFlare $safe_do $safe_target for user(s) $safe_domains:</div>\n";
         print "<div class='panel-body'><pre class='comment' style='white-space: pre-wrap;'>\n";
         _printcmd( "/usr/sbin/csf", "--cloudflare", "tempadd", $FORM{do}, $FORM{target}, $FORM{domains} );
         print "</pre>\n</div></div>\n";
     }
     elsif ( $FORM{action} eq "cfadd" ) {
-        print "<div class='panel panel-info'><div class='panel-heading'>CloudFlare Add $FORM{type} $FORM{target} for user(s) $FORM{domains}:</div>\n";
+        my $safe_type    = _html_escape( $FORM{type} );
+        my $safe_target  = _html_escape( $FORM{target} );
+        my $safe_domains = _html_escape( $FORM{domains} );
+        print "<div class='panel panel-info'><div class='panel-heading'>CloudFlare Add $safe_type $safe_target for user(s) $safe_domains:</div>\n";
         print "<div class='panel-body'><pre class='comment' style='white-space: pre-wrap;'>";
         _printcmd( "/usr/sbin/csf", "--cloudflare", "add", $FORM{type}, $FORM{target}, $FORM{domains} );
         print "</pre>\n</div></div>\n";
     }
     elsif ( $FORM{action} eq "cfremove" ) {
-        print "<div class='panel panel-info'><div class='panel-heading'>CloudFlare Delete $FORM{type} $FORM{target} for user(s) $FORM{domains}:</div>\n";
+        my $safe_type    = _html_escape( $FORM{type} );
+        my $safe_target  = _html_escape( $FORM{target} );
+        my $safe_domains = _html_escape( $FORM{domains} );
+        print "<div class='panel panel-info'><div class='panel-heading'>CloudFlare Delete $safe_type $safe_target for user(s) $safe_domains:</div>\n";
         print "<div class='panel-body'><pre class='comment' style='white-space: pre-wrap;'>";
         _printcmd( "/usr/sbin/csf", "--cloudflare", "del", $FORM{target}, $FORM{domains} );
         print "</pre>\n</div></div>\n";
@@ -1052,7 +1066,8 @@ EOF
         if ( $FORM{dur} eq "hours" )   { $FORM{timeout} = $FORM{timeout} * 60 * 60 }
         if ( $FORM{dur} eq "days" )    { $FORM{timeout} = $FORM{timeout} * 60 * 60 * 24 }
         if ( $FORM{ports} eq "" )      { $FORM{ports}   = "*" }
-        print "<div><p>cluster Temporarily $FORM{do}ing $FORM{ip} for $FORM{timeout} seconds:</p>\n<pre class='comment' style='white-space: pre-wrap;'>\n";
+        my $cluster_action = ( defined $FORM{do} && $FORM{do} eq 'block' ) ? 'block' : 'allow';
+        print "<div><p>cluster Temporarily ${cluster_action}ing $FORM{ip} for $FORM{timeout} seconds:</p>\n<pre class='comment' style='white-space: pre-wrap;'>\n";
         if ( $FORM{do} eq "block" ) {
             _printcmd( "/usr/sbin/csf", "-ctd", $FORM{ip}, $FORM{timeout}, "-p", $FORM{ports}, $FORM{comment} );
         }
@@ -1120,7 +1135,8 @@ EOF
             close($IN);
         }
         if ( $restricted{ $FORM{option} } ) {
-            print "<div>Option $FORM{option} cannot be set with RESTRICT_UI enabled</div>\n";
+            my $safe_option = _html_escape( $FORM{option} );
+            print "<div>Option $safe_option cannot be set with RESTRICT_UI enabled</div>\n";
             return 0;    # Signal caller to exit immediately
         }
         print "<div><p>Cluster configuration option...</p>\n<pre class='comment' style='white-space: pre-wrap;'>\n";
@@ -2344,6 +2360,16 @@ EOD
     }
 
     return;
+}
+
+sub _html_escape {
+    my $text = shift // '';
+    $text =~ s/&/&amp;/g;
+    $text =~ s/</&lt;/g;
+    $text =~ s/>/&gt;/g;
+    $text =~ s/"/&quot;/g;
+    $text =~ s/'/&#39;/g;
+    return $text;
 }
 
 sub _printcmd {
