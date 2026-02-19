@@ -11,6 +11,7 @@ on:
 
 jobs:
   test:
+    if: github.repository == 'webpros-cpanel/app-csf'
     runs-on:
       group: org/cpanel-arc-image-build
     container:
