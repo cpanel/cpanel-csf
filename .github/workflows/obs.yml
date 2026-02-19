@@ -4,12 +4,19 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - 't/**'
+      - '.github/**'
   pull_request:
     branches:
       - main
+    paths-ignore:
+      - 't/**'
+      - '.github/**'
   workflow_dispatch:
 
 jobs:
   build:
+    if: github.repository == 'webpros-cpanel/app-csf'
     uses: webpros-cpanel/ea-tools/.github/workflows/reusable-obs-build.yml@ghes
     secrets: inherit
