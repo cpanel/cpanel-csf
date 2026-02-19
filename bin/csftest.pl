@@ -28,133 +28,85 @@ our ( $return, $fatal, $error );
 $fatal = 0;
 $error = 0;
 
-#my @modules = ("ip_tables","ipt_state","ipt_multiport","iptable_filter","ipt_limit","ipt_LOG","ipt_REJECT","ipt_conntrack","ip_conntrack","ip_conntrack_ftp","iptable_mangle","ip_tables","xt_state","xt_multiport","iptable_filter","xt_limit","ipt_LOG","ipt_REJECT","ip_conntrack_ftp","iptable_mangle","xt_conntrack");
-#push @modules,"ipt_owner";
-#push @modules,"xt_owner";
-#push @modules,"ipt_REDIRECT";
-#push @modules,"iptable_nat";
-#push @modules,"ipt_recent ip_list_tot=1000 ip_list_hash_size=0";
-#foreach my $module (@modules) {loadmodule($module)}
+my @modules = (
+    {
+        name    => 'ip_tables/iptable_filter',
+        command => "/sbin/iptables -I OUTPUT -p tcp --dport 9999 -j ACCEPT",
+        fatal   => "Required for csf to function",
+    },
+    {
+        name    => 'ipt_LOG',
+        command => "/sbin/iptables -I OUTPUT -p tcp --dport 9999 -j LOG",
+        fatal   => "Required for csf to function",
+    },
+    {
+        name    => 'ipt_multiport/xt_multiport',
+        command => "/sbin/iptables -I OUTPUT -p tcp -m multiport --dports 9998,9999 -j LOG",
+        fatal   => "Required for csf to function",
+    },
+    {
+        name    => 'ipt_REJECT',
+        command => "/sbin/iptables -I OUTPUT -p tcp --dport 9999 -j REJECT",
+        fatal   => "Required for csf to function",
+    },
+    {
+        name    => 'ipt_state/xt_state',
+        command => "/sbin/iptables -I OUTPUT -p tcp --dport 9999 -m state --state NEW -j LOG",
+        fatal   => "Required for csf to function",
+    },
+    {
+        name    => 'ipt_limit/xt_limit',
+        command => "/sbin/iptables -I OUTPUT -p tcp --dport 9999 -m limit --limit 30/m --limit-burst 5 -j LOG",
+        fatal   => "Required for csf to function",
+    },
+    {
+        name    => 'ipt_recent',
+        command => "/sbin/iptables -I OUTPUT -p tcp --dport 9999 -m recent --set",
+        error   => "Required for PORTFLOOD and PORTKNOCKING features",
+    },
+    {
+        name    => 'xt_connlimit',
+        command => "/sbin/iptables -I INPUT -p tcp --dport 9999 -m connlimit --connlimit-above 100 -j REJECT --reject-with tcp-reset",
+        error   => "Required for CONNLIMIT feature",
+    },
+    {
+        name    => 'ipt_owner/xt_owner',
+        command => "/sbin/iptables -I OUTPUT -p tcp --dport 9999 -m owner --uid-owner 0 -j LOG",
+        error   => "Required for SMTP_BLOCK and UID/GID blocking features",
+    },
+    {
+        name    => 'iptable_nat/ipt_REDIRECT',
+        command => "/sbin/iptables -t nat -I OUTPUT -p tcp --dport 9999 -j REDIRECT --to-ports 9900",
+        error   => "Required for MESSENGER feature",
+    },
+    {
+        name    => 'iptable_nat/ipt_DNAT',
+        command => "/sbin/iptables -t nat -I PREROUTING -p tcp --dport 9999 -j DNAT --to-destination 192.168.254.1",
+        error   => "Required for csf.redirect feature",
+    }
+);
 
-print "Testing ip_tables/iptable_filter...";
-$return = testiptables("/sbin/iptables -I OUTPUT -p tcp --dport 9999 -j ACCEPT");
-if ( $return ne "" ) {
-    print "FAILED [FATAL Error: $return] - Required for csf to function\n";
-    $fatal++;
-}
-else {
-    print "OK\n";
-    testiptables("/sbin/iptables -D OUTPUT -p tcp --dport 9999 -j ACCEPT");
-}
+foreach my $module (@modules) {
+    print "Testing $module->{name}...";
+    $return = testiptables( $module->{command} );
+    if ( $return && $return ne "" ) {
+        if ( $module->{fatal} ) {
+            $fatal++;
+            print "FAILED [FATAL Error: $return] - $module->{fatal}\n";
+        }
+        else {
+            $error++;
+            print "FAILED [Error: $return] - $module->{error}\n";
+        }
+    }
+    else {
+        print "OK\n";
 
-print "Testing ipt_LOG...";
-$return = testiptables("/sbin/iptables -I OUTPUT -p tcp --dport 9999 -j LOG");
-if ( $return ne "" ) {
-    print "FAILED [FATAL Error: $return] - Required for csf to function\n";
-    $fatal++;
-}
-else {
-    print "OK\n";
-    testiptables("/sbin/iptables -D OUTPUT -p tcp --dport 9999 -j LOG");
-}
-
-print "Testing ipt_multiport/xt_multiport...";
-$return = testiptables("/sbin/iptables -I OUTPUT -p tcp -m multiport --dports 9998,9999 -j LOG");
-if ( $return ne "" ) {
-    print "FAILED [FATAL Error: $return] - Required for csf to function\n";
-    $fatal++;
-}
-else {
-    print "OK\n";
-    testiptables("/sbin/iptables -D OUTPUT -p tcp -m multiport --dports 9998,9999 -j LOG");
-}
-
-print "Testing ipt_REJECT...";
-$return = testiptables("/sbin/iptables -I OUTPUT -p tcp --dport 9999 -j REJECT");
-if ( $return ne "" ) {
-    print "FAILED [FATAL Error: $return] - Required for csf to function\n";
-    $fatal++;
-}
-else {
-    print "OK\n";
-    testiptables("/sbin/iptables -D OUTPUT -p tcp --dport 9999 -j REJECT");
-}
-
-print "Testing ipt_state/xt_state...";
-$return = testiptables("/sbin/iptables -I OUTPUT -p tcp --dport 9999 -m state --state NEW -j LOG");
-if ( $return ne "" ) {
-    print "FAILED [FATAL Error: $return] - Required for csf to function\n";
-    $fatal++;
-}
-else {
-    print "OK\n";
-    testiptables("/sbin/iptables -D OUTPUT -p tcp --dport 9999 -m state --state NEW -j LOG");
-}
-
-print "Testing ipt_limit/xt_limit...";
-$return = testiptables("/sbin/iptables -I OUTPUT -p tcp --dport 9999 -m limit --limit 30/m --limit-burst 5 -j LOG");
-if ( $return ne "" ) {
-    print "FAILED [FATAL Error: $return] - Required for csf to function\n";
-    $fatal++;
-}
-else {
-    print "OK\n";
-    testiptables("/sbin/iptables -D OUTPUT -p tcp --dport 9999 -m limit --limit 30/m --limit-burst 5 -j LOG");
-}
-
-print "Testing ipt_recent...";
-$return = testiptables("/sbin/iptables -I OUTPUT -p tcp --dport 9999 -m recent --set");
-if ( $return ne "" ) {
-    print "FAILED [Error: $return] - Required for PORTFLOOD and PORTKNOCKING features\n";
-    $error++;
-}
-else {
-    print "OK\n";
-    testiptables("/sbin/iptables -D OUTPUT -p tcp --dport 9999 -m recent --set");
-}
-
-print "Testing xt_connlimit...";
-$return = testiptables("/sbin/iptables -I INPUT -p tcp --dport 9999 -m connlimit --connlimit-above 100 -j REJECT --reject-with tcp-reset");
-if ( $return ne "" ) {
-    print "FAILED [Error: $return] - Required for CONNLIMIT feature\n";
-    $error++;
-}
-else {
-    print "OK\n";
-    testiptables("/sbin/iptables -D  INPUT -p tcp --dport 9999 -m connlimit --connlimit-above 100 -j REJECT --reject-with tcp-reset");
-}
-
-print "Testing ipt_owner/xt_owner...";
-$return = testiptables("/sbin/iptables -I OUTPUT -p tcp --dport 9999 -m owner --uid-owner 0 -j LOG");
-if ( $return ne "" ) {
-    print "FAILED [Error: $return] - Required for SMTP_BLOCK and UID/GID blocking features\n";
-    $error++;
-}
-else {
-    print "OK\n";
-    testiptables("/sbin/iptables -D OUTPUT -p tcp --dport 9999 -m owner --uid-owner 0 -j LOG");
-}
-
-print "Testing iptable_nat/ipt_REDIRECT...";
-$return = testiptables("/sbin/iptables -t nat -I OUTPUT -p tcp --dport 9999 -j REDIRECT --to-ports 9900");
-if ( $return ne "" ) {
-    print "FAILED [Error: $return] - Required for MESSENGER feature\n";
-    $error++;
-}
-else {
-    print "OK\n";
-    testiptables("/sbin/iptables -t nat -D OUTPUT -p tcp --dport 9999 -j REDIRECT --to-ports 9900");
-}
-
-print "Testing iptable_nat/ipt_DNAT...";
-$return = testiptables("/sbin/iptables -t nat -I PREROUTING -p tcp --dport 9999 -j DNAT --to-destination 192.168.254.1");
-if ( $return ne "" ) {
-    print "FAILED [Error: $return] - Required for csf.redirect feature\n";
-    $error++;
-}
-else {
-    print "OK\n";
-    testiptables("/sbin/iptables -t nat -D PREROUTING -p tcp --dport 9999 -j DNAT --to-destination 192.168.254.1");
+        # Cleanup the test rule
+        my $cleanup_command = $module->{command};
+        $cleanup_command =~ s/-I /-D /;    # Change -I to -D for cleanup
+        testiptables($cleanup_command);
+    }
 }
 
 if    ($fatal) { print "\nRESULT: csf will not function on this server due to FATAL errors from missing modules [$fatal]\n" }
