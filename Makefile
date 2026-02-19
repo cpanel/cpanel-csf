@@ -2,13 +2,14 @@
 OBS_PROJECT := cpanel-plugins
 OBS_PACKAGE := cpanel-csf
 DISABLE_BUILD := repository=CentOS_6.5_standard
+PERL_FILES := $(shell git ls-files --exclude 'debify' | grep -E '.pm$$|.pl$$')
 
 # Export OBS_PROJECT so debify can find the RPM to query for file lists
 export OBS_PROJECT
 
 -include $(EATOOLS_BUILD_DIR)obs.mk
 
-.PHONY: sandbox test man install tarball clean-tarball
+.PHONY: sandbox test man install tarball clean-tarball bump-version
 
 ULC=/usr/local/cpanel
 VERSION := $(shell cat etc/version.txt 2>/dev/null || echo "16.00")
@@ -34,14 +35,21 @@ sandbox:
 	ln -sfn $(CURDIR)/cpanel/csf_small.png $(ULC)/whostmgr/cgi/configserver/csf/csf_small.png
 
 clean: clean-tarball
-	rm -rf csf.tar.gz
+	rm -rf BUILD/
 
 clean-tarball:
 	rm -f SOURCES/cpanel-csf-*.tar.gz
 
+NEW_VERSION := $(shell awk '{print $$1 + 0.01}' etc/version.txt)
+bump-version:
+	@echo $(NEW_VERSION) > etc/version.txt
+	@sed -i 's/^%define csf_version.*/%define csf_version $(NEW_VERSION)/' SPECS/cpanel-csf.spec
+	@echo "Version is now $(NEW_VERSION). Please commit your changes."
+
 # Generate tarball for OBS/RPM build
-tarball: clean-tarball
+tarball: clean
 	@echo "Creating tarball for version $(VERSION)..."
+	@sed -i 's/^use cPstrict;/use cPstrict;\nno warnings;/g' $(PERL_FILES)
 	@mkdir -p SOURCES
 	@tar -czf SOURCES/cpanel-csf-$(VERSION).tar.gz \
 		--transform 's,^,cpanel-csf-$(VERSION)/,' \
@@ -74,6 +82,7 @@ tarball: clean-tarball
 		csf.sh \
 		os.pl
 	@echo "Created SOURCES/cpanel-csf-$(VERSION).tar.gz"
+	@git checkout $(PERL_FILES)
 
 pre-debify:
 	debify/debify_mongler.pl
