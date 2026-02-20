@@ -2,7 +2,7 @@
 # RPM spec file
 
 %define release_prefix 1
-%define csf_version 16.00
+%define csf_version 16.01
 
 Name:           cpanel-csf
 Version:        %{csf_version}
@@ -235,6 +235,9 @@ rm -rf %{buildroot}
 /usr/local/cpanel/bin/csf.conf.appconfig
 
 %changelog
-* Wed Feb 05 2025 Thomas "Andy" Baugh <andy.baugh@webpros.com> - 16.00-1
+* Fri Feb 20 2026 Travis Holloway <travis.holloway@webpros.com> - 16.01-1
+- Update link in x-arf template
+
+* Wed Feb 05 2026 Thomas "Andy" Baugh <andy.baugh@webpros.com> - 16.00-1
 - Initial RPM packaging of CSF for cPanel OBS build system
 - Converted from install.sh to RPM spec file
