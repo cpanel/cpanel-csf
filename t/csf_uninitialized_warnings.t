@@ -127,19 +127,20 @@ subtest 'linefilter handles incomplete pipe-delimited rules without uninitialize
         }
     );
 
-    # Set package variables needed by linefilter (suppress "used only once" warnings)
-    our $ethdevin       = '! -i lo';
-    our $ethdevout      = '! -o lo';
-    our $eth6devin      = '! -i lo';
-    our $eth6devout     = '! -o lo';
-    our $accept         = 'ACCEPT';
-    our $verbose        = '';
-    our %config         = %mock_config;
-    our %messengerports = ();
+    # Set package variables needed by linefilter
+    no warnings 'once';
+    $sbin::csf::ethdevin       = '! -i lo';
+    $sbin::csf::ethdevout      = '! -o lo';
+    $sbin::csf::eth6devin      = '! -i lo';
+    $sbin::csf::eth6devout     = '! -o lo';
+    $sbin::csf::accept         = 'ACCEPT';
+    $sbin::csf::verbose        = '';
+    %sbin::csf::config         = %mock_config;
+    %sbin::csf::messengerports = ();
 
     # Track syscommand calls
     our @syscommand_calls;
-    my $syscommand_mock = Test::MockModule->new('main');
+    my $syscommand_mock = Test::MockModule->new( 'sbin::csf', no_auto => 1 );
     $syscommand_mock->redefine(
         'syscommand',
         sub {
@@ -151,37 +152,37 @@ subtest 'linefilter handles incomplete pipe-delimited rules without uninitialize
 
     # Test case 1: Rule with only protocol (single field) - tests @ll with 1 element
     @syscommand_calls = ();
-    eval { main::linefilter( 'tcp', 'deny', '', 0 ); };
+    eval { sbin::csf::linefilter( 'tcp', 'deny', '', 0 ); };
     ok( !$@, 'linefilter handles single-field rule (tcp) without warnings' ) or diag("Error: $@");
 
     # Test case 2: Rule with protocol and direction (two fields) - tests @ll with 2 elements
     @syscommand_calls = ();
-    eval { main::linefilter( 'tcp|in', 'deny', '', 0 ); };
+    eval { sbin::csf::linefilter( 'tcp|in', 'deny', '', 0 ); };
     ok( !$@, 'linefilter handles two-field rule (tcp|in) without warnings' ) or diag("Error: $@");
 
     # Test case 3: Rule with protocol, direction, and port (three fields) - tests @ll with 3 elements
     @syscommand_calls = ();
-    eval { main::linefilter( 'tcp|in|d=80', 'allow', '', 0 ); };
+    eval { sbin::csf::linefilter( 'tcp|in|d=80', 'allow', '', 0 ); };
     ok( !$@, 'linefilter handles three-field rule (tcp|in|d=80) without warnings' ) or diag("Error: $@");
 
     # Test case 4: Rule with protocol, direction, port, and IP (four fields) - tests @ll with 4 elements
     @syscommand_calls = ();
-    eval { main::linefilter( 'tcp|in|d=80|s=192.168.1.1', 'allow', '', 0 ); };
+    eval { sbin::csf::linefilter( 'tcp|in|d=80|s=192.168.1.1', 'allow', '', 0 ); };
     ok( !$@, 'linefilter handles four-field rule (tcp|in|d=80|s=192.168.1.1) without warnings' ) or diag("Error: $@");
 
     # Test case 5: Full rule with all fields including UID (five fields) - tests @ll with 5 elements
     @syscommand_calls = ();
-    eval { main::linefilter( 'tcp|in|d=80|s=192.168.1.1|u=1000', 'allow', '', 0 ); };
+    eval { sbin::csf::linefilter( 'tcp|in|d=80|s=192.168.1.1|u=1000', 'allow', '', 0 ); };
     ok( !$@, 'linefilter handles five-field rule with UID without warnings' ) or diag("Error: $@");
 
     # Test case 6: Rule with missing middle fields (sparse fields) - tests undefined @ll elements
     @syscommand_calls = ();
-    eval { main::linefilter( 'tcp||d=443', 'allow', '', 0 ); };
+    eval { sbin::csf::linefilter( 'tcp||d=443', 'allow', '', 0 ); };
     ok( !$@, 'linefilter handles sparse fields (tcp||d=443) without warnings' ) or diag("Error: $@");
 
     # Test case 7: Colon-delimited format (legacy) - tests colon-to-pipe conversion
     @syscommand_calls = ();
-    eval { main::linefilter( 'tcp:in:d=22', 'allow', '', 0 ); };
+    eval { sbin::csf::linefilter( 'tcp:in:d=22', 'allow', '', 0 ); };
     ok( !$@, 'linefilter handles colon-delimited format (tcp:in:d=22) without warnings' ) or diag("Error: $@");
 };
 
