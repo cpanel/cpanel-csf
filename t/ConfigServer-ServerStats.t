@@ -46,14 +46,16 @@ subtest '_reset_stats() clears internal state' => sub {
     # Populate some state in a rendered bucket (e.g. HOUR) using a distinctive value
     ConfigServer::ServerStats::_minmaxavg( 'HOUR', 'cpu', 987 );
 
-    # Verify state is reflected in graphs_html output before reset
+    # Verify state is reflected in graphs_html output before reset.
+    # Use the formatted Min: HTML fragment rather than the bare number to avoid
+    # false matches against the Unix timestamp embedded in the img ?text= URL.
     my $html_before = ConfigServer::ServerStats::graphs_html('/images/');
-    like( $html_before, qr/987/, 'Before _reset_stats(), graphs_html() includes populated metric' );
+    like( $html_before, qr/Min:<b>987\.00<\/b>/, 'Before _reset_stats(), graphs_html() includes populated metric' );
 
     # Now reset and verify the metric is no longer present
     ConfigServer::ServerStats::_reset_stats();
     my $html_after = ConfigServer::ServerStats::graphs_html('/images/');
-    unlike( $html_after, qr/987/, 'After _reset_stats(), populated metric is cleared from graphs_html() output' );
+    unlike( $html_after, qr/Min:<b>987\.00<\/b>/, 'After _reset_stats(), populated metric is cleared from graphs_html() output' );
 };
 
 subtest 'graphs_html() returns HTML structure' => sub {
