@@ -587,13 +587,13 @@ sub doclustertempdeny {
     }
 
     my $iptype = checkip( \$ip );
-    if ( $iptype == 6 and !$config{IPV6} ) {
-        print "failed: [$ip] is valid IPv6 but IPV6 is not enabled in csf.conf\n";
-    }
-
-    unless ($iptype) {
+    if ( !$iptype ) {
         print "csf: [$ip] is not a valid PUBLIC IP\n";
         return;
+    }
+
+    if ( $iptype == 6 and !$config{IPV6} ) {
+        print "failed: [$ip] is valid IPv6 but IPV6 is not enabled in csf.conf\n";
     }
 
     if ( $timeout =~ /\D/ ) {
@@ -610,9 +610,9 @@ sub doclustertempdeny {
     $comment =~ s/\-d\s*in//ig;
     $comment =~ s/\-p\s*[\w\,\*\;]+//ig;
     $comment =~ s/^\s*|\s*$//g;
-    if ( $comment eq "" ) { $comment = "Manually added: " . iplookup($ip) }
-    if ( $timeout < 2 )   { $timeout = 3600 }
-    if ( $ports eq "" )   { $ports   = "*" }
+    if ( $comment eq "" )                   { $comment = "Manually added: " . iplookup($ip) }
+    if ( !length $timeout || $timeout < 2 ) { $timeout = 3600 }
+    if ( $ports eq "" )                     { $ports   = "*" }
 
     if ( !checkip( \$ip ) ) {
         print "[$ip] is not a valid PUBLIC IP/CIDR\n";
@@ -4196,13 +4196,13 @@ sub dotempdeny {
     }
 
     my $iptype = checkip( \$ip );
-    if ( $iptype == 6 and !$config{IPV6} ) {
-        print "failed: [$ip] is valid IPv6 but IPV6 is not enabled in csf.conf\n";
-    }
-
-    unless ($iptype) {
+    if ( !$iptype ) {
         print "csf: [$ip] is not a valid PUBLIC IP\n";
         return;
+    }
+
+    if ( $iptype == 6 and !$config{IPV6} ) {
+        print "failed: [$ip] is valid IPv6 but IPV6 is not enabled in csf.conf\n";
     }
 
     getethdev();
@@ -4249,10 +4249,10 @@ sub dotempdeny {
 
     my $dropin  = $config{DROP};
     my $dropout = $config{DROP_OUT};
-    if ( $config{DROP_IP_LOGGING} )  { $dropin  = "LOGDROPIN" }
-    if ( $config{DROP_OUT_LOGGING} ) { $dropout = "LOGDROPOUT" }
-    if ( $timeout < 2 )              { $timeout = 3600 }
-    if ( $port =~ /\*/ )             { $port    = "" }
+    if ( $config{DROP_IP_LOGGING} )         { $dropin  = "LOGDROPIN" }
+    if ( $config{DROP_OUT_LOGGING} )        { $dropout = "LOGDROPOUT" }
+    if ( !length $timeout || $timeout < 2 ) { $timeout = 3600 }
+    if ( $port =~ /\*/ )                    { $port    = "" }
 
     if ( $inout =~ /in/ ) {
         if ($port) {
@@ -4335,14 +4335,15 @@ sub dotempallow {
     }
 
     my $iptype = checkip( \$ip );
+    if ( !$iptype ) {
+        print "csf: [$ip] is not a valid PUBLIC IP\n";
+        return;
+    }
+
     if ( $iptype == 6 and !$config{IPV6} ) {
         print "failed: [$ip] is valid IPv6 but IPV6 is not enabled in csf.conf\n";
     }
 
-    unless ($iptype) {
-        print "csf: [$ip] is not a valid PUBLIC IP\n";
-        return;
-    }
     if ( $timeout =~ /\D/ ) {
         $portdir = join( " ", $timeout, $portdir );
         $timeout = 0;
@@ -4378,8 +4379,8 @@ sub dotempallow {
         exit 0;
     }
 
-    if ( $timeout < 2 )  { $timeout = 3600 }
-    if ( $port =~ /\*/ ) { $port    = "" }
+    if ( !length $timeout || $timeout < 2 ) { $timeout = 3600 }
+    if ( $port =~ /\*/ )                    { $port    = "" }
 
     getethdev();
 
