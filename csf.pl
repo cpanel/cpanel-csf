@@ -18,13 +18,14 @@
 # this program; if not, see <https://www.gnu.org/licenses>.
 ###############################################################################
 
+package sbin::csf;
 use cPstrict;
 
 use lib '/usr/local/csf/lib';
 use Fcntl qw(:DEFAULT :flock);
 use File::Basename;
 use IO::Handle;
-use IPC::Open3;
+use IPC::Open3 ();
 use IO::Select;
 use Net::CIDR::Lite;
 use Socket;
@@ -39,7 +40,7 @@ use ConfigServer::ServerStats;
 use ConfigServer::Service;
 use ConfigServer::Messenger;
 use ConfigServer::RBLCheck;
-use ConfigServer::GetEthDev;
+use ConfigServer::GetEthDev ();
 use ConfigServer::Sendmail;
 use ConfigServer::LookUpIP qw(iplookup);
 
@@ -447,7 +448,7 @@ sub doinitup {
                     my @data = slurpee( "/var/lib/csf/csf.4.ipsets", 'fatal' => 1 );
                     chomp @data;
                     my ( $childin, $childout );
-                    my $cmdpid = open3( $childin, $childout, $childout, $config{IPSET}, "restore" );
+                    my $cmdpid = IPC::Open3::open3( $childin, $childout, $childout, $config{IPSET}, "restore" );
                     print $childin join( "\n", @data ) . "\n";
                     close $childin;
                     my @results = <$childout>;
@@ -462,7 +463,7 @@ sub doinitup {
             my @data = slurpee( "/var/lib/csf/csf.4.saved", 'fatal' => 1 );
             chomp @data;
             my ( $childin, $childout );
-            my $cmdpid = open3( $childin, $childout, $childout, $config{IPTABLES_RESTORE} );
+            my $cmdpid = IPC::Open3::open3( $childin, $childout, $childout, $config{IPTABLES_RESTORE} );
             print $childin join( "\n", @data ) . "\n";
             close $childin;
             my @results = <$childout>;
@@ -483,7 +484,7 @@ sub doinitup {
                 my @data = slurpee( "/var/lib/csf/csf.6.saved", 'fatal' => 1 );
                 chomp @data;
                 my ( $childin, $childout );
-                my $cmdpid = open3( $childin, $childout, $childout, $config{IP6TABLES_RESTORE} );
+                my $cmdpid = IPC::Open3::open3( $childin, $childout, $childout, $config{IP6TABLES_RESTORE} );
                 print $childin join( "\n", @data ) . "\n";
                 close $childin;
                 my @results = <$childout>;
@@ -513,7 +514,7 @@ sub doinitdown {
             print "(saving iptables) ";
 
             my ( $childin, $childout );
-            my $cmdpid = open3( $childin, $childout, $childout, $config{IPTABLES_SAVE} );
+            my $cmdpid = IPC::Open3::open3( $childin, $childout, $childout, $config{IPTABLES_SAVE} );
             close $childin;
             my @results = <$childout>;
             waitpid( $cmdpid, 0 );
@@ -528,7 +529,7 @@ sub doinitdown {
                     print "(saving ipsets) ";
 
                     my ( $childin, $childout );
-                    my $cmdpid = open3( $childin, $childout, $childout, $config{IPSET}, "save" );
+                    my $cmdpid = IPC::Open3::open3( $childin, $childout, $childout, $config{IPSET}, "save" );
                     close $childin;
                     my @results = <$childout>;
                     waitpid( $cmdpid, 0 );
@@ -544,7 +545,7 @@ sub doinitdown {
             print "(saving ip6tables) ";
 
             my ( $childin, $childout );
-            my $cmdpid = open3( $childin, $childout, $childout, $config{IP6TABLES_SAVE} );
+            my $cmdpid = IPC::Open3::open3( $childin, $childout, $childout, $config{IP6TABLES_SAVE} );
             close $childin;
             my @results = <$childout>;
             waitpid( $cmdpid, 0 );
@@ -890,7 +891,7 @@ sub dostop {
 sub dostart {
     if ( ConfigServer::Service::type() eq "systemd" ) {
         my ( $childin, $childout );
-        my $cmdpid = open3( $childin, $childout, $childout, $config{SYSTEMCTL}, "is-active", "firewalld" );
+        my $cmdpid = IPC::Open3::open3( $childin, $childout, $childout, $config{SYSTEMCTL}, "is-active", "firewalld" );
         my @reply  = <$childout>;
         waitpid( $cmdpid, 0 );
         chomp @reply;
@@ -910,7 +911,7 @@ sub dostart {
     $noowner = 0;
     if ( $config{VPS} and $config{SMTP_BLOCK} ) {
         my ( $childin, $childout );
-        my $cmdpid = open3( $childin, $childout, $childout, "$config{IPTABLES} $config{IPTABLESWAIT} -I OUTPUT -p tcp --dport 9999 -m owner --uid-owner 0 -j $accept" );
+        my $cmdpid = IPC::Open3::open3( $childin, $childout, $childout, "$config{IPTABLES} $config{IPTABLESWAIT} -I OUTPUT -p tcp --dport 9999 -m owner --uid-owner 0 -j $accept" );
         my @ipdata = <$childout>;
         waitpid( $cmdpid, 0 );
         chomp @ipdata;
@@ -3795,7 +3796,8 @@ sub dogrep {
     my $head     = 0;
     my $oldchain = "INPUT";
     my $table    = "filter";
-    my ( $chain, $rest );
+    my $chain    = "";
+    my $rest     = "";
     format GREP =
 @<<<<< @<<<<<<<<<<<<<<< @*
 $table, $chain, $rest
@@ -3807,7 +3809,7 @@ $table, $chain, $rest
     if ( $config{MANGLE} ) { $command .= " ;echo 'mangle table:\n' ;  $config{IPTABLES} $config{IPTABLESWAIT} -v -t mangle -L -n --line-numbers" }
     if ( $config{RAW} )    { $command .= " ; echo 'raw table:\n' ; $config{IPTABLES} $config{IPTABLESWAIT} -v -t raw -L -n --line-numbers" }
     my ( $childin, $childout );
-    my $pid    = open3( $childin, $childout, $childout, $command );
+    my $pid    = IPC::Open3::open3( $childin, $childout, $childout, $command );
     my @output = <$childout>;
     waitpid( $pid, 0 );
     chomp @output;
@@ -3859,7 +3861,7 @@ $table, $chain, $rest
         my $head     = 0;
         my $oldchain = "INPUT";
         my ( $childin, $childout );
-        my $pid    = open3( $childin, $childout, $childout, $config{IPSET}, "-n", "list" );
+        my $pid    = IPC::Open3::open3( $childin, $childout, $childout, $config{IPSET}, "-n", "list" );
         my @output = <$childout>;
         waitpid( $pid, 0 );
         chomp @output;
@@ -3920,7 +3922,7 @@ $table, $chain, $rest
 
             my $hit = 0;
             my ( $childin, $childout );
-            my $pid    = open3( $childin, $childout, $childout, $config{IPSET}, "test", "$chain", "$ipmatch" );
+            my $pid    = IPC::Open3::open3( $childin, $childout, $childout, $config{IPSET}, "test", "$chain", "$ipmatch" );
             my @output = <$childout>;
             waitpid( $pid, 0 );
             chomp @output;
@@ -3956,7 +3958,7 @@ $table, $chain, $rest
         if ( $config{MANGLE6} ) { $command .= " ; echo 'mangle table:\n' ; $config{IP6TABLES} $config{IPTABLESWAIT} -v -t mangle -L -n --line-numbers" }
         if ( $config{RAW6} )    { $command .= " ; echo 'raw table:\n' ; $config{IP6TABLES} $config{IPTABLESWAIT} -v -t raw -L -n --line-numbers" }
         my ( $childin, $childout );
-        my $pid    = open3( $childin, $childout, $childout, $command );
+        my $pid    = IPC::Open3::open3( $childin, $childout, $childout, $command );
         my @output = <$childout>;
         waitpid( $pid, 0 );
         chomp @output;
@@ -4007,6 +4009,7 @@ $table, $chain, $rest
     my @tempallow = slurpee( "/var/lib/csf/csf.tempallow", 'fatal' => 1 );
     chomp @tempallow;
     foreach my $line (@tempallow) {
+        next unless $line =~ /\S/;    # Skip blank lines
         my ( $time, $ipd, $port, $inout, $timeout, $message ) = split( /\|/, $line );
         checkip( \$ipd );
         if ( $ipd eq $ipmatch ) {
@@ -4054,6 +4057,7 @@ $table, $chain, $rest
     my @tempdeny = slurpee( "/var/lib/csf/csf.tempban", 'fatal' => 1 );
     chomp @tempdeny;
     foreach my $line (@tempdeny) {
+        next unless $line =~ /\S/;    # Skip blank lines
         my ( $time, $ipd, $port, $inout, $timeout, $message ) = split( /\|/, $line );
         checkip( \$ipd );
         if ( $ipd eq $ipmatch ) {
@@ -5569,7 +5573,7 @@ sub loadmodule {
         local $SIG{'ALRM'}  = sub { die };
         alarm(5);
         my ( $childin, $childout );
-        my $pid = open3( $childin, $childout, $childout, $config{MODPROBE}, $module );
+        my $pid = IPC::Open3::open3( $childin, $childout, $childout, $config{MODPROBE}, $module );
         @output = <$childout>;
         waitpid( $pid, 0 );
         alarm(0);
@@ -5630,7 +5634,7 @@ sub syscommand {
                 local $SIG{'ALRM'}  = sub { die "alarm\n" };
                 alarm( $config{WAITLOCK_TIMEOUT} );
                 my ( $childin, $childout );
-                my $cmdpid = open3( $childin, $childout, $childout, $command );
+                my $cmdpid = IPC::Open3::open3( $childin, $childout, $childout, $command );
                 @output = <$childout>;
                 waitpid( $cmdpid, 0 );
                 alarm(0);
@@ -5642,7 +5646,7 @@ sub syscommand {
         }
         else {
             my ( $childin, $childout );
-            my $cmdpid = open3( $childin, $childout, $childout, $command );
+            my $cmdpid = IPC::Open3::open3( $childin, $childout, $childout, $command );
             @output = <$childout>;
             waitpid( $cmdpid, 0 );
         }
@@ -5662,7 +5666,7 @@ sub syscommand {
                 if ( $config{DEBUG} >= 1 ) { print "debug[$line]: Retry (" . ( $cnt + 1 ) . ") [$command] due to [$output[0]]" }
                 if ($iptableslock)         { iptableslock("lock") }
                 my ( $childin, $childout );
-                my $cmdpid = open3( $childin, $childout, $childout, $command );
+                my $cmdpid = IPC::Open3::open3( $childin, $childout, $childout, $command );
                 my @output = <$childout>;
                 waitpid( $cmdpid, 0 );
                 if ($iptableslock) { iptableslock("unlock") }
@@ -5766,7 +5770,7 @@ sub faststart {
         if ( $config{DEBUG} >= 2 ) { print join( "\n", @faststart4 ) . "\n" }
         iptableslock("lock");
         my ( $childin, $childout );
-        my $cmdpid = open3( $childin, $childout, $childout, "$config{IPTABLES_RESTORE} $config{IPTABLESWAIT} -n" );
+        my $cmdpid = IPC::Open3::open3( $childin, $childout, $childout, "$config{IPTABLES_RESTORE} $config{IPTABLESWAIT} -n" );
         print $childin "*filter\n" . join( "\n", @faststart4 ) . "\nCOMMIT\n";
         close $childin;
         my @results = <$childout>;
@@ -5789,7 +5793,7 @@ sub faststart {
         if ( $config{DEBUG} >= 2 ) { print join( "\n", @faststart4nat ) . "\n" }
         iptableslock("lock");
         my ( $childin, $childout );
-        my $cmdpid = open3( $childin, $childout, $childout, "$config{IPTABLES_RESTORE} $config{IPTABLESWAIT} -n" );
+        my $cmdpid = IPC::Open3::open3( $childin, $childout, $childout, "$config{IPTABLES_RESTORE} $config{IPTABLESWAIT} -n" );
         print $childin "*nat\n" . join( "\n", @faststart4nat ) . "\nCOMMIT\n";
         close $childin;
         my @results = <$childout>;
@@ -5812,7 +5816,7 @@ sub faststart {
         if ( $config{DEBUG} >= 2 ) { print join( "\n", @faststart6 ) . "\n" }
         iptableslock("lock");
         my ( $childin, $childout );
-        my $cmdpid = open3( $childin, $childout, $childout, "$config{IP6TABLES_RESTORE} $config{IPTABLESWAIT} -n" );
+        my $cmdpid = IPC::Open3::open3( $childin, $childout, $childout, "$config{IP6TABLES_RESTORE} $config{IPTABLESWAIT} -n" );
         print $childin "*filter\n" . join( "\n", @faststart6 ) . "\nCOMMIT\n";
         close $childin;
         my @results = <$childout>;
@@ -5835,7 +5839,7 @@ sub faststart {
         if ( $config{DEBUG} >= 2 ) { print join( "\n", @faststart6nat ) . "\n" }
         iptableslock("lock");
         my ( $childin, $childout );
-        my $cmdpid = open3( $childin, $childout, $childout, "$config{IP6TABLES_RESTORE} $config{IPTABLESWAIT} -n" );
+        my $cmdpid = IPC::Open3::open3( $childin, $childout, $childout, "$config{IP6TABLES_RESTORE} $config{IPTABLESWAIT} -n" );
         print $childin "*nat\n" . join( "\n", @faststart6nat ) . "\nCOMMIT\n";
         close $childin;
         my @results = <$childout>;
@@ -5853,7 +5857,7 @@ sub faststart {
     if (@faststartipset) {
         if ($verbose) { print "csf: FASTSTART loading $text (IPSET)\n" }
         my ( $childin, $childout );
-        my $cmdpid = open3( $childin, $childout, $childout, $config{IPSET}, "restore" );
+        my $cmdpid = IPC::Open3::open3( $childin, $childout, $childout, $config{IPSET}, "restore" );
         print $childin join( "\n", @faststartipset ) . "\n";
         close $childin;
         my @results = <$childout>;
@@ -5895,7 +5899,7 @@ sub ipsetcreate {
     if ( $set =~ /_6/ ) { $family = "inet6" }
     if ($verbose)       { print "csf: IPSET creating set $set\n" }
     my ( $childin, $childout );
-    my $cmdpid = open3( $childin, $childout, $childout, $config{IPSET}, "create", "-exist", $set, "hash:net", "family", $family, "hashsize", $config{LF_IPSET_HASHSIZE}, "maxelem", $config{LF_IPSET_MAXELEM} );
+    my $cmdpid = IPC::Open3::open3( $childin, $childout, $childout, $config{IPSET}, "create", "-exist", $set, "hash:net", "family", $family, "hashsize", $config{LF_IPSET_HASHSIZE}, "maxelem", $config{LF_IPSET_MAXELEM} );
     close $childin;
     my @results = <$childout>;
     waitpid( $cmdpid, 0 );
@@ -5913,7 +5917,7 @@ sub ipsetrestore {
     $SIG{PIPE} = 'IGNORE';
     if ($verbose) { print "csf: IPSET loading set $set with " . scalar(@ipset) . " entries\n" }
     my ( $childin, $childout );
-    my $cmdpid = open3( $childin, $childout, $childout, $config{IPSET}, "restore" );
+    my $cmdpid = IPC::Open3::open3( $childin, $childout, $childout, $config{IPSET}, "restore" );
     print $childin join( "\n", @ipset ) . "\n";
     close $childin;
     my @results = <$childout>;
@@ -5942,7 +5946,7 @@ sub ipsetadd {
     }
     if ($verbose) { print "csf: IPSET adding [$ip] to set [$set]\n" }
     my ( $childin, $childout );
-    my $cmdpid = open3( $childin, $childout, $childout, $config{IPSET}, "add", "-exist", $set, $ip );
+    my $cmdpid = IPC::Open3::open3( $childin, $childout, $childout, $config{IPSET}, "add", "-exist", $set, $ip );
     close $childin;
     my @results = <$childout>;
     waitpid( $cmdpid, 0 );
@@ -5965,7 +5969,7 @@ sub ipsetdel {
     if ( $set eq "" or $ip eq "" )         { return }
     if ($verbose)                          { print "csf: IPSET deleting [$ip] from set [$set]\n" }
     my ( $childin, $childout );
-    my $cmdpid = open3( $childin, $childout, $childout, $config{IPSET}, "del", $set, $ip );
+    my $cmdpid = IPC::Open3::open3( $childin, $childout, $childout, $config{IPSET}, "del", $set, $ip );
     close $childin;
     my @results = <$childout>;
     waitpid( $cmdpid, 0 );
@@ -5977,3 +5981,5 @@ sub ipsetdel {
     }
     return;
 }
+
+1;

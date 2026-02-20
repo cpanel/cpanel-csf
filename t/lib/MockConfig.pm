@@ -38,16 +38,37 @@ our $_mock;
 sub set_config {
     my %new_config = @_;
     %config = %new_config;
+
+    # Also synchronize %sbin::csf::config for tests that need it
+    no warnings 'once';
+    %sbin::csf::config = %new_config;
+
     return;
 }
 
 sub clear_config {
     %config = ();
+
+    # Also clear %sbin::csf::config
+    no warnings 'once';
+    %sbin::csf::config = ();
+
     return;
 }
 
 sub get_mock_config {
     return %config;
+}
+
+sub merge_config {
+    my %override = @_;
+
+    # Get current config, merge with overrides, and set the result
+    # set_config handles synchronization to both storage locations
+    my %merged = ( %config, %override );
+    set_config(%merged);
+
+    return;
 }
 
 # Automatically set up mocking when module is loaded
@@ -62,6 +83,7 @@ sub import {
     *{"${caller}::set_config"}      = \&set_config;
     *{"${caller}::clear_config"}    = \&clear_config;
     *{"${caller}::get_mock_config"} = \&get_mock_config;
+    *{"${caller}::merge_config"}    = \&merge_config;
 
     # Set up the mock for ConfigServer::Config
     $_mock = mock 'ConfigServer::Config' => (
@@ -86,6 +108,17 @@ sub import {
             resetconfig => sub {
                 %config = ();
                 return;
+            },
+            ipv4reg => sub {
+
+                # Return the regex pattern directly (defined in BEGIN block above)
+                return qr/(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/;
+            },
+            ipv6reg => sub {
+
+                # Return the regex pattern directly (defined in BEGIN block above)
+                return
+                  qr/((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))(%.+)?/;
             },
         ],
     );
