@@ -579,7 +579,7 @@ sub doclustertempdeny {
     my $perm  = 0;
     if ( $timeout =~ /^(\d*)([mhd])/i ) {
         my $secs = $1;
-        my $dur  = $2;
+        my $dur  = lc $2;
         if    ( $dur eq "m" ) { $timeout = $secs * 60 }
         elsif ( $dur eq "h" ) { $timeout = $secs * 60 * 60 }
         elsif ( $dur eq "d" ) { $timeout = $secs * 60 * 60 * 24 }
@@ -669,7 +669,7 @@ sub doclustertempallow {
     my $perm  = 0;
     if ( $timeout =~ /^(\d*)([mhd])/i ) {
         my $secs = $1;
-        my $dur  = $2;
+        my $dur  = lc $2;
         if    ( $dur eq "m" ) { $timeout = $secs * 60 }
         elsif ( $dur eq "h" ) { $timeout = $secs * 60 * 60 }
         elsif ( $dur eq "d" ) { $timeout = $secs * 60 * 60 * 24 }
@@ -4188,7 +4188,7 @@ sub dotempdeny {
     my $port  = "";
     if ( $timeout =~ /^(\d*)([mhd])/i ) {
         my $secs = $1;
-        my $dur  = $2;
+        my $dur  = lc $2;
         if    ( $dur eq "m" ) { $timeout = $secs * 60 }
         elsif ( $dur eq "h" ) { $timeout = $secs * 60 * 60 }
         elsif ( $dur eq "d" ) { $timeout = $secs * 60 * 60 * 24 }
@@ -4327,7 +4327,7 @@ sub dotempallow {
     my $port  = "";
     if ( $timeout =~ /^(\d*)([mhd])/i ) {
         my $secs = $1;
-        my $dur  = $2;
+        my $dur  = lc $2;
         if    ( $dur eq "m" ) { $timeout = $secs * 60 }
         elsif ( $dur eq "h" ) { $timeout = $secs * 60 * 60 }
         elsif ( $dur eq "d" ) { $timeout = $secs * 60 * 60 * 24 }

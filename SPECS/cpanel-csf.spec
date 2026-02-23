@@ -2,7 +2,7 @@
 # RPM spec file
 
 %define release_prefix 1
-%define csf_version 16.02
+%define csf_version 16.03
 
 Name:           cpanel-csf
 Version:        %{csf_version}
@@ -235,6 +235,9 @@ rm -rf %{buildroot}
 /usr/local/cpanel/bin/csf.conf.appconfig
 
 %changelog
+* Tue Feb 24 2026 Tim Mullin <tim.mullin@webpros.com> - 16.03-1
+- Fixed bug in parsing upper-case time-out duration values
+
 * Mon Feb 23 2026 Travis Holloway <travis.holloway@webpros.com> - 16.02-1
 - Update regex to handle log changes to /var/log/secure on A10
 
