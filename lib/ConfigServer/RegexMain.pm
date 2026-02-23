@@ -76,7 +76,7 @@ sub _config {
     my $config = ConfigServer::Config->loadconfig();
     %config = $config->config;
 
-    if ( $config{LF_APACHE_ERRPORT} == 0 ) {
+    if ( length $config{LF_APACHE_ERRPORT} && $config{LF_APACHE_ERRPORT} == 0 ) {
         my $apachebin = "";
         if    ( -e "/usr/local/apache/bin/httpd" ) { $apachebin = "/usr/local/apache/bin/httpd" }
         elsif ( -e "/usr/sbin/httpd" )             { $apachebin = "/usr/sbin/httpd" }
@@ -95,7 +95,7 @@ sub _config {
             if ( "$mas.$maj" < 2.4 ) { $config{LF_APACHE_ERRPORT} = 1 }
         }
     }
-    unless ( $config{LF_APACHE_ERRPORT} == 1 ) {
+    unless ( length $config{LF_APACHE_ERRPORT} && $config{LF_APACHE_ERRPORT} == 1 ) {
         $config{LF_APACHE_ERRPORT} = 2;
     }
 
