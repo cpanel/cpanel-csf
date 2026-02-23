@@ -2,7 +2,7 @@
 # RPM spec file
 
 %define release_prefix 1
-%define csf_version 16.01
+%define csf_version 16.02
 
 Name:           cpanel-csf
 Version:        %{csf_version}
@@ -235,6 +235,9 @@ rm -rf %{buildroot}
 /usr/local/cpanel/bin/csf.conf.appconfig
 
 %changelog
+* Mon Feb 23 2026 Travis Holloway <travis.holloway@webpros.com> - 16.02-1
+- Update regex to handle log changes to /var/log/secure on A10
+
 * Fri Feb 20 2026 Travis Holloway <travis.holloway@webpros.com> - 16.01-1
 - Update link in x-arf template
 
