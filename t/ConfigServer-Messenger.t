@@ -242,4 +242,51 @@ subtest 'webserver type configuration' => sub {
     }
 };
 
+subtest '_read_request_line behavior' => sub {
+    subtest 'reads a normal request line terminated by newline' => sub {
+        my $client = _make_mock_client("GET /index.html HTTP/1.1\n");
+        my $result = ConfigServer::Messenger::_read_request_line($client);
+        is( $result, 'GET /index.html HTTP/1.1', 'newline-terminated line is read and chomped' );
+    };
+
+    subtest 'strips trailing carriage return' => sub {
+        my $client = _make_mock_client("GET /index.html HTTP/1.1\r\n");
+        my $result = ConfigServer::Messenger::_read_request_line($client);
+        is( $result, 'GET /index.html HTTP/1.1', 'CRLF line is stripped correctly' );
+    };
+
+    subtest 'stops reading at MAX_LINE_LENGTH without newline' => sub {
+        my $long_input = 'A' x ( ConfigServer::Messenger::MAX_LINE_LENGTH() + 100 );
+        my $client     = _make_mock_client($long_input);
+        my $result     = ConfigServer::Messenger::_read_request_line($client);
+        ok( length($result) < length($long_input), 'oversized input is truncated before end' );
+    };
+
+    subtest 'a line exactly at MAX_LINE_LENGTH is accepted' => sub {
+        my $input  = 'B' x ConfigServer::Messenger::MAX_LINE_LENGTH() . "\n";
+        my $client = _make_mock_client($input);
+        my $result = ConfigServer::Messenger::_read_request_line($client);
+        is( length($result), ConfigServer::Messenger::MAX_LINE_LENGTH(), 'line at MAX_LINE_LENGTH is fully read' );
+    };
+};
+
 done_testing;
+
+sub _make_mock_client {
+    my ($data) = @_;
+    my $pos = 0;
+    return bless {
+        _data => $data,
+        _pos  => 0,
+      },
+      'MockClient';
+}
+
+package MockClient;
+
+sub read {
+    my ( $self, undef, $len ) = @_;
+    $_[1] = substr( $self->{_data}, $self->{_pos}, $len );
+    $self->{_pos} += $len;
+    return;
+}

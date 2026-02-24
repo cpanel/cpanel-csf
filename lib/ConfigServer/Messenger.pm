@@ -105,6 +105,8 @@ our $VERSION = 3.00;
 
 our %config;    # Autoloaded internally.
 
+use constant 'MAX_LINE_LENGTH' => 4096;
+
 my $childproc;
 my $hostname;
 
@@ -442,15 +444,7 @@ sub _messenger {
                             $hostaddress =~ s/^::ffff://;
 
                             if ( $type eq "HTML" ) {
-                                while ( $firstline !~ /\n$/ ) {
-                                    my $char;
-                                    $client->read( $char, 1 );
-                                    $firstline .= $char;
-                                    if ( $char eq "" )              { exit; }
-                                    if ( length $firstline > 2048 ) { last }
-                                }
-                                chomp $firstline;
-                                if ( $firstline =~ /\r$/ ) { chop $firstline }
+                                $firstline = _read_request_line($client);
                             }
 
                             _messengerlog( $homedir, "Client connection [$peeraddress] [$firstline]" );
@@ -1149,6 +1143,21 @@ EOF
         logfile("MESSENGERV3: Restarted $webserver MESSENGERV3 service using $location");
     }
     return;
+}
+
+sub _read_request_line {
+    my ($client) = @_;
+    my $firstline = '';
+    while ( $firstline !~ /\n$/ ) {
+        my $char;
+        $client->read( $char, 1 );
+        $firstline .= $char;
+        if ( $char eq "" )                           { exit; }
+        if ( length $firstline > MAX_LINE_LENGTH() ) { last }
+    }
+    chomp $firstline;
+    if ( $firstline =~ /\r$/ ) { chop $firstline }
+    return $firstline;
 }
 
 sub _messengerlog {
