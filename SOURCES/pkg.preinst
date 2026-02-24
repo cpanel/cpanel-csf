@@ -34,3 +34,32 @@ if [ ! -x /usr/local/cpanel/3rdparty/bin/perl ]; then
         exit 1
     fi
 fi
+
+# On first install, remove any existing files at paths that the package
+# installs as symlinks. dpkg's --force-confold will otherwise keep old
+# regular files in place and silently skip installing the symlinks.
+if [ "$1" = "install" ]; then
+    for path in \
+        /etc/csf/csf.pl \
+        /etc/csf/lfd.pl \
+        /etc/csf/csftest.pl \
+        /etc/csf/pt_deleted_action.pl \
+        /etc/csf/remove_apf_bfd.sh \
+        /etc/csf/regex.custom.pm \
+        /etc/csf/alerts \
+        /etc/csf/changelog.txt \
+        /etc/csf/license.txt \
+        /etc/csf/readme.txt \
+        /etc/csf/version.txt \
+        /etc/csf/cpanel.allow \
+        /etc/csf/cpanel.comodo.allow \
+        /etc/csf/cpanel.comodo.ignore \
+        /etc/csf/cpanel.ignore \
+        /etc/csf/csf.cloudflare \
+        /etc/csf/messenger \
+    ; do
+        if [ -e "$path" ] || [ -L "$path" ]; then
+            rm -rf "$path" ||:
+        fi
+    done
+fi
