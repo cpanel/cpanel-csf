@@ -135,7 +135,7 @@ sub new {
     $brd{"255.255.255.255"} = 1;
     POSIX::setlocale( POSIX::LC_ALL, "POSIX" );
 
-    if ( -e $config{IP} ) {
+    if ( length $config{IP} && -e $config{IP} ) {
         my ( $childin, $childout );
         my $pid      = IPC::Open3::open3( $childin, $childout, $childout, $config{IP}, "-oneline", "addr" );
         my @ifconfig = <$childout>;
@@ -168,7 +168,7 @@ sub new {
         }
         $status = 0;
     }
-    elsif ( -e $config{IFCONFIG} ) {
+    elsif ( length $config{IFCONFIG} && -e $config{IFCONFIG} ) {
         my ( $childin, $childout );
         my $pid      = IPC::Open3::open3( $childin, $childout, $childout, $config{IFCONFIG} );
         my @ifconfig = <$childout>;
