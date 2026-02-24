@@ -61,6 +61,10 @@ install -d -m 0755 %{buildroot}/usr/local/csf/bin
 install -d -m 0755 %{buildroot}/usr/local/csf/lib
 install -d -m 0755 %{buildroot}/usr/local/csf/tpl
 install -d -m 0755 %{buildroot}/usr/local/csf/profiles
+install -d -m 0755 %{buildroot}/usr/local/csf/docs
+install -d -m 0755 %{buildroot}/usr/local/csf/data
+install -d -m 0755 %{buildroot}/usr/local/csf/messenger
+install -d -m 0755 %{buildroot}/usr/local/csf/cron
 
 # Install main scripts
 install -d -m 0755 %{buildroot}/usr/sbin
@@ -80,8 +84,21 @@ cp -a lib/* %{buildroot}/usr/local/csf/lib/
 # Install template files
 cp -a tpl/* %{buildroot}/usr/local/csf/tpl/
 
-# Add the license file
-cp LICENSE.txt %{buildroot}/etc/csf/license.txt
+# Install documentation files to /usr/local/csf/docs
+install -m 0644 LICENSE.txt %{buildroot}/usr/local/csf/docs/license.txt
+install -m 0644 etc/changelog.txt %{buildroot}/usr/local/csf/docs/
+install -m 0644 etc/readme.txt %{buildroot}/usr/local/csf/docs/
+install -m 0644 etc/version.txt %{buildroot}/usr/local/csf/docs/
+
+# Install data files to /usr/local/csf/data
+install -m 0644 etc/cpanel.allow %{buildroot}/usr/local/csf/data/
+install -m 0644 etc/cpanel.comodo.allow %{buildroot}/usr/local/csf/data/
+install -m 0644 etc/cpanel.comodo.ignore %{buildroot}/usr/local/csf/data/
+install -m 0644 etc/cpanel.ignore %{buildroot}/usr/local/csf/data/
+install -m 0644 etc/csf.cloudflare %{buildroot}/usr/local/csf/data/
+
+# Install messenger templates to /usr/local/csf/messenger
+cp -a etc/messenger/* %{buildroot}/usr/local/csf/messenger/
 
 # Install config files from etc/ directory (recursively)
 cp -a etc/* %{buildroot}/etc/csf/
@@ -90,10 +107,12 @@ cp -a etc/* %{buildroot}/etc/csf/
 cp -a profiles/* %{buildroot}/usr/local/csf/profiles/
 install -m 0600 etc/csf.conf %{buildroot}/usr/local/csf/profiles/reset_to_defaults.conf
 
-# Install cron jobs
+# Install cron jobs to /usr/local/csf/cron
+install -m 0644 csfcron.sh %{buildroot}/usr/local/csf/cron/csf-cron
+install -m 0644 lfdcron.sh %{buildroot}/usr/local/csf/cron/lfd-cron
+
+# Create /etc/cron.d directory for symlinks
 install -d -m 0755 %{buildroot}/etc/cron.d
-install -m 0644 csfcron.sh %{buildroot}/etc/cron.d/csf-cron
-install -m 0644 lfdcron.sh %{buildroot}/etc/cron.d/lfd-cron
 
 # Install systemd service files
 install -d -m 0755 %{buildroot}/usr/lib/systemd/system
@@ -140,6 +159,26 @@ ln -sf /usr/local/csf/bin/remove_apf_bfd.sh %{buildroot}/etc/csf/remove_apf_bfd.
 ln -sf /usr/local/csf/bin/regex.custom.pm %{buildroot}/etc/csf/regex.custom.pm
 ln -sf /usr/local/csf/tpl %{buildroot}/etc/csf/alerts
 
+# Create symlinks for documentation files
+ln -sf /usr/local/csf/docs/changelog.txt %{buildroot}/etc/csf/changelog.txt
+ln -sf /usr/local/csf/docs/license.txt %{buildroot}/etc/csf/license.txt
+ln -sf /usr/local/csf/docs/readme.txt %{buildroot}/etc/csf/readme.txt
+ln -sf /usr/local/csf/docs/version.txt %{buildroot}/etc/csf/version.txt
+
+# Create symlinks for data files
+ln -sf /usr/local/csf/data/cpanel.allow %{buildroot}/etc/csf/cpanel.allow
+ln -sf /usr/local/csf/data/cpanel.comodo.allow %{buildroot}/etc/csf/cpanel.comodo.allow
+ln -sf /usr/local/csf/data/cpanel.comodo.ignore %{buildroot}/etc/csf/cpanel.comodo.ignore
+ln -sf /usr/local/csf/data/cpanel.ignore %{buildroot}/etc/csf/cpanel.ignore
+ln -sf /usr/local/csf/data/csf.cloudflare %{buildroot}/etc/csf/csf.cloudflare
+
+# Create symlink for messenger directory
+ln -sf /usr/local/csf/messenger %{buildroot}/etc/csf/messenger
+
+# Create symlinks for cron jobs
+ln -sf /usr/local/csf/cron/csf-cron %{buildroot}/etc/cron.d/csf-cron
+ln -sf /usr/local/csf/cron/lfd-cron %{buildroot}/etc/cron.d/lfd-cron
+
 # END INSTALL -- DO NOT REMOVE THIS LINE, SEE debify/debify_mongler.pl
 
 %clean
@@ -174,6 +213,26 @@ rm -rf %{buildroot}
 # Templates in /usr/local/csf/tpl are 
 %config /usr/local/csf/tpl/*.txt
 
+# Documentation files (shipped to /usr/local/csf/docs, symlinked to /etc/csf)
+/usr/local/csf/docs/changelog.txt
+/usr/local/csf/docs/license.txt
+/usr/local/csf/docs/readme.txt
+/usr/local/csf/docs/version.txt
+
+# Data files (shipped to /usr/local/csf/data, symlinked to /etc/csf)
+/usr/local/csf/data/cpanel.allow
+/usr/local/csf/data/cpanel.comodo.allow
+/usr/local/csf/data/cpanel.comodo.ignore
+/usr/local/csf/data/cpanel.ignore
+/usr/local/csf/data/csf.cloudflare
+
+# Messenger templates (shipped to /usr/local/csf/messenger, symlinked to /etc/csf)
+/usr/local/csf/messenger/*
+
+# Cron jobs (shipped to /usr/local/csf/cron, symlinked to /etc/cron.d)
+/usr/local/csf/cron/csf-cron
+/usr/local/csf/cron/lfd-cron
+
 # Config files - actual user-modifiable configuration
 %config(noreplace) /etc/csf/csf.allow
 %config(noreplace) /etc/csf/csf.blocklists
@@ -199,20 +258,23 @@ rm -rf %{buildroot}
 %config(noreplace) /etc/csf/csf.syslogusers
 %config(noreplace) /etc/csf/csf.uidignore
 
-# Documentation and metadata files (not config)
+# Symlinks to documentation files (actual files in /usr/local/csf/docs)
 /etc/csf/changelog.txt
 /etc/csf/license.txt
 /etc/csf/readme.txt
 /etc/csf/version.txt
-# Config-ish but with no reason for modification
+
+# Symlinks to data files (actual files in /usr/local/csf/data)
 /etc/csf/cpanel.allow
 /etc/csf/cpanel.comodo.allow
 /etc/csf/cpanel.comodo.ignore
 /etc/csf/cpanel.ignore
 /etc/csf/csf.cloudflare
-# Template files for messenger feature (blocked IP pages)
-/etc/csf/messenger/*
-# Symlinks owned by the package
+
+# Symlink to messenger directory (actual files in /usr/local/csf/messenger)
+/etc/csf/messenger
+
+# Symlinks to executables and templates
 /etc/csf/csf.pl
 /etc/csf/lfd.pl
 /etc/csf/csftest.pl
@@ -220,12 +282,18 @@ rm -rf %{buildroot}
 /etc/csf/remove_apf_bfd.sh
 /etc/csf/regex.custom.pm
 /etc/csf/alerts
+
 /var/lib/csf
+
+# Symlinks to cron jobs (actual files in /usr/local/csf/cron)
 /etc/cron.d/csf-cron
 /etc/cron.d/lfd-cron
+
 /usr/lib/systemd/system/csf.service
 /usr/lib/systemd/system/lfd.service
-/etc/logrotate.d/lfd
+
+# Logrotate configuration
+%config(noreplace) /etc/logrotate.d/lfd
 /usr/local/man/man1/csf.1
 /usr/local/cpanel/whostmgr/docroot/cgi/configserver/*
 /usr/local/cpanel/whostmgr/docroot/addon_plugins/csf_small.png
