@@ -2,7 +2,7 @@
 # RPM spec file
 
 %define release_prefix 1
-%define csf_version 16.03
+%define csf_version 16.04
 
 Name:           cpanel-csf
 Version:        %{csf_version}
@@ -303,6 +303,11 @@ rm -rf %{buildroot}
 /usr/local/cpanel/bin/csf.conf.appconfig
 
 %changelog
+* Mon Feb 24 2026 Travis Holloway <travis.holloway@webpros.com> - 16.04-1
+- Relocate non-configuration files from /etc/ to /usr/local/csf/ to comply
+  with Ubuntu packaging policies while maintaining backward compatibility
+  via symlinks
+
 * Tue Feb 24 2026 Tim Mullin <tim.mullin@webpros.com> - 16.03-1
 - Fixed bug in parsing upper-case time-out duration values
 
