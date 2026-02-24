@@ -320,3 +320,22 @@ rm -rf %{buildroot}
 * Wed Feb 05 2026 Thomas "Andy" Baugh <andy.baugh@webpros.com> - 16.00-1
 - Initial RPM packaging of CSF for cPanel OBS build system
 - Converted from install.sh to RPM spec file
+- Modernized entire codebase: switched to cPstrict, added function signatures,
+  enforced perltidy standards, addressed perlcritic warnings
+- Removed support for non-cPanel platforms (DirectAdmin, Plesk, VestaCP, CWP,
+  InterWorx, CyberPanel, Webmin)
+- Added comprehensive test suite with 100+ test files using Test2 framework
+- Fixed security vulnerabilities: XSS in web UI modules, proper HTML encoding
+  throughout
+- Fixed numerous uninitialized variable warnings and potential runtime issues
+- Removed AUTO_UPDATES functionality (package-managed updates only)
+- Replaced custom implementations with cPanel libraries where available
+  (Cpanel::Encoder::Tiny, Cpanel::JSON::XS)
+- Added CI/CD workflows for automated building and testing
+- Improved sandbox development environment for easier local testing
+- Refactored core modules for better testability and maintainability
+- Added POD documentation to all public module interfaces
+- Fixed IPv6 handling, timeout validation, and iptables guard conditions
+- Updated regex patterns to handle AlmaLinux 10 log format changes
+- Removed deprecated Perl 4 syntax and bareword filehandles throughout
+- Cleaned up code structure: moved modules to lib/, removed duplicate files

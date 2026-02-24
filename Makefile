@@ -9,7 +9,7 @@ export OBS_PROJECT
 
 -include $(EATOOLS_BUILD_DIR)obs.mk
 
-.PHONY: sandbox test man install tarball clean-tarball bump-version
+.PHONY: sandbox test man install tarball clean-tarball bump-version bump-changelog
 
 ULC=/usr/local/cpanel
 VERSION := $(shell cat etc/version.txt 2>/dev/null || echo "16.00")
@@ -49,6 +49,34 @@ bump-version:
 	@echo $(NEW_VERSION) > etc/version.txt
 	@sed -i 's/^%define csf_version.*/%define csf_version $(NEW_VERSION)/' SPECS/cpanel-csf.spec
 	@echo "Version is now $(NEW_VERSION). Please commit your changes."
+
+bump-changelog:
+	@LAST_COMMIT=$$(git blame SPECS/cpanel-csf.spec | grep -A1 '^.*%changelog$$' | tail -1 | awk '{print $$1}'); \
+	if [ -z "$$LAST_COMMIT" ]; then \
+		echo "Error: Could not find previous changelog entry"; \
+		exit 1; \
+	fi; \
+	CHANGELOG_ENTRIES=$$(git log $$LAST_COMMIT..HEAD --format='%B' | awk '/^Changelog:/ {line=$$0; sub(/^Changelog: */, "", line); if (length(line) > 0) print line; next} prev_is_changelog && NF > 0 && !/^--$$/ {gsub(/^ +/, ""); print} {prev_is_changelog = ($$0 ~ /^Changelog:/)}'); \
+	if [ -z "$$CHANGELOG_ENTRIES" ]; then \
+		echo "Error: No changelog entries found since last release. Cannot bump version."; \
+		exit 1; \
+	fi; \
+	$(MAKE) bump-version; \
+	GIT_USER=$$(git config user.name); \
+	GIT_EMAIL=$$(git config user.email); \
+	CURR_VERSION=$$(cat etc/version.txt); \
+	DATE=$$(date '+%a %b %d %Y'); \
+	TEMP_FILE=$$(mktemp); \
+	echo "* $$DATE $$GIT_USER <$$GIT_EMAIL> - $$CURR_VERSION-1" > $$TEMP_FILE; \
+	echo "$$CHANGELOG_ENTRIES" | while IFS= read -r line; do \
+		if [ -n "$$line" ]; then echo "- $$line"; fi; \
+	done >> $$TEMP_FILE; \
+	echo "" >> $$TEMP_FILE; \
+	sed -i '/^%changelog$$/r '$$TEMP_FILE SPECS/cpanel-csf.spec; \
+	rm -f $$TEMP_FILE; \
+	echo "Changelog entry added for version $$CURR_VERSION"; \
+	git add etc/version.txt SPECS/cpanel-csf.spec; \
+	git commit -m "Bump version to $$CURR_VERSION" -m "Changelog:"
 
 # Generate tarball for OBS/RPM build
 tarball: clean
