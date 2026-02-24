@@ -1,0 +1,23 @@
+#!/usr/local/cpanel/3rdparty/bin/perl
+
+use cPstrict;
+
+my $cl = 0;
+my $blob = '';
+while ( my $line = <STDIN> ) {
+    chomp $line;
+    if ( $line =~ /^Changelog:\s*(.*)/ ) {
+        $blob .= "- $1\n" if length $1;
+        $cl = 1;
+    }
+    elsif ( $cl && $line =~ /^\s+\S/ ) {
+        $line =~ s/^\s+//;
+        $blob .= "  $line\n";
+    }
+    else {
+        $cl = 0;
+    }
+}
+
+# Ensure extra newline at the end.
+print "$blob\n" if length $blob;
