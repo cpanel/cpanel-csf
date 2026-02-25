@@ -35,6 +35,10 @@ if [ ! -x /usr/local/cpanel/3rdparty/bin/perl ]; then
     fi
 fi
 
+# Kill messenger or its' symlink ahead of time so that we can replace with
+# symlink.
+test -L /etc/csf/messenger || rm -rf /etc/csf/messenger
+
 # On first install, remove any existing files at paths that the package
 # installs as symlinks. dpkg's --force-confold will otherwise keep old
 # regular files in place and silently skip installing the symlinks.
@@ -56,7 +60,6 @@ if [ "$1" = "install" ]; then
         /etc/csf/cpanel.comodo.ignore \
         /etc/csf/cpanel.ignore \
         /etc/csf/csf.cloudflare \
-        /etc/csf/messenger \
     ; do
         if [ -e "$path" ] || [ -L "$path" ]; then
             rm -rf "$path" ||:
