@@ -100,8 +100,30 @@ install -m 0644 etc/csf.cloudflare %{buildroot}/usr/local/csf/data/
 # Install messenger templates to /usr/local/csf/messenger
 cp -a etc/messenger/* %{buildroot}/usr/local/csf/messenger/
 
-# Install config files from etc/ directory (recursively)
-cp -a etc/* %{buildroot}/etc/csf/
+# Install only the config files that belong in /etc/csf
+install -m 0644 etc/csf.allow %{buildroot}/etc/csf/
+install -m 0644 etc/csf.blocklists %{buildroot}/etc/csf/
+install -m 0644 etc/csf.conf %{buildroot}/etc/csf/
+install -m 0644 etc/csf.deny %{buildroot}/etc/csf/
+install -m 0644 etc/csf.dirwatch %{buildroot}/etc/csf/
+install -m 0644 etc/csf.dyndns %{buildroot}/etc/csf/
+install -m 0644 etc/csf.fignore %{buildroot}/etc/csf/
+install -m 0644 etc/csf.ignore %{buildroot}/etc/csf/
+install -m 0644 etc/csf.logfiles %{buildroot}/etc/csf/
+install -m 0644 etc/csf.logignore %{buildroot}/etc/csf/
+install -m 0644 etc/csf.mignore %{buildroot}/etc/csf/
+install -m 0644 etc/csf.pignore %{buildroot}/etc/csf/
+install -m 0644 etc/csf.rblconf %{buildroot}/etc/csf/
+install -m 0644 etc/csf.redirect %{buildroot}/etc/csf/
+install -m 0644 etc/csf.resellers %{buildroot}/etc/csf/
+install -m 0644 etc/csf.rignore %{buildroot}/etc/csf/
+install -m 0644 etc/csf.signore %{buildroot}/etc/csf/
+install -m 0644 etc/csf.sips %{buildroot}/etc/csf/
+install -m 0644 etc/csf.smtpauth %{buildroot}/etc/csf/
+install -m 0644 etc/csf.suignore %{buildroot}/etc/csf/
+install -m 0644 etc/csf.syslogs %{buildroot}/etc/csf/
+install -m 0644 etc/csf.syslogusers %{buildroot}/etc/csf/
+install -m 0644 etc/csf.uidignore %{buildroot}/etc/csf/
 
 # Install profile configurations
 cp -a profiles/* %{buildroot}/usr/local/csf/profiles/
