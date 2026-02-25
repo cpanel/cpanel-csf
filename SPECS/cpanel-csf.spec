@@ -2,7 +2,7 @@
 # RPM spec file
 
 %define release_prefix 1
-%define csf_version 16.06
+%define csf_version 16.07
 
 Name:           cpanel-csf
 Version:        %{csf_version}
@@ -325,6 +325,9 @@ rm -rf %{buildroot}
 /usr/local/cpanel/bin/csf.conf.appconfig
 
 %changelog
+* Wed Feb 25 2026 Andy Baugh <andy.baugh@webpros.com> - 16.07-1
+- Fix symlink for /etc/csf/messenger (round 2)
+
 * Wed Feb 25 2026 Andy Baugh <andy.baugh@webpros.com> - 16.06-1
 - Ensure /etc/csf/messenger is a symlink on RPM based systems.
 
