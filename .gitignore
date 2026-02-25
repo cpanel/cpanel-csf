@@ -15,6 +15,7 @@ debian/*
 cpanel-csf_*
 BUILD/
 debify/debian/override_dh_auto_install.sh
+debify/debian/cpanel-csf.install
 
 # Perl development
 *.swp
